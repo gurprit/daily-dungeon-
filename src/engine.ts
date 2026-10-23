@@ -1,4 +1,5 @@
 import type { Room } from "./game";
+import { fallbackAchievement, type Achievement } from "./achievements.ts";
 
 export type ActionOutcome = {
   success: boolean;
@@ -11,6 +12,7 @@ export type ActionOutcome = {
   reward: string | null;
   narration: string;
   mode: "ai" | "scripted";
+  achievement?: Achievement | null;
 };
 
 function bonusForAction(action: string, inventory: readonly string[]): number {
@@ -35,7 +37,8 @@ export function resolveAction(room: Room, action: string, inventory: readonly st
     heartsLost: success ? 0 : 1,
     reward: success ? room.reward : null,
     narration: fallbackNarration(room, success),
-    mode: "scripted"
+    mode: "scripted",
+    achievement: fallbackAchievement(action, room.title, success, 0)
   };
 }
 
