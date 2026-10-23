@@ -583,24 +583,6 @@ p { line-height: 1.7; }
   color: #af9f94;
   font-weight: 800;
 }
-.room-art-gallery {
-  margin: 0 0 30px;
-  padding: 25px 22px;
-  background: #1c1c26;
-  border: 1px solid #51433c;
-  border-radius: 8px;
-}
-.room-art-gallery h2 {
-  font-size: 25px;
-  color: #f2d7a5;
-  margin: 6px 0 9px;
-}
-.room-art-gallery > p:not(.eyebrow) {
-  color: #a9a1a7;
-  font-size: 13px;
-  margin-bottom: 20px;
-}
-.room-art-gallery__grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 13px; }
 .room-artwork--compact { margin: 0; min-width: 0; }
 .room-artwork--compact .room-artwork__frame { height: auto; max-height: none; }
 .room-artwork--compact figcaption { justify-content: center; text-align: center; padding: 11px 8px; }
@@ -609,9 +591,6 @@ p { line-height: 1.7; }
 .room-artwork--compact .room-artwork__loading span { font-size: 13px; }
 .room-artwork--compact .room-artwork__loading small { display: none; }
 @media (max-width: 540px) {
-  .room-art-gallery { padding: 19px 13px; }
-  .room-art-gallery h2 { font-size: 22px; }
-  .room-art-gallery__grid { gap: 7px; }
   .room-artwork--compact figcaption { font-size: 10px; line-height: 1.4; }
   .room-artwork--compact .room-artwork__loading span { font-size: 11px; }
 }
