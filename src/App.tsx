@@ -281,6 +281,12 @@ export default function App() {
             roomIndex: run.roomIndex,
             action: attempt,
             inventory: run.inventory,
+            priorTurns: run.history.map((turn, i) => ({
+              roomIndex: i,
+              action: turn.action,
+              narration: turn.outcome.narration,
+              success: turn.outcome.success
+            })),
             previewTomorrow
           })
         });
@@ -505,6 +511,7 @@ export default function App() {
                 </div>
                 <div className="encounter__body">
                   <h2>{room.title}</h2>
+                  {room.arrival && <p className="encounter__arrival"><Sparkles size={14}/>{room.arrival}</p>}
                   <p>{room.scene}</p>
                   <div className="dm-quote">
                     <span className="dm-quote__avatar"><Crown size={18}/></span>
