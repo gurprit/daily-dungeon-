@@ -195,6 +195,7 @@ export default function App() {
   const artInflight = useRef(new Set<string>());
   const room = daily.dungeon.rooms[Math.min(run.roomIndex, 2)];
   const starterIdeas = actionStarters(room, run.inventory);
+  const starterNeedsFinishing = starterIdeas.some(idea => action.trim() === idea.draft.trim());
   const last = run.history.at(-1);
   const wins = run.history.filter(t => t.outcome.success).length;
   const achievements = run.history
@@ -266,7 +267,7 @@ export default function App() {
 
   async function submitAction() {
     const attempt = action.trim();
-    if (loading || !run.started || run.finished || attempt.length < 4 || attempt.length > 280) return;
+    if (loading || !run.started || run.finished || attempt.length < 4 || attempt.length > 280 || starterNeedsFinishing) return;
     setLoading(true);
     setError("");
     try {
@@ -552,9 +553,10 @@ export default function App() {
                 <textarea ref={actionField} id="player-action" value={action} onChange={e => setAction(e.target.value)}
                   placeholder={run.roomIndex === 0 ? "What would YOU try? There are no wrong kinds of ideas..." : "I take out my potato and..."} maxLength={280} rows={3}
                   disabled={loading} onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); void submitAction(); } }} />
+                {starterNeedsFinishing && <p className="action-help__finish">✦ Finish this idea in your own words before rolling.</p>}
                 <div className="action-panel__footer">
                   <span className="action-panel__count">{action.length}/280</span>
-                  <button className="button button--primary" onClick={() => void submitAction()} disabled={loading || action.trim().length < 4}>
+                  <button className="button button--primary" onClick={() => void submitAction()} disabled={loading || action.trim().length < 4 || starterNeedsFinishing}>
                     {loading ? "The dice are rolling…" : "Take your chance"} <Dice5 size={18}/>
                   </button>
                 </div>
