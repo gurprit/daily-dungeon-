@@ -291,6 +291,7 @@ export default function App() {
                     <RollBadge outcome={last.outcome}/>
                   </div>
                   <p>{last.outcome.narration}</p>
+                  {last.outcome.creativity > 0 && <span className="last-turn__reward"><Sparkles size={14}/> Creativity bonus: +{last.outcome.creativity}</span>}
                   {last.outcome.reward && <span className="last-turn__reward"><Sparkles size={14}/> Acquired: {last.outcome.reward}</span>}
                   <small>{last.outcome.mode === "ai" ? "Narrated by the AI Dungeon Master" : "Scripted narrator (AI not enabled)"}</small>
                 </div>
