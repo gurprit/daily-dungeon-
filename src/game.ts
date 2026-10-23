@@ -2,6 +2,7 @@ export type Room = {
   title: string;
   subtitle: string;
   scene: string;
+  arrival?: string;
   character: string;
   challenge: string;
   difficulty: number;
@@ -36,6 +37,7 @@ export const DUNGEONS: readonly Dungeon[] = [
       },
       {
         title: "The Library of Accusations",
+        arrival: "Beyond Boggle’s bridge, a dusty passage brings you to a library that already knows your name.",
         subtitle: "Room II · The Witness",
         scene: "Thousands of books whisper your name. The biggest book slams shut and accuses you of stealing the moon last Tuesday.",
         character: "Madame Index, Sentient Encyclopedia",
@@ -46,6 +48,7 @@ export const DUNGEONS: readonly Dungeon[] = [
       },
       {
         title: "The Dragon's Tax Office",
+        arrival: "A door at the far end of the library leads straight into the kingdom’s treasure department.",
         subtitle: "Room III · The Finale",
         scene: "An enormous dragon sleeps beside a tiny desk. On it lies an unsigned receipt marked TREASURE DUTY: 100%. One eye opens.",
         character: "Emberfax, Dragon of Revenue",
@@ -74,6 +77,7 @@ export const DUNGEONS: readonly Dungeon[] = [
       },
       {
         title: "The Sphinx's Day Off",
+        arrival: "Leaving Mira’s chaotic tavern behind, you follow the wizard’s trail to a guarded tower passage.",
         subtitle: "Room II · The Interrogation",
         scene: "A bored sphinx guards the passage. She has heard every riddle in existence, and now demands entertainment instead.",
         character: "Saffron, Tired Sphinx",
@@ -84,6 +88,7 @@ export const DUNGEONS: readonly Dungeon[] = [
       },
       {
         title: "The Wizard's Return",
+        arrival: "Beyond the sphinx’s passage, your search finally ends: the missing wizard has returned.",
         subtitle: "Room III · The Finale",
         scene: "The wizard appears from a puff of glitter and immediately blames you for every problem in the kingdom.",
         character: "Archmage Grumble",
@@ -112,6 +117,7 @@ export const DUNGEONS: readonly Dungeon[] = [
       },
       {
         title: "The Cheese Oracle",
+        arrival: "Past the protesting onions, you find the only creature who claims to know how the royal feast will end.",
         subtitle: "Room II · The Prophecy",
         scene: "A talking wheel of cheese predicts a terrible future for your dinner. It will only help if you ask the right question.",
         character: "Brie, Oracle of Dairy",
@@ -122,6 +128,7 @@ export const DUNGEONS: readonly Dungeon[] = [
       },
       {
         title: "The Hungry King",
+        arrival: "The oracle’s chamber opens onto the royal dining hall, where the final, hungriest problem awaits.",
         subtitle: "Room III · The Finale",
         scene: "The king sits before an empty golden plate. He has the patience of a wasp and the appetite of a small nation.",
         character: "King Crumb the Unfed",
