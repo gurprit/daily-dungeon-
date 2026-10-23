@@ -243,6 +243,72 @@ p { line-height: 1.7; }
 .action-panel__heading h3 { font: 600 18px/1.4 Georgia, serif; color: #f1e0c2; margin: 0; }
 .action-panel__heading span { font-size: 10px; font-weight: 800; letter-spacing: .1em; color: #cda76d; }
 .action-panel > p { font-size: 12px; color: #a6a0a4; margin: 6px 0 17px; }
+/* The first room teaches the free-form action format without a tutorial screen. */
+.action-help {
+  margin: 12px 0 16px;
+  padding: 12px 14px;
+  border: 1px solid #66583f;
+  border-radius: 5px;
+  background: #292631;
+}
+.action-help--intro { border-color: #8f7455; background: #292730; }
+.action-help p {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: #e5d6be;
+}
+.action-help p svg { flex: none; color: #edc78a; margin-top: 1px; }
+.action-help__label {
+  display: block;
+  color: #ba9d75;
+  font: 700 10px/1.45 'Courier New', monospace;
+  letter-spacing: .065em;
+  margin-bottom: 10px;
+}
+.action-help__chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.action-help__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #383038;
+  color: #f2d5a0;
+  border: 1px solid #80654a;
+  padding: 9px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 38px;
+}
+.action-help__chip:hover, .action-help__chip:focus-visible {
+  background: #564036;
+  border-color: #d9b578;
+  outline-offset: 3px;
+}
+.action-help__chip:disabled { opacity: .5; cursor: not-allowed; }
+.action-help--later { padding: 8px 12px; background: transparent; border-color: #45404a; }
+.action-help--later p { margin: 0 0 5px; color: #b9aca9; }
+.action-help--later details summary {
+  color: #d5b783; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.action-help--later details[open] .action-help__chips { margin-top: 12px; }
+.room-artwork__pixel-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+@media (max-width: 540px) {
+  .action-help { padding: 12px; }
+  .action-help__chip { flex: 1 1 auto; padding: 8px 10px; font-size: 11px; }
+}
+
 .action-panel textarea { width: 100%; display: block; resize: vertical; min-height: 108px; background: #12131a; color: #f5eee5; border: 1px solid #4d454d; border-radius: 5px; padding: 15px; font-size: 14px; line-height: 1.7; }
 .action-panel textarea::placeholder { color: #7e7882; }
 .action-panel__footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; }
