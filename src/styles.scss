@@ -74,37 +74,135 @@ p { line-height: 1.7; }
 .intro__facts svg { color: #ccaa70; }
 .intro__small { font-size: 11px; margin: 14px 0 0; color: #87858b; }
 
-.dungeon-art { position: relative; height: 480px; width: 100%; display: flex; justify-content: center; align-items: end; overflow: hidden; }
-.dungeon-art__halo { position: absolute; width: 340px; height: 370px; border-radius: 50%; background: radial-gradient(ellipse, rgba(191,110,73,.23), transparent 68%); top: 50px; filter: blur(14px); }
-.dungeon-art__arch {
-  position: relative; width: 260px; height: 380px; border-radius: 145px 145px 6px 6px;
-  padding: 29px 28px 0; background: linear-gradient(110deg, #27252c, #494044 38%, #27232d 80%);
-  border: 10px solid #57505a; border-bottom: 0; box-shadow: 0 0 0 10px #25232a, 0 5px 0 13px #3b363e, 0 25px 65px #0009, inset 0 0 15px #05060a;
+/* Every day has its own hand-authored retro title illustration. These assets cost $0 to render. */
+.dungeon-art {
+  position: relative;
+  width: 100%;
+  max-width: 620px;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  background: #111020;
+  border: 3px solid #a88755;
+  border-radius: 3px;
+  overflow: visible;
+  box-shadow: 0 0 0 5px #27222d, 0 0 0 7px #594b48, 0 20px 55px #0008;
 }
-.dungeon-art__arch::before {
-  content: ''; position: absolute; inset: -11px; border: 1px solid #81716d; border-bottom: 0;
-  border-radius: 145px 145px 5px 5px; opacity: .5; pointer-events: none;
+.pixel-scene__topbar, .pixel-scene__bottombar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 9px;
+  color: #efd5a4;
+  font: 700 10px/1.6 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: .055em;
+  background: #201c2a;
+  padding: 10px 13px;
 }
-.dungeon-art__keystone { position: absolute; z-index: 3; top: -12px; left: 50%; transform: translateX(-50%); width: 46px; height: 50px; display: grid; place-items: center; background: #6b5b58; color: #e5bc70; border: 3px solid #37313b; border-radius: 7px; }
-.dungeon-art__door {
-  position: absolute; inset: 27px 19px 0;
-  border-radius: 115px 115px 0 0; background: repeating-linear-gradient(90deg, transparent 0 39px, #111018 39px 42px), linear-gradient(#463530, #1c1720);
-  box-shadow: inset 0 0 0 5px #17131a, inset 0 0 0 8px #6e5141, inset 0 0 60px #08070b;
-  display: flex; align-items: center; flex-direction: column;
+.pixel-scene__topbar {
+  border-bottom: 4px solid #6a4f4e;
+  color: #ffd38c;
 }
-.dungeon-art__door::before, .dungeon-art__door::after {
-  content: ''; position: absolute; top: 120px; left: 12px; right: 12px; height: 5px; background: #1b161d; border: 1px solid #674a3b;
+.pixel-scene__bottombar {
+  padding: 12px;
+  border-top: 4px solid #5a4750;
 }
-.dungeon-art__door::after { top: 220px; }
-.dungeon-art__star { color: #d0a56b; font-size: 48px; margin-top: 72px; text-shadow: 0 0 25px #bd8458a6; }
-.dungeon-art__knocker { position: absolute; top: 220px; right: 32px; border: 4px solid #b98a4f; border-radius: 50%; width: 26px; height: 32px; }
-.dungeon-art__torch { position: absolute; z-index: 4; bottom: 145px; color: #f7a84f; filter: drop-shadow(0 0 12px #ed783c); animation: flutter 2.2s ease-in-out infinite alternate; }
-.dungeon-art__torch--left { left: 10%; }
-.dungeon-art__torch--right { right: 10%; animation-delay: .7s; }
-.dungeon-art__torch::after { content: ''; position: absolute; top: 26px; left: 9px; height: 54px; width: 5px; background: #736159; }
-.dungeon-art__mist { position: absolute; z-index: 4; bottom: -44px; height: 110px; width: 100%; background: radial-gradient(ellipse, #68565b55, transparent 68%); filter: blur(10px); }
-.dungeon-art__mist--two { bottom: -68px; transform: scale(1.3); opacity: .6; }
-@keyframes flutter { from { opacity: .7; transform: scale(.9) rotate(-5deg); } to { opacity: 1; transform: scale(1.1) rotate(5deg); } }
+.pixel-scene__quest-name {
+  max-width: 55%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  text-align: right;
+}
+.pixel-scene__life { color: #ed8f86; letter-spacing: .07em; }
+.pixel-scene__viewport {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 320 / 220;
+  background: #141627;
+}
+.pixel-scene__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  filter: saturate(1.07) contrast(1.08);
+}
+.pixel-scene__scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, transparent 0 3px, #0c0c1870 4px 5px);
+  opacity: .24;
+}
+.pixel-scene__glimmer {
+  position: absolute;
+  z-index: 2;
+  color: #f9da9f;
+  font-size: 24px;
+  text-shadow: 0 0 16px #e6ae5c;
+  animation: pixel-spark 2.8s steps(3) infinite;
+  pointer-events: none;
+}
+.pixel-scene__glimmer--one { top: 17%; left: 7%; }
+.pixel-scene__glimmer--two { top: 44%; right: 9%; animation-delay: 1.1s; }
+@keyframes pixel-spark { 0%,100% { opacity: .2; transform: scale(.75); } 55% { opacity: .9; transform: scale(1.1); } }
+
+.intro__visual { height: auto; min-height: 465px; display: flex; flex-direction: column; align-items: stretch; justify-content: center; padding-top: 28px; }
+.intro__badge {
+  top: 3px;
+  z-index: 2;
+  background: #2b2630;
+  border: 1px solid #735b48;
+  padding: 4px 13px;
+  border-radius: 2px;
+  font-family: 'Courier New', monospace;
+}
+.intro__copy h1 { text-shadow: 0 3px 26px #dfa85e1b; }
+.intro .button--primary {
+  border-radius: 3px;
+  border: 2px solid #fae1b2;
+  box-shadow: 4px 4px 0 #645038, 0 12px 26px #0004;
+  text-transform: uppercase;
+  font-family: 'Courier New', monospace;
+  letter-spacing: .07em;
+  font-size: 14px;
+}
+.intro .button--primary:not(:disabled):hover { box-shadow: 5px 5px 0 #856b44, 0 16px 28px #0004; }
+.encounter__art--pixel {
+  height: auto;
+  max-height: 350px;
+  aspect-ratio: 320 / 180;
+  display: block;
+  overflow: hidden;
+  position: relative;
+  background: #151625;
+}
+.encounter__art--pixel::before { display: none; }
+.encounter__pixel-scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  object-fit: cover;
+  filter: saturate(1.05) contrast(1.08);
+}
+.encounter__scene-label {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  padding: 5px 9px;
+  background: #191825df;
+  color: #f0cc8d;
+  font: 700 10px/1.4 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  border: 1px solid #98764c;
+}
 
 .game-layout { display: grid; grid-template-columns: minmax(0, 1fr) 295px; gap: 31px; align-items: start; }
 .game-main { min-width: 0; }
@@ -392,7 +490,7 @@ p { line-height: 1.7; }
   .game-layout { grid-template-columns: minmax(0, 1fr) 245px; gap: 20px; }
   .sidebar { padding: 0 15px; }
   .intro { gap: 2%; }
-  .intro__visual { transform: scale(.87); }
+  .intro__visual { transform: none; }
   .footer { padding: 20px 26px; }
 }
 @media (max-width: 760px) {
@@ -404,7 +502,7 @@ p { line-height: 1.7; }
   .daily-pill { padding: 8px; font-size: 9px; }
   .main { padding: 24px 17px 65px; }
   .intro { display: flex; flex-direction: column; gap: 0; min-height: unset; }
-  .intro__visual { height: 310px; width: 100%; transform: scale(.72); margin: -40px 0 -50px; }
+  .intro__visual { height: auto; min-height: 0; padding: 25px 6px 0; width: 100%; transform: none; margin: 0 0 28px; }
   .intro__copy { width: 100%; text-align: center; }
   .intro__copy h1 { font-size: 35px; }
   .intro__description { margin: 18px auto 22px; }
