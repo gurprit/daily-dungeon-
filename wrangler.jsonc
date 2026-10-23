@@ -10,6 +10,9 @@
     "run_worker_first": ["/api/*"]
   },
   "ai": { "binding": "AI" },
+  "r2_buckets": [
+    { "binding": "ART_BUCKET", "bucket_name": "daily-dungeon-art" }
+  ],
   "ratelimits": [
     {
       "name": "ACTION_LIMITER",
@@ -27,6 +30,8 @@
   ],
   "vars": {
     "AI_ENABLED": "true",
-    "AI_DAILY_LIMIT": "36"
+    "AI_DAILY_LIMIT": "36",
+    "ART_ENABLED": "false",
+    "ART_DAILY_LIMIT": "36"
   }
 }
