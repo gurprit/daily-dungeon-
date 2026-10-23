@@ -2,6 +2,7 @@ import { getDailyGame, getPreviewDailyGame, STARTING_INVENTORY } from "../src/ga
 import { resolveAction } from "../src/engine.ts";
 import { achievementFromJudgment } from "../src/achievements.ts";
 import { judgeWithAI } from "./judge.ts";
+import { priorStoryContext } from "./continuity.ts";
 import { artServiceStatus, handleArtRoute, makeArtTicket, type ArtEnv } from "./art.ts";
 
 type Env = ArtEnv & {
@@ -26,6 +27,7 @@ type ActionRequest = {
   action?: unknown;
   inventory?: unknown;
   previewTomorrow?: unknown;
+  priorTurns?: unknown;
 };
 
 const json = (body: unknown, status = 200) =>
@@ -116,6 +118,7 @@ export default {
 
       const room = daily.dungeon.rooms[Number(body.roomIndex)];
       const inventory = normaliseInventory(body.inventory, daily);
+      const earlierMoments = priorStoryContext(body.priorTurns, daily.dungeon.rooms, Number(body.roomIndex));
       const die = crypto.getRandomValues(new Uint32Array(1))[0] % 20 + 1;
       let outcome = resolveAction(room, body.action, inventory, die);
 
@@ -129,7 +132,7 @@ export default {
           console.error("AI budget unavailable", error instanceof Error ? error.message : "unknown");
           return json({ error: "The AI budget gate is unavailable. No model call was made." }, 503);
         }
-        const judgment = await judgeWithAI(env.AI, room.scene, room.character, room.challenge, body.action);
+        const judgment = await judgeWithAI(env.AI, room.scene, room.character, room.challenge, body.action, earlierMoments);
         if (judgment) {
           outcome = resolveAction(room, body.action, inventory, die, judgment.creativity);
           outcome.narration = outcome.success ? judgment.success : judgment.failure;
