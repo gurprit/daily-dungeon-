@@ -3,6 +3,7 @@ import { resolveAction } from "../src/engine";
 
 type Env = {
   AI_ENABLED?: string;
+  ACTION_LIMITER: { limit: (options: { key: string }) => Promise<{ success: boolean }> };
   AI: { run: (model: string, input: Record<string, unknown>) => Promise<unknown> };
   ASSETS: { fetch: (request: Request) => Promise<Response> };
 };
@@ -77,6 +78,9 @@ export default {
       let body: ActionRequest;
       try { body = await request.json() as ActionRequest; }
       catch { return json({ error: "Invalid JSON." }, 400); }
+      const key = request.headers.get("cf-connecting-ip") ?? "unknown";
+      const allowed = await env.ACTION_LIMITER.limit({ key });
+      if (!allowed.success) return json({ error: "Even heroes need a rest. Try again in a minute." }, 429);
       const daily = getDailyGame();
       if (body.day !== daily.day) return json({ error: "A new dungeon has begun. Refresh to continue." }, 409);
       if (!Number.isInteger(body.roomIndex) || Number(body.roomIndex) < 0 || Number(body.roomIndex) > 2) {
