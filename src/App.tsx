@@ -612,16 +612,6 @@ export default function App() {
               {artService.status === "ready" ? " The portrait service reports ready, so check /api/resolve." : " " + (artService.status === "disabled"
                 ? "The deployed ART_ENABLED flag is off." : "Server setup needed: " + (artService.missing?.join(", ") ?? "check bindings"))}
             </p>}
-            {run.history.some(turn => turn.art) && (
-              <section className="room-art-gallery" aria-label="Your 16-bit adventure gallery">
-                <p className="eyebrow">YOUR ADVENTURE IN PIXELS</p>
-                <h2>The Illustrated Chronicle</h2>
-                <p>Three moments. One entirely improbable hero.</p>
-                <div className="room-art-gallery__grid">
-                  {run.history.map((turn, index) => <RoomArtwork key={index} turn={turn} compact/>) }
-                </div>
-              </section>
-            )}
             <section className="hero-certificate" aria-label="Your dungeon certificate">
               <div className="hero-certificate__ornament">✦</div>
               <p className="hero-certificate__eyebrow">THE DAILY DUNGEON PRESENTS</p>
@@ -640,17 +630,28 @@ export default function App() {
               </div>
               <p className="hero-certificate__seal">✦ ONE DUNGEON. ENDLESS POSSIBILITIES. ✦</p>
             </section>
-            <div className="ending__journal">
+            <section className="ending__journal" aria-label="Your illustrated adventure journal">
               <h2><ScrollText size={19}/> Your Hero's Journal</h2>
+              <p className="ending__journal-intro">Three rooms. One unlikely story. Every choice made it yours.</p>
               {run.history.map((entry, i) => (
-                <div className="ending__entry" key={i}>
-                  <div className="ending__entry-title">{entry.outcome.success ? "✦" : "✕"} {entry.roomTitle}</div>
-                  <p><em>"{entry.action}"</em></p>
-                  <p>{entry.outcome.narration}</p>
+                <article className="ending__entry" key={i}>
+                  <div className="ending__entry-title">
+                    <span className="ending__entry-number">{String(i + 1).padStart(2, "0")}</span>
+                    <span>{entry.outcome.success ? "✦" : "✕"} {entry.roomTitle}</span>
+                  </div>
+                  <div className="ending__entry-action">
+                    <span className="ending__entry-label">YOU TRIED</span>
+                    <p><em>"{entry.action}"</em></p>
+                  </div>
+                  <RoomArtwork turn={entry} compact/>
+                  <div className="ending__entry-response">
+                    <span className="ending__entry-label">THE DUNGEON MASTER</span>
+                    <p>{entry.outcome.narration}</p>
+                  </div>
                   {entry.outcome.achievement && <p className="ending__award"><Crown size={16}/> {entry.outcome.achievement.title}</p>}
-                </div>
+                </article>
               ))}
-            </div>
+            </section>
             <div className="ending__actions">
               <button className="button button--primary button--large" onClick={() => void share()}>
                 {copied ? <Check size={19}/> : <Share2 size={19}/>} {copied ? "Result ready to share" : "Share your legend"}
