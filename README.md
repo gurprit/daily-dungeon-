@@ -84,6 +84,15 @@ Each AI request prompts Qwen3 for two possible short outcomes, a creativity scor
 
 **Action-specific images are different:** If you enable the optional Cloudflare art feature below, the game also illustrates each resolved player action and adds those images to the end-of-run gallery. This requires the R2 bucket, the D1 migration, the signing secret and ART_ENABLED=true. If disabled, the built-in homepage and room scenes still appear.
 
+## QA shortcut: pretend it's tomorrow
+
+While testing, set `PREVIEW_TOMORROW_ENABLED` to `"true"` in `wrangler.jsonc` (the feature branch has it enabled temporarily). Deploy the Worker, then choose **Test tomorrow's dungeon** on the homepage or end-of-run screen, or visit `/?preview=tomorrow`.
+
+- Tomorrow's UTC date is used to select the next three-room storyline (for example 23 October 2026 previews the Wizard's Complaint on 24 October 2026).
+- The preview saves to its own browser key and doesn't overwrite today's actual run. Use **Return to today** to switch back.
+- API resolution verifies the preview flag and the submitted future date. AI and image calls still count against **today's real worldwide daily quotas**. Image tickets use the preview's dungeon date to illustrate the correct room.
+- Never change your computer clock or edit the real D1 date. When public daily challenges are ready, switch `PREVIEW_TOMORROW_ENABLED` to `"false"` and deploy. A disabled backend rejects preview submissions.
+
 ## Optional: live 16-bit pixel-art chronicles
 
 After every room, the game automatically scrolls to the top, shows the DM's verdict immediately, and **starts a non-blocking personalised retro pixel-art job** based on that room, your action and the result. The final screen shows all generated artwork as a gallery.
