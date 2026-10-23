@@ -5,7 +5,6 @@ import { judgeWithAI } from "./judge.ts";
 type Env = {
   AI_ENABLED?: string;
   AI_DAILY_LIMIT?: string;
-  PLAYTEST_CODE?: string;
   DAILY_BUDGET_DB?: {
     prepare: (sql: string) => {
       bind: (...values: unknown[]) => {
@@ -59,11 +58,11 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const aiRequested = env.AI_ENABLED === "true";
-    const aiConfigured = !!env.PLAYTEST_CODE && !!env.DAILY_BUDGET_DB && !!env.AI;
+    const aiConfigured = !!env.DAILY_BUDGET_DB && !!env.AI;
     if (url.pathname === "/api/health") {
       return json({
         ok: true,
-        narrator: aiRequested ? (aiConfigured ? "playtest-locked" : "setup-required") : "scripted",
+        narrator: aiRequested ? (aiConfigured ? "ai-ready" : "setup-required") : "scripted",
         day: getDailyGame().day
       });
     }
@@ -78,10 +77,8 @@ export default {
       if (!allowed.success) return json({ error: "Even heroes need a rest. Try again in a minute." }, 429);
 
       if (aiRequested) {
-        // Fail closed: never silently expose an AI endpoint without a passcode and global budget.
-        if (!aiConfigured) return json({ error: "AI playtest setup is incomplete (secret or D1 database missing)." }, 503);
-        const provided = request.headers.get("x-dungeon-playtest-code") ?? "";
-        if (provided !== env.PLAYTEST_CODE) return json({ error: "The Dungeon Master requires your private playtest code." }, 401);
+        // AI runs publicly without a player passcode, but never without a global D1 budget.
+        if (!aiConfigured) return json({ error: "The Dungeon Master is temporarily unavailable (AI budget database not configured)." }, 503);
       }
 
       let body: ActionRequest;
@@ -109,7 +106,7 @@ export default {
       if (aiRequested) {
         try {
           if (!(await reserveDailyBudget(env, daily.day))) {
-            return json({ error: "Today's AI playtest budget is exhausted. Come back tomorrow or disable AI." }, 429);
+            return json({ error: "The Dungeon Master has run out of magic for today. Try again tomorrow." }, 429);
           }
         } catch (error) {
           console.error("AI budget unavailable", error instanceof Error ? error.message : "unknown");
