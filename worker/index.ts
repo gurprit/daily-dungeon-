@@ -1,4 +1,4 @@
-import { getDailyGame, STARTING_INVENTORY } from "../src/game.ts";
+import { getDailyGame, getPreviewDailyGame, STARTING_INVENTORY } from "../src/game.ts";
 import { resolveAction } from "../src/engine.ts";
 import { achievementFromJudgment } from "../src/achievements.ts";
 import { judgeWithAI } from "./judge.ts";
@@ -7,6 +7,7 @@ import { handleArtRoute, makeArtTicket, type ArtEnv } from "./art.ts";
 type Env = ArtEnv & {
   AI_ENABLED?: string;
   AI_DAILY_LIMIT?: string;
+  PREVIEW_TOMORROW_ENABLED?: string;
   DAILY_BUDGET_DB?: {
     prepare: (sql: string) => {
       bind: (...values: unknown[]) => {
@@ -24,6 +25,7 @@ type ActionRequest = {
   roomIndex?: unknown;
   action?: unknown;
   inventory?: unknown;
+  previewTomorrow?: unknown;
 };
 
 const json = (body: unknown, status = 200) =>
@@ -35,9 +37,8 @@ const json = (body: unknown, status = 200) =>
     }
   });
 
-function normaliseInventory(value: unknown): string[] {
+function normaliseInventory(value: unknown, daily: ReturnType<typeof getDailyGame>): string[] {
   const allowed = new Set<string>(STARTING_INVENTORY);
-  const daily = getDailyGame();
   for (const room of daily.dungeon.rooms) allowed.add(room.reward);
   if (!Array.isArray(value)) return [...STARTING_INVENTORY];
   return value.filter((item): item is string => typeof item === "string" && allowed.has(item)).slice(0, 6);
@@ -65,7 +66,8 @@ export default {
       return json({
         ok: true,
         narrator: aiRequested ? (aiConfigured ? "ai-ready" : "setup-required") : "scripted",
-        day: getDailyGame().day
+        day: getDailyGame().day,
+        previewTomorrowEnabled: env.PREVIEW_TOMORROW_ENABLED === "true"
       });
     }
 
@@ -94,7 +96,15 @@ export default {
         if (!body || typeof body !== "object") throw new Error("Bad body");
       } catch { return json({ error: "Invalid JSON." }, 400); }
 
-      const daily = getDailyGame();
+      const isPreview = body.previewTomorrow === true;
+      // A playtest preview never modifies the actual daily dungeon, clock or quotas.
+      if (body.previewTomorrow !== undefined && typeof body.previewTomorrow !== "boolean") {
+        return json({ error: "Invalid preview selection." }, 400);
+      }
+      if (isPreview && env.PREVIEW_TOMORROW_ENABLED !== "true") {
+        return json({ error: "Tomorrow's playtest is not enabled." }, 403);
+      }
+      const daily = isPreview ? getPreviewDailyGame() : getDailyGame();
       if (body.day !== daily.day) return json({ error: "A new dungeon has begun. Refresh to continue." }, 409);
       if (!Number.isInteger(body.roomIndex) || Number(body.roomIndex) < 0 || Number(body.roomIndex) > 2) {
         return json({ error: "Invalid room." }, 400);
@@ -104,13 +114,14 @@ export default {
       }
 
       const room = daily.dungeon.rooms[Number(body.roomIndex)];
-      const inventory = normaliseInventory(body.inventory);
+      const inventory = normaliseInventory(body.inventory, daily);
       const die = crypto.getRandomValues(new Uint32Array(1))[0] % 20 + 1;
       let outcome = resolveAction(room, body.action, inventory, die);
 
       if (aiRequested) {
         try {
-          if (!(await reserveDailyBudget(env, daily.day))) {
+          // A preview consumes today's normal allowance and cannot bypass the global cap.
+          if (!(await reserveDailyBudget(env, getDailyGame().day))) {
             return json({ error: "The Dungeon Master has run out of magic for today. Try again tomorrow." }, 429);
           }
         } catch (error) {
@@ -125,7 +136,7 @@ export default {
           outcome.achievement = achievementFromJudgment(room, body.action, outcome.success, judgment.creativity, judgment.achievement);
         }
       }
-      const artTicket = await makeArtTicket(env, Number(body.roomIndex), body.action, outcome.narration, outcome.success);
+      const artTicket = await makeArtTicket(env, Number(body.roomIndex), body.action, outcome.narration, outcome.success, daily.day);
       if (artTicket) outcome.artTicket = artTicket;
       return json(outcome);
     }
