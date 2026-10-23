@@ -74,7 +74,7 @@ export async function verifyArtTicket(env: ArtEnv, token: string): Promise<ArtTi
   const [payload, signature, more] = token.split(".");
   if (!payload || !signature || more !== undefined || !/^[a-zA-Z0-9_-]+$/.test(payload + signature)) return null;
   try {
-    const verified = await crypto.subtle.verify("HMAC", await signingKey(env.ART_SIGNING_KEY!), decode64(signature), encoder.encode(payload));
+    const verified = await crypto.subtle.verify("HMAC", await signingKey(env.ART_SIGNING_KEY!), new Uint8Array(decode64(signature)), encoder.encode(payload));
     if (!verified) return null;
     const result = JSON.parse(decoder.decode(decode64(payload))) as Partial<ArtTicket>;
     if (typeof result.id !== "string" || !/^[\da-f-]{36}$/i.test(result.id) ||
@@ -108,10 +108,9 @@ export function createPixelArtPrompt(ticket: ArtTicket): string {
 
 function resultBytes(value: unknown): ArrayBuffer {
   const result = (value && typeof value === "object" ? value : {}) as { image?: unknown; result?: { image?: unknown } };
-  let text = result.image ?? result.result?.image;
-  if (typeof text !== "string" || text.length < 30 || text.length > 16_000_000) throw new Error("Unexpected image response");
-  text = text.replace(/^data:image\/(?:png|jpeg|webp);base64,/, "");
-  const bytes = decode64(text);
+  const image = result.image ?? result.result?.image;
+  if (typeof image !== "string" || image.length < 30 || image.length > 16_000_000) throw new Error("Unexpected image response");
+  const bytes = new Uint8Array(decode64(image.replace(/^data:image\/(?:png|jpeg|webp);base64,/, "")));
   if (bytes.byteLength < 100) throw new Error("Empty image response");
   return bytes.buffer;
 }
