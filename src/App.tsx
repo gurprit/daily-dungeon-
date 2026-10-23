@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight, BookOpen, Check, Crown, Dice5, Download, Flame,
   Heart, ScrollText, Share2, Shield, Skull, Sparkles, Swords
@@ -12,6 +12,7 @@ type Turn = {
   roomTitle: string;
   action: string;
   outcome: ActionOutcome;
+  art?: { status: "pending" | "ready" | "failed"; id?: string; url?: string };
 };
 
 type Run = {
@@ -123,6 +124,24 @@ function AchievementUnlock({ achievement }: { achievement: Achievement }) {
   );
 }
 
+function RoomArtwork({ turn, compact = false }: { turn: Turn; compact?: boolean }) {
+  if (!turn.art) return null;
+  return (
+    <figure className={"room-artwork " + (compact ? "room-artwork--compact" : "")}>
+      <div className="room-artwork__frame">
+        {turn.art.status === "ready" && turn.art.url ? (
+          <img loading="lazy" src={turn.art.url} alt={"16-bit illustration of " + turn.roomTitle + " based on your adventure"} />
+        ) : turn.art.status === "pending" ? (
+          <div className="room-artwork__loading" role="status"><Sparkles size={26}/><span>Painting your legend…</span><small>The royal portrait artist is working on it.</small></div>
+        ) : (
+          <div className="room-artwork__loading"><span>Portrait unavailable</span><small>Your adventure continues regardless.</small></div>
+        )}
+      </div>
+      <figcaption><Sparkles size={15}/><span>{turn.roomTitle}</span><span className="room-artwork__chip">16-BIT CHRONICLES</span></figcaption>
+    </figure>
+  );
+}
+
 function Inventory({ items }: { items: string[] }) {
   return (
     <div className="inventory">
@@ -154,6 +173,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [certificateNotice, setCertificateNotice] = useState("");
+  const artInflight = useRef(new Set<string>());
   const room = daily.dungeon.rooms[Math.min(run.roomIndex, 2)];
   const last = run.history.at(-1);
   const wins = run.history.filter(t => t.outcome.success).length;
@@ -164,6 +184,65 @@ export default function App() {
   const title = won
     ? (wins === 3 ? "A Legend Is Born" : "The Unlikely Survivor")
     : "The Dramatic Demise";
+
+  // Keep one art job per trusted resolution ticket; resumed jobs never double-charge.
+  useEffect(() => {
+    for (const entry of run.history) {
+      const ticket = entry.outcome.artTicket;
+      if (!ticket || entry.art?.status === "ready" || entry.art?.status === "failed" ||
+          artInflight.current.has(ticket)) continue;
+      artInflight.current.add(ticket);
+      void (async () => {
+        const updateArt = (art: Turn["art"]) => setRun(current => {
+          if (current.day !== run.day || !current.history.some(item => item.outcome.artTicket === ticket)) return current;
+          return {
+            ...current,
+            history: current.history.map(item => item.outcome.artTicket === ticket ? { ...item, art } : item)
+          };
+        });
+        try {
+          const response = await fetch("/api/generate-room-art", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ token: ticket })
+          });
+          const job = await response.json() as { id?: string; status?: string; url?: string };
+          if (!response.ok || !job.id) { updateArt({ status: "failed" }); return; }
+          if (job.status === "ready" && job.url) {
+            updateArt({ status: "ready", id: job.id, url: job.url });
+            return;
+          }
+          updateArt({ status: "pending", id: job.id });
+          // Image generation continues on the Worker; do not hold up the next room.
+          for (let attempt = 0; attempt < 45; attempt++) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            const statusResponse = await fetch("/api/art-status/" + job.id);
+            if (!statusResponse.ok) continue;
+            const status = await statusResponse.json() as { status?: string; url?: string };
+            if (status.status === "ready" && status.url) {
+              updateArt({ status: "ready", id: job.id, url: status.url });
+              return;
+            }
+            if (status.status === "failed") {
+              updateArt({ status: "failed", id: job.id });
+              return;
+            }
+          }
+          // Leave pending in localStorage: another visit can resume polling, not re-generate.
+        } catch {
+          // A network failure is temporary. Preserve pending and retry on a future page load.
+        } finally { artInflight.current.delete(ticket); }
+      })();
+    }
+  }, [run.history, run.day, setRun]);
+
+  useEffect(() => {
+    if (run.history.length === 0) return;
+    window.scrollTo({
+      top: 0,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth"
+    });
+  }, [run.history.length]);
 
   async function submitAction() {
     const attempt = action.trim();
@@ -201,7 +280,7 @@ export default function App() {
         ...current,
         hearts: remaining,
         inventory: outcome.reward ? [...current.inventory, outcome.reward] : current.inventory,
-        history: [...current.history, { roomTitle: room.title, action: attempt, outcome }],
+        history: [...current.history, { roomTitle: room.title, action: attempt, outcome, ...(outcome.artTicket ? { art: { status: "pending" as const } } : {}) }],
         roomIndex: nextIndex,
         finished: nextIndex >= daily.dungeon.rooms.length || remaining === 0
       }));
@@ -365,6 +444,7 @@ export default function App() {
                 </div>
               )}
               {last?.outcome.achievement && <AchievementUnlock achievement={last.outcome.achievement}/>}
+              {last && <RoomArtwork turn={last}/> }
 
               <section className="encounter">
                 <div className="encounter__top">
@@ -451,6 +531,16 @@ export default function App() {
               <div><strong>{wins}/3</strong><span>TRIALS PASSED</span></div>
               <div><strong>{run.hearts}/3</strong><span>HEARTS LEFT</span></div>
             </div>
+            {run.history.some(turn => turn.art) && (
+              <section className="room-art-gallery" aria-label="Your 16-bit adventure gallery">
+                <p className="eyebrow">YOUR ADVENTURE IN PIXELS</p>
+                <h2>The Illustrated Chronicle</h2>
+                <p>Three moments. One entirely improbable hero.</p>
+                <div className="room-art-gallery__grid">
+                  {run.history.map((turn, index) => <RoomArtwork key={index} turn={turn} compact/>) }
+                </div>
+              </section>
+            )}
             <section className="hero-certificate" aria-label="Your dungeon certificate">
               <div className="hero-certificate__ornament">✦</div>
               <p className="hero-certificate__eyebrow">THE DAILY DUNGEON PRESENTS</p>
