@@ -4,11 +4,11 @@
 
 A mobile-first, bite-sized fantasy game where the whole world receives the same dungeon each UTC day. Write your own actions, roll the dice and improvise your way through a theatrical Dungeon Master with a questionable sense of humour.
 
-> **Current status:** playable foundation/playtest on the feat/foundation branch, not a production launch.
+> **Current status:** protected AI playtest on `feat/ai-dungeon-master`, not a public launch.
 
 ## What's playable
 
-- Three original three-room dungeons, rotating by UTC date from 23 October 2026.
+- Three original three-room dungeons, rotating by UTC date from 23 October 2026 (sample content repeats after three days).
 - Free-text actions. Use your inventory, bargain, make up an outrageous plan.
 - Three hearts, D20 rolls, room difficulties and inventory rewards.
 - An optional **Cloudflare Workers AI** judge that awards 0–5 creativity points and improvises alternate outcomes.
@@ -17,7 +17,7 @@ A mobile-first, bite-sized fantasy game where the whole world receives the same 
 - A persistent adventure journal and spoiler-free result sharing.
 - Responsive interface, local per-day progress, engine tests and GitHub Actions CI.
 
-**Not built yet:** player accounts, D1 persistence, global leaderboards, verified one-attempt-per-day enforcement, streaks, generated puzzles or a production abuse-prevention system. The three sample dungeons repeat while we test the loop.
+**Not built yet:** player accounts, D1-backed player-run persistence, global leaderboards, verified one-attempt-per-day enforcement, streaks, generated puzzles or full production abuse protection. Only the global AI-call counter is stored in D1. The three sample dungeons repeat while we test the loop.
 
 ## Getting started
 
@@ -26,7 +26,7 @@ Requirements: Node.js 22+ and npm.
 ~~~bash
 git clone https://github.com/gurprit/daily-dungeon-.git
 cd daily-dungeon-
-git checkout feat/foundation
+git checkout feat/ai-dungeon-master
 npm install
 npm run dev
 ~~~
@@ -44,44 +44,37 @@ Cloudflare Workers local emulation may not work on macOS 12.6: you can still use
 
 ## Enable the real AI Dungeon Master (private playtest)
 
-**This is a separate branch, feat/ai-dungeon-master.** Live inference is OFF by default. A private browser code and strict D1-based global daily model-call budget are required before enabling it.
+**The Cloudflare D1 database is already bound in `wrangler.jsonc`, and AI_ENABLED is now `"true"`.** The deployed Worker still refuses to call the AI unless its private secret and D1 budget table exist. Daily limit: **36 AI calls across all players worldwide**. No inference has been deployed or tested automatically.
 
-### In your Cloudflare dashboard
+### One-time setup
 
-1. Open **Storage & Databases → D1 SQL Database** and create a database named **daily-dungeon-playtest**. Copy its Database ID.
-2. Open the new database's **Console** and run the SQL in **migrations/0001_ai_budget.sql** to create the quota table.
-3. In **wrangler.jsonc**, uncomment the **d1_databases** example and paste your real database UUID. Keep the binding name exactly **DAILY_BUDGET_DB**.
-4. Change **AI_ENABLED** from `"false"` to `"true"`. Keep **AI_DAILY_LIMIT** at **36**, or lower it (the Worker clamps values to 1–100).
-5. Run `npm run deploy` in your checked-out feature branch. If needed, run `npx wrangler login` first to authorize deployment.
-6. Open your new Worker in the Cloudflare dashboard, under **Settings → Variables and Secrets**, and add **PLAYTEST_CODE** as a **Secret** (not plain text). Use a unique long random value. Alternatively run `npx wrangler secret put PLAYTEST_CODE` from the project directory. Do not share this code publicly or commit it.
-7. Reload the Worker website. Its action panel should show **AI Dungeon Master Awake**. Enter your private playtest code in the input, then start a new room.
+On the `feat/ai-dungeon-master` branch:
 
-If you previously deployed with AI disabled, **redeploy after editing wrangler.jsonc**. Dashboard changes to vars can be overwritten by later Wrangler deployments.
+~~~bash
+git pull origin feat/ai-dungeon-master
+npm test && npm run build
+npx wrangler login
+npx wrangler d1 migrations apply daily-dungeon-playtest --remote
+npm run deploy
+npx wrangler secret put PLAYTEST_CODE
+~~~
 
-### Why the safeguards?
+1. **Migration:** Confirm the migration targets the database named `daily-dungeon-playtest`. It runs the SQL in `migrations/0001_ai_budget.sql` and creates the daily budget counter. If you already executed the SQL in Cloudflare's D1 Console, it's safe to apply the idempotent migration as well.
+2. **Deploy:** `npm run deploy` builds and deploys the site and API. It prints the Worker's public URL. Until the playtest secret exists, the AI endpoint fails closed without calling a model.
+3. **Secret:** `npx wrangler secret put PLAYTEST_CODE` prompts for a **long, random private passcode**. This is a secret stored by Cloudflare, not a normal variable in GitHub. The command creates a new Worker version and deploys it immediately.
+4. **Play:** Visit the new Worker URL, start a dungeon, and enter that same private passcode in the form. The `/api/health` endpoint should report `"narrator":"playtest-locked"` when the Worker is configured correctly.
 
-The Cloudflare Rate Limiting API is approximate and only per location. Our strict D1 counter reserves an inference slot in one atomic SQL statement, preventing uncontrolled retries from spending beyond our configured daily request count. A private playtest secret blocks unauthorised visitors. The existing per-IP limiter remains an additional safety layer. When any safety requirement is missing, the server returns 503 and **does not call the model**.
+Never paste `PLAYTEST_CODE` into chat, commit it to GitHub, or type it as a shell argument that ends up in terminal history. You can instead add it in your Worker dashboard at **Settings → Variables and Secrets** with **Type: Secret**.
 
-Each AI action asks Qwen for two possible short outcomes and a creativity score from 0–5. A score of 5 is a rare **Masterstroke** that bypasses a bad dice roll. The LLM never edits the inventory or health.
+### Safety, costs, and test boundaries
 
-**A successful local Vite playtest cannot prove Workers AI works.** The live model only runs in a properly configured Cloudflare Worker; local Workers AI emulation also makes real remote model calls and may incur charges.
+The Worker checks a playtest passcode and applies an approximate per-IP rate limit. It also **reserves a slot in an atomic D1 daily counter before calling Workers AI**. The cap is 36 inference attempts per UTC day, configurable via `AI_DAILY_LIMIT` and clamped to 1–100 by the Worker. Exhausted or unavailable budget fails closed. Repeated attempts or malformed AI responses can consume slots.
 
-## Earlier optional AI notes
+This is a controlled playtest, not a production-ready public game: the shared passcode can be copied and browser-side state can be manipulated, so these runs cannot support a trusted leaderboard. Workers, D1, and AI usage may have separate account-level charges or allowances. Check account limits before enabling traffic.
 
+Each AI request prompts Qwen3 for two possible short outcomes and a creativity score of 0–5; a rare **5/5 Masterstroke** overrides a bad dice roll. The rules engine, never the AI, decides hearts, inventory, rewards, and progression.
 
-
-Cloudflare Workers AI uses the model @cf/qwen/qwen3-30b-a3b-fp8. Its binding is already declared in wrangler.jsonc.
-
-The AI_ENABLED variable defaults to "false" **to prevent accidental inference charges**. Once your Cloudflare account, AI allowance, and usage safeguards are ready:
-
-1. Change AI_ENABLED to "true" in the Wrangler configuration.
-2. Deploy or run the Worker with npm run dev:worker.
-3. The /api/resolve endpoint will ask the model to score each action's creativity (0–3) and produce two possible narrations.
-4. The server adds the bounded creativity bonus to the dice roll and selects the appropriate narration. If AI fails, it falls back to scripted text.
-
-The Workers API includes an approximate Cloudflare rate limiter (12 actions per minute per IP/location). **This is not a strict global budget limit or anti-cheat protection.** Do not launch a publicly advertised AI version until a a server-side daily quota, abuse controls and cost alert or spending limit have been added.
-
-No secret model key is embedded in the browser.
+`npm run dev` is **scripted-only** and uses a local fallback. Remote Workers AI can incur usage even when testing from Wrangler.
 
 ## Commands
 
@@ -111,7 +104,7 @@ wrangler.jsonc     # Worker, assets, rate limiting, AI binding
 
 ## How decisions work
 
-Each room has a target difficulty. The system rolls a D20 and awards a small transparent modifier for using an existing item and for providing a detailed action. When Workers AI is enabled, it may award an extra **0–5 creativity points** based on inventiveness and relevance. A successful roll awards the room's item, otherwise one heart is lost. The story always advances, so each daily game stays short. Running out of hearts ends the adventure.
+Each room has a target difficulty. The system rolls a D20 and awards a small modifier for using an existing inventory item. When Workers AI is enabled, it may award an extra **0–5 creativity points** based on inventiveness and relevance. A successful roll awards the room's item, otherwise one heart is lost. The story always advances, so each daily game stays short. Running out of hearts ends the adventure.
 
 Player-submitted words are treated as story input, never as instructions to change the game's rules.
 
