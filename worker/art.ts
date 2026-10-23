@@ -53,11 +53,11 @@ export function artEnabled(env: ArtEnv): boolean {
 }
 
 /** A ticket can only be minted by the trusted resolution endpoint, never by the browser. */
-export async function makeArtTicket(env: ArtEnv, roomIndex: number, action: string, narration: string, success: boolean): Promise<string | null> {
+export async function makeArtTicket(env: ArtEnv, roomIndex: number, action: string, narration: string, success: boolean, day = getDailyGame().day): Promise<string | null> {
   if (!artEnabled(env)) return null;
   const ticket: ArtTicket = {
     id: crypto.randomUUID(),
-    day: getDailyGame().day,
+    day,
     roomIndex,
     action: action.slice(0, 280),
     narration: narration.slice(0, 550),
