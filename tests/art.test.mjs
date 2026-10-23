@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import worker from "../worker/index.ts";
 import { getDailyGame } from "../src/game.ts";
-import { artEnabled, makeArtTicket, verifyArtTicket, handleArtRoute, createPixelArtPrompt } from "../worker/art.ts";
+import { artEnabled, artServiceStatus, makeArtTicket, verifyArtTicket, handleArtRoute, createPixelArtPrompt } from "../worker/art.ts";
 
 function mockArt() {
   const jobs = new Map();
@@ -141,4 +141,36 @@ test("second unique ticket hits the separate art budget, without making a model 
   const secondResponse = await handleArtRoute(makeRequest(second), mock.env, context);
   assert.equal(secondResponse.status, 429);
   assert.equal(mock.stats.reserved, 1);
+});
+
+test("health exposes disabled and missing art setup without disclosing secrets", async () => {
+  const mock = mockArt();
+  mock.env.ART_ENABLED = "false";
+  let response = await worker.fetch(new Request("https://dungeon.test/api/health"), mock.env);
+  assert.deepEqual((await response.json()).art, { status: "disabled" });
+  mock.env.ART_ENABLED = "true";
+  mock.env.ART_SIGNING_KEY = "short";
+  response = await worker.fetch(new Request("https://dungeon.test/api/health"), mock.env);
+  const missing = (await response.json()).art;
+  assert.equal(missing.status, "setup-required");
+  assert.ok(missing.missing.includes("ART_SIGNING_KEY (32+ characters)"));
+  assert.equal(JSON.stringify(missing).includes("short"), false);
+  assert.deepEqual(artServiceStatus({ ...mock.env, ART_SIGNING_KEY: "a".repeat(42) }), { status: "ready" });
+});
+
+test("real resolved rooms issue signed art tickets when bindings are ready", async () => {
+  const mock = mockArt();
+  const result = await worker.fetch(new Request("https://dungeon.test/api/resolve", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      day: getDailyGame().day, roomIndex: 0,
+      action: "I swing a potato over my head and perform an opera.", inventory: ["Potato"]
+    })
+  }), mock.env);
+  assert.equal(result.status, 200);
+  const outcome = await result.json();
+  assert.equal(typeof outcome.artTicket, "string");
+  assert.equal((await verifyArtTicket(mock.env, outcome.artTicket)).roomIndex, 0);
+  assert.equal(mock.stats.imageCalls, 0, "no image call until /api/generate-room-art");
 });
