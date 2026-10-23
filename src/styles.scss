@@ -207,26 +207,6 @@ p { line-height: 1.7; }
 .footer__playtest { letter-spacing: .09em; }
 
 
-.ai-playtest {
-  display: flex; align-items: flex-start; gap: 12px; background: #24212d;
-  border: 1px solid #594b3e; padding: 13px 14px; border-radius: 5px;
-  margin: 0 0 17px; color: #dfbd7e;
-  svg { flex: none; margin-top: 2px; }
-  strong { display: block; font-size: 10px; letter-spacing: .1em; margin-bottom: 5px; }
-  span { display: block; font-size: 11px; color: #bcb2bc; line-height: 1.55; }
-}
-.ai-playtest--scripted { border-color: #393844; color: #aaa6b5; background: #1e2029; }
-.ai-playtest--setup-required { border-color: #8f5c4d; color: #e5a48b; }
-.playtest-secret {
-  display: block; margin: 0 0 17px;
-  > span { display: block; font-size: 10px; font-weight: 800; letter-spacing: .1em; color: #d0b280; margin-bottom: 9px; }
-  input {
-    width: 100%; border: 1px solid #6b5b45; background: #12131a; border-radius: 5px;
-    padding: 12px 14px; font-size: 13px; color: #f4e4c7;
-  }
-  input::placeholder { color: #73717a; }
-}
-
 @media (max-width: 1000px) {
   .site-header { padding: 0 25px; }
   .main { padding: 35px 26px 65px; }
