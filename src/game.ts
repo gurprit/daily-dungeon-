@@ -65,7 +65,7 @@ export const DUNGEONS: readonly Dungeon[] = [
       {
         title: "The Upside-Down Tavern",
         subtitle: "Room I · The Welcome",
-        scene: "The entire tavern is floating upside down. The bartender is standing on the ceiling, refusing to serve gravity-defying customers.",
+        scene: "The tavern has flipped upside down, sending glasses floating toward the ceiling. The bartender needs you to turn the whole place upright without breaking a single glass.",
         character: "Mira, Annoyed Bartender",
         challenge: '"Put this tavern the right way up. Without breaking my glasses."',
         difficulty: 10,
