@@ -502,6 +502,33 @@ p { line-height: 1.7; }
 .preview-ribbon strong { font: 700 12px 'Courier New', monospace; }
 .preview-ribbon span { color: #c2b7b1; }
 .preview-ribbon a { margin-left: auto; color: #f4dca7; font-weight: 700; text-decoration: underline; }
+.preview-ribbon__art {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 700;
+}
+.preview-ribbon__art--ready { color: #a4dcae !important; }
+.preview-ribbon__art--warning { color: #f4bb91 !important; }
+.art-debug-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 25px;
+  border: 1px solid #886b53;
+  background: #32282d;
+  color: #e8c4a1;
+  border-radius: 5px;
+  padding: 14px 16px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.art-debug-note > svg { flex: none; margin-top: 2px; }
+
 .preview-link {
   display: inline-flex;
   align-items: center;
