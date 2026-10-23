@@ -25,7 +25,7 @@ const json = (body: unknown, status = 200) =>
   });
 
 function normaliseInventory(value: unknown): string[] {
-  const allowed = new Set([...STARTING_INVENTORY]);
+  const allowed = new Set<string>(STARTING_INVENTORY);
   // Items earned in an earlier room are valid props, but never grant their own bonuses unless present.
   const daily = getDailyGame();
   for (const room of daily.dungeon.rooms) allowed.add(room.reward);
