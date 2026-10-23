@@ -161,8 +161,10 @@ export async function handleArtRoute(
   const imageId = url.pathname.match(/^\/api\/art\/([\da-f-]+)$/i)?.[1];
   const statusId = url.pathname.match(/^\/api\/art-status\/([\da-f-]+)$/i)?.[1];
   if (!start && !imageId && !statusId) return null;
-  if (!artEnabled(env)) return json({ error: "The portrait studio is not enabled yet." }, 503);
-  const db = env.DAILY_BUDGET_DB!;
+  // Serving cached portraits is harmless and stays available if generation is switched off.
+  if (!env.DAILY_BUDGET_DB || !env.ART_BUCKET) return json({ error: "The portrait archive is unavailable." }, 503);
+  if (start && !artEnabled(env)) return json({ error: "The portrait studio is not enabled yet." }, 503);
+  const db = env.DAILY_BUDGET_DB;
 
   if (imageId || statusId) {
     if (request.method !== "GET") return json({ error: "Method not allowed." }, 405);
