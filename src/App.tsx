@@ -7,6 +7,7 @@ import { getDailyGame, STARTING_INVENTORY } from "./game";
 import { resolveAction, type ActionOutcome } from "./engine";
 import { fallbackAchievement, isAchievement, type Achievement } from "./achievements";
 import { createCertificateImage } from "./certificate";
+import PixelScene from "./PixelScene";
 
 type Turn = {
   roomTitle: string;
@@ -80,21 +81,20 @@ function useDailyRun() {
   return { daily, run, setRun };
 }
 
-function DungeonDoor() {
+function DungeonDoor({ slug, title }: { slug: string; title: string }) {
   return (
-    <div className="dungeon-art" aria-hidden="true">
-      <div className="dungeon-art__halo" />
-      <div className="dungeon-art__torch dungeon-art__torch--left"><Flame size={23} /></div>
-      <div className="dungeon-art__torch dungeon-art__torch--right"><Flame size={23} /></div>
-      <div className="dungeon-art__arch">
-        <div className="dungeon-art__keystone"><Crown size={20} /></div>
-        <div className="dungeon-art__door">
-          <div className="dungeon-art__star">✦</div>
-          <div className="dungeon-art__knocker" />
-        </div>
+    <div className="dungeon-art dungeon-art--pixel">
+      <div className="pixel-scene__topbar"><span>✦ QUEST PREVIEW</span><span>16 BIT / 3 ROOMS</span></div>
+      <div className="pixel-scene__viewport">
+        <PixelScene dungeonSlug={slug} className="pixel-scene__canvas"/>
+        <div className="pixel-scene__scanlines" aria-hidden="true"/>
       </div>
-      <div className="dungeon-art__mist dungeon-art__mist--one" />
-      <div className="dungeon-art__mist dungeon-art__mist--two" />
+      <div className="pixel-scene__bottombar">
+        <span><span className="pixel-scene__life">♥ ♥ ♥</span> HP:03</span>
+        <span className="pixel-scene__quest-name">{title}</span>
+      </div>
+      <div className="pixel-scene__glimmer pixel-scene__glimmer--one" aria-hidden="true">✧</div>
+      <div className="pixel-scene__glimmer pixel-scene__glimmer--two" aria-hidden="true">✦</div>
     </div>
   );
 }
@@ -304,6 +304,7 @@ export default function App() {
     setError("");
     setCopied(false);
     setCertificateNotice("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function shareText() {
@@ -389,8 +390,8 @@ export default function App() {
         {!run.started && (
           <section className="intro">
             <div className="intro__visual">
-              <div className="intro__badge"><Flame size={14}/> A NEW ADVENTURE AWAITS</div>
-              <DungeonDoor/>
+              <div className="intro__badge"><Flame size={14}/> THE GATES ARE OPEN</div>
+              <DungeonDoor slug={daily.dungeon.slug} title={daily.dungeon.title}/>
             </div>
             <div className="intro__copy">
               <p className="eyebrow">DUNGEON #{String(daily.number).padStart(3, "0")} · TODAY'S QUEST</p>
@@ -405,7 +406,7 @@ export default function App() {
               <button className="button button--primary button--large" onClick={start}>
                 Enter the dungeon <ArrowRight size={19}/>
               </button>
-              <p className="intro__small">No account. No downloads. Just your imagination.</p>
+              <p className="intro__small">No account. No downloads. Just your imagination. Pixel art is free to enjoy.</p>
             </div>
           </section>
         )}
@@ -451,10 +452,9 @@ export default function App() {
                   <span className="encounter__tag"><Flame size={14}/> {room.subtitle.toUpperCase()}</span>
                   <span className="encounter__danger"><Dice5 size={15}/> Difficulty {room.difficulty}</span>
                 </div>
-                <div className="encounter__art" aria-hidden="true">
-                  <div className="encounter__rune">✧</div>
-                  <div className="encounter__symbol">{room.icon === "dragon" ? "🐉" : room.icon === "book" ? "📚" : room.icon === "bridge" ? "🧌" : room.icon === "sphinx" ? "🦁" : room.icon === "king" ? "👑" : room.icon === "onion" ? "🧅" : room.icon === "cheese" ? "🧀" : room.icon === "wizard" ? "🧙" : "🍺"}</div>
-                  <div className="encounter__rune">✧</div>
+                <div className="encounter__art encounter__art--pixel">
+                  <PixelScene dungeonSlug={daily.dungeon.slug} roomIndex={run.roomIndex} className="encounter__pixel-scene"/>
+                  <span className="encounter__scene-label">{room.subtitle}</span>
                 </div>
                 <div className="encounter__body">
                   <h2>{room.title}</h2>
