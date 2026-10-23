@@ -2,7 +2,7 @@ import { getDailyGame, getPreviewDailyGame, STARTING_INVENTORY } from "../src/ga
 import { resolveAction } from "../src/engine.ts";
 import { achievementFromJudgment } from "../src/achievements.ts";
 import { judgeWithAI } from "./judge.ts";
-import { handleArtRoute, makeArtTicket, type ArtEnv } from "./art.ts";
+import { artServiceStatus, handleArtRoute, makeArtTicket, type ArtEnv } from "./art.ts";
 
 type Env = ArtEnv & {
   AI_ENABLED?: string;
@@ -67,7 +67,8 @@ export default {
         ok: true,
         narrator: aiRequested ? (aiConfigured ? "ai-ready" : "setup-required") : "scripted",
         day: getDailyGame().day,
-        previewTomorrowEnabled: env.PREVIEW_TOMORROW_ENABLED === "true"
+        previewTomorrowEnabled: env.PREVIEW_TOMORROW_ENABLED === "true",
+        art: artServiceStatus(env)
       });
     }
 
