@@ -99,7 +99,7 @@ After every room, the game automatically scrolls to the top, shows the DM's verd
 
 Images are generated once per server-signed receipt and cached in R2. Reloading or continuing the adventure reuses the existing job. An image failure never affects the dice, health, inventory or story.
 
-**Art is disabled by default**, so deploying this branch won't silently start generating images. It has a separate global quota of **36 images per UTC day** by default. This does not change the existing text AI limit. A 512 × 512 Flux 2 Klein 4B image is listed at approximately $0.000287 before the shared Cloudflare free Workers AI allocation. Actual billing depends on your total usage: https://developers.cloudflare.com/workers-ai/platform/pricing/
+**Art is enabled for the active playtest**, with a separate global quota of **36 images per UTC day**. Before deploying, confirm the R2 bucket, D1 migrations, and signing secret are configured. To avoid image charges, set `ART_ENABLED` to `"false"` in `wrangler.jsonc` and redeploy. This does not change the existing text AI limit. A 512 × 512 Flux 2 Klein 4B image is listed at approximately $0.000287 before the shared Cloudflare free Workers AI allocation. Actual billing depends on your total usage: https://developers.cloudflare.com/workers-ai/platform/pricing/
 
 ### One-time setup
 
@@ -116,7 +116,7 @@ npx wrangler secret put ART_SIGNING_KEY
 
 When prompted for ART_SIGNING_KEY, provide a newly generated long random secret (at least 32 characters). Never commit it or paste it into chat. The R2 bucket must exist before any deployment using its binding, even when art is disabled.
 
-Change ART_ENABLED to "true" in wrangler.jsonc and deploy:
+Ensure ART_ENABLED is "true" in wrangler.jsonc and deploy:
 
 ~~~bash
 npm run deploy
@@ -125,6 +125,8 @@ npm run deploy
 Requirements: Cloudflare AI binding, existing D1 database daily-dungeon-playtest, R2 bucket daily-dungeon-art, and ART_SIGNING_KEY. If a requirement is missing, regular gameplay still works but artwork cannot start. To stop future generations, switch ART_ENABLED to "false" and redeploy.
 
 Images use model @cf/black-forest-labs/flux-2-klein-4b at 512 × 512. They are returned in Base64, stored in R2, and served through the Worker. The browser gets a short-lived HMAC-signed art ticket only after a legitimate game resolution, not arbitrary prompt-submission access. The generation endpoint is POST /api/generate-room-art, with status at GET /api/art-status/{id} and images at GET /api/art/{id}.
+
+**Diagnosing missing images:** Open `/api/health` on the deployed Worker and inspect `art.status`. A value of `ready` means the art flag, R2 binding, D1 binding, AI binding and a sufficiently long signing secret are present. `disabled` means the deployed `ART_ENABLED` flag is off, and `setup-required` includes the missing binding names (never secret contents). In `?preview=tomorrow`, a status is also shown directly in the test banner. If the browser produces no art ticket, there will be no portrait card or final gallery, even when AI narration works.
 
 **Playtest limitations:** Runs are still saved locally, not authenticated or protected from replay. New signed tickets from repeated replays can consume the finite global image quota. Background image tasks may remain pending if interrupted. Before public scaling, add verified player sessions, stale-job recovery, and stronger moderation.
 
