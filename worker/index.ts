@@ -69,7 +69,7 @@ async function judgeWithAI(
     const closing = cleaned.lastIndexOf("}");
     if (opening < 0 || closing < opening) return null;
     const answer = JSON.parse(cleaned.slice(opening, closing + 1)) as Partial<Judgment>;
-    if (!Number.isInteger(answer.creativity) ||
+    if (typeof answer.creativity !== "number" || !Number.isInteger(answer.creativity) ||
       typeof answer.success !== "string" || answer.success.trim().length < 15 ||
       typeof answer.failure !== "string" || answer.failure.trim().length < 15) return null;
     return {
