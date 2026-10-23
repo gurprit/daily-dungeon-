@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import worker from "../worker/index.ts";
-import { getDailyGame } from "../src/game.ts";
+import { getDailyGame, getPreviewDailyGame } from "../src/game.ts";
 
 function makeEnv({ aiEnabled = true, budget = true, allowed = true, masterpiece = false } = {}) {
   let calls = 0;
@@ -104,4 +104,63 @@ test("high-creativity AI narration also returns a badge in the same request", as
   assert.equal(body.success, true);
   assert.equal(body.achievement?.title, "Lord of the Dance");
   assert.deepEqual(env.count(), { calls: 1, reservations: 1 });
+});
+
+
+test("tomorrow is a distinct puzzle and needs the explicit preview flag", async () => {
+  const future = getPreviewDailyGame();
+  assert.notEqual(future.day, getDailyGame().day);
+  const payload = {
+    day: future.day,
+    roomIndex: 0,
+    action: "I make an elaborate performance for the innkeeper.",
+    inventory: ["Potato", "String", "Rusty spoon"],
+    previewTomorrow: true
+  };
+  const makePreviewRequest = () => new Request("https://dungeon.test/api/resolve", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const blocked = makeEnv({ aiEnabled: false });
+  assert.equal((await worker.fetch(makePreviewRequest(), blocked.vars)).status, 403);
+  const active = makeEnv({ aiEnabled: false });
+  active.vars.PREVIEW_TOMORROW_ENABLED = "true";
+  const reply = await worker.fetch(makePreviewRequest(), active.vars);
+  assert.equal(reply.status, 200);
+  assert.equal((await reply.json()).mode, "scripted");
+  // Never accepts tomorrow's date in regular mode.
+  payload.previewTomorrow = false;
+  assert.equal((await worker.fetch(makePreviewRequest(), active.vars)).status, 409);
+});
+
+test("next-day preview keeps today's globally shared LLM budget", async () => {
+  const future = getPreviewDailyGame();
+  const today = getDailyGame();
+  const env = makeEnv();
+  env.vars.PREVIEW_TOMORROW_ENABLED = "true";
+  const days = [];
+  const originalPrepare = env.vars.DAILY_BUDGET_DB.prepare;
+  env.vars.DAILY_BUDGET_DB.prepare = function(sql) {
+    const prepared = originalPrepare(sql);
+    return {
+      bind(...args) {
+        days.push(args[0]);
+        return prepared.bind(...args);
+      }
+    };
+  };
+  const response = await worker.fetch(new Request("https://dungeon.test/api/resolve", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      day: future.day,
+      previewTomorrow: true,
+      roomIndex: 0,
+      action: "I ask the tavernkeeper to do a backflip.",
+      inventory: ["String"]
+    })
+  }), env.vars);
+  assert.equal(response.status, 200);
+  assert.deepEqual(days, [today.day]);
 });
