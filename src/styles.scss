@@ -294,6 +294,98 @@ p { line-height: 1.7; }
 .hero-certificate__seal { margin: 17px 0 0; color: #bda072; font-size: 10px; letter-spacing: .13em; font-weight: 800; }
 .ending__notice { color: #ead1a0; font-size: 12px; margin: -10px 0 24px; }
 
+
+/* Retro room illustrations, rendered by the Cloudflare portrait studio. */
+.room-artwork {
+  margin: 0 0 24px;
+  overflow: hidden;
+  border: 1px solid #67553f;
+  border-radius: 8px;
+  background: #1a1b25;
+  box-shadow: 0 12px 36px #0005;
+}
+.room-artwork__frame {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 1;
+  max-height: 480px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, #343142, #151722 72%);
+}
+.room-artwork__frame > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  image-rendering: pixelated;
+  animation: art-reveal .6s ease-out both;
+}
+@keyframes art-reveal {
+  from { opacity: 0; filter: brightness(.35); transform: scale(1.035); }
+  to { opacity: 1; filter: brightness(1); transform: scale(1); }
+}
+.room-artwork__loading {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  padding: 25px;
+  text-align: center;
+  color: #e6c18a;
+}
+.room-artwork__loading > svg { animation: art-twinkle 2s ease-in-out infinite; }
+@keyframes art-twinkle { 50% { opacity: .4; transform: rotate(20deg) scale(.8); } }
+.room-artwork__loading span { font: 600 18px Georgia, serif; }
+.room-artwork__loading small { font-size: 12px; color: #a79da6; line-height: 1.6; }
+.room-artwork figcaption {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 12px 17px;
+  font-size: 12px;
+  color: #efd1a2;
+  border-top: 1px solid #4b403c;
+}
+.room-artwork__chip {
+  margin-left: auto;
+  white-space: nowrap;
+  font-size: 9px;
+  letter-spacing: .12em;
+  color: #af9f94;
+  font-weight: 800;
+}
+.room-art-gallery {
+  margin: 0 0 30px;
+  padding: 25px 22px;
+  background: #1c1c26;
+  border: 1px solid #51433c;
+  border-radius: 8px;
+}
+.room-art-gallery h2 {
+  font-size: 25px;
+  color: #f2d7a5;
+  margin: 6px 0 9px;
+}
+.room-art-gallery > p:not(.eyebrow) {
+  color: #a9a1a7;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+.room-art-gallery__grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 13px; }
+.room-artwork--compact { margin: 0; min-width: 0; }
+.room-artwork--compact .room-artwork__frame { height: auto; max-height: none; }
+.room-artwork--compact figcaption { justify-content: center; text-align: center; padding: 11px 8px; }
+.room-artwork--compact figcaption svg, .room-artwork--compact .room-artwork__chip { display: none; }
+.room-artwork--compact .room-artwork__loading { padding: 12px; gap: 7px; }
+.room-artwork--compact .room-artwork__loading span { font-size: 13px; }
+.room-artwork--compact .room-artwork__loading small { display: none; }
+@media (max-width: 540px) {
+  .room-art-gallery { padding: 19px 13px; }
+  .room-art-gallery h2 { font-size: 22px; }
+  .room-art-gallery__grid { gap: 7px; }
+  .room-artwork--compact figcaption { font-size: 10px; line-height: 1.4; }
+  .room-artwork--compact .room-artwork__loading span { font-size: 11px; }
+}
+
 @media (max-width: 1000px) {
   .site-header { padding: 0 25px; }
   .main { padding: 35px 26px 65px; }
