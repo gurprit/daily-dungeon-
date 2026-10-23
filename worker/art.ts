@@ -47,9 +47,20 @@ async function signingKey(secret: string): Promise<CryptoKey> {
   return crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
 }
 
+/** Safe public diagnostics: never expose the signing secret or user story data. */
+export function artServiceStatus(env: ArtEnv): { status: "ready" | "disabled" | "setup-required"; missing?: string[] } {
+  if (env.ART_ENABLED !== "true") return { status: "disabled" };
+  const missing = [
+    ...(!env.ART_BUCKET ? ["ART_BUCKET R2 binding"] : []),
+    ...(!env.DAILY_BUDGET_DB ? ["DAILY_BUDGET_DB D1 binding"] : []),
+    ...(!env.AI ? ["AI binding"] : []),
+    ...(!env.ART_SIGNING_KEY || env.ART_SIGNING_KEY.length < 32 ? ["ART_SIGNING_KEY (32+ characters)"] : [])
+  ];
+  return missing.length ? { status: "setup-required", missing } : { status: "ready" };
+}
+
 export function artEnabled(env: ArtEnv): boolean {
-  return env.ART_ENABLED === "true" && !!env.ART_BUCKET && !!env.DAILY_BUDGET_DB &&
-    !!env.AI && !!env.ART_SIGNING_KEY && env.ART_SIGNING_KEY.length >= 32;
+  return artServiceStatus(env).status === "ready";
 }
 
 /** A ticket can only be minted by the trusted resolution endpoint, never by the browser. */
