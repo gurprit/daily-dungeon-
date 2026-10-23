@@ -3,11 +3,16 @@ import {
   ArrowRight, BookOpen, Check, Crown, Dice5, Download, Flame,
   Heart, ScrollText, Share2, Shield, Skull, Sparkles, Swords
 } from "lucide-react";
-import { getDailyGame, STARTING_INVENTORY } from "./game";
+import { getDailyGame, getPreviewDailyGame, STARTING_INVENTORY } from "./game";
 import { resolveAction, type ActionOutcome } from "./engine";
 import { fallbackAchievement, isAchievement, type Achievement } from "./achievements";
 import { createCertificateImage } from "./certificate";
 import PixelScene from "./PixelScene";
+
+// Date preview is opt-in and never overwrites genuine daily progress.
+const previewTomorrow = new URLSearchParams(window.location.search).get("preview") === "tomorrow";
+const gameForPage = () => previewTomorrow ? getPreviewDailyGame() : getDailyGame();
+const runStorageKey = (day: string) => "daily-dungeon:" + (previewTomorrow ? "test-tomorrow:" : "") + day;
 
 type Turn = {
   roomTitle: string;
@@ -36,7 +41,7 @@ function freshRun(day: string): Run {
 
 function loadRun(day: string): Run {
   try {
-    const saved = localStorage.getItem("daily-dungeon:" + day);
+    const saved = localStorage.getItem(runStorageKey(day));
     if (!saved) return freshRun(day);
     const parsed = JSON.parse(saved) as Run;
     if (
@@ -62,15 +67,15 @@ function loadRun(day: string): Run {
 }
 
 function useDailyRun() {
-  const [daily, setDaily] = useState(getDailyGame);
-  const [run, setRun] = useState<Run>(() => loadRun(getDailyGame().day));
+  const [daily, setDaily] = useState(gameForPage);
+  const [run, setRun] = useState<Run>(() => loadRun(gameForPage().day));
   useEffect(() => {
-    try { localStorage.setItem("daily-dungeon:" + run.day, JSON.stringify(run)); }
+    try { localStorage.setItem(runStorageKey(run.day), JSON.stringify(run)); }
     catch { /* Local storage unavailable */ }
   }, [run]);
   useEffect(() => {
     const interval = window.setInterval(() => {
-      const next = getDailyGame();
+      const next = gameForPage();
       if (next.day !== daily.day) {
         setDaily(next);
         setRun(loadRun(next.day));
@@ -173,6 +178,13 @@ export default function App() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [certificateNotice, setCertificateNotice] = useState("");
+  const [canPreviewTomorrow, setCanPreviewTomorrow] = useState(false);
+  useEffect(() => {
+    void fetch("/api/health")
+      .then(response => response.json())
+      .then((data: { previewTomorrowEnabled?: boolean }) => setCanPreviewTomorrow(data.previewTomorrowEnabled === true))
+      .catch(() => setCanPreviewTomorrow(false));
+  }, []);
   const artInflight = useRef(new Set<string>());
   const room = daily.dungeon.rooms[Math.min(run.roomIndex, 2)];
   const last = run.history.at(-1);
@@ -259,7 +271,8 @@ export default function App() {
             day: daily.day,
             roomIndex: run.roomIndex,
             action: attempt,
-            inventory: run.inventory
+            inventory: run.inventory,
+            previewTomorrow
           })
         });
         if (!response.ok) {
@@ -381,12 +394,13 @@ export default function App() {
           </div>
         </div>
         <div className="site-header__right">
-          <span className="daily-pill"><Sparkles size={14}/> DAILY #{String(daily.number).padStart(3, "0")}</span>
+          <span className="daily-pill"><Sparkles size={14}/> {previewTomorrow ? "TOMORROW · TEST" : "DAILY"} #{String(daily.number).padStart(3, "0")}</span>
           <span className="site-header__date">{new Date(daily.day + "T12:00:00Z").toLocaleDateString("en-GB", { day:"numeric", month:"short", timeZone:"UTC" })}</span>
         </div>
       </header>
 
       <main className="main">
+        {previewTomorrow && <div className="preview-ribbon"><strong>⏭ Tomorrow’s dungeon · Test mode</strong><span>Real date and shared AI/art budgets are unchanged.</span><a href={window.location.pathname}>Return to today</a></div>}
         {!run.started && (
           <section className="intro">
             <div className="intro__visual">
@@ -394,7 +408,7 @@ export default function App() {
               <DungeonDoor slug={daily.dungeon.slug} title={daily.dungeon.title}/>
             </div>
             <div className="intro__copy">
-              <p className="eyebrow">DUNGEON #{String(daily.number).padStart(3, "0")} · TODAY'S QUEST</p>
+              <p className="eyebrow">DUNGEON #{String(daily.number).padStart(3, "0")} · {previewTomorrow ? "TOMORROW'S QUEST · PREVIEW" : "TODAY'S QUEST"}</p>
               <h1>{daily.dungeon.title}</h1>
               <p className="intro__subtitle">{daily.dungeon.subtitle}</p>
               <p className="intro__description">{daily.dungeon.intro}</p>
@@ -407,6 +421,7 @@ export default function App() {
                 Enter the dungeon <ArrowRight size={19}/>
               </button>
               <p className="intro__small">No account. No downloads. Just your imagination. Pixel art is free to enjoy.</p>
+              {!previewTomorrow && canPreviewTomorrow && <a className="preview-link" href="?preview=tomorrow">⏭ Pretend it’s tomorrow · Playtest next dungeon</a>}
             </div>
           </section>
         )}
@@ -513,6 +528,7 @@ export default function App() {
                 ))}
               </div>
               <button className="reset-link" onClick={reset}>↺ Restart playtest</button>
+              {!previewTomorrow && canPreviewTomorrow && <a className="preview-link" href="?preview=tomorrow">⏭ Test tomorrow’s dungeon</a>}
             </aside>
           </div>
         )}
@@ -576,6 +592,7 @@ export default function App() {
               </button>
               <button className="button button--secondary" onClick={() => void shareCertificate()}><Download size={18}/> Save / share certificate</button>
               <button className="button button--secondary" onClick={reset}>Replay playtest</button>
+              {!previewTomorrow && canPreviewTomorrow && <a className="button button--secondary" href="?preview=tomorrow">⏭ Test tomorrow’s dungeon</a>}
             </div>
             {error && <p className="error" role="alert">{error}</p>}
             {certificateNotice && <p className="ending__notice" role="status">{certificateNotice}</p>}
