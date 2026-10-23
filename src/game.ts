@@ -143,4 +143,9 @@ export function getDailyGame(now: Date = new Date()) {
   return { day: now.toISOString().slice(0, 10), number: dayIndex + 1, dungeon };
 }
 
+/** Developer-only date preview: use the next UTC dungeon without advancing real clocks. */
+export function getPreviewDailyGame(now: Date = new Date()) {
+  return getDailyGame(new Date(now.getTime() + DAY_MS));
+}
+
 export const STARTING_INVENTORY = ["Potato", "String", "Rusty spoon"] as const;
