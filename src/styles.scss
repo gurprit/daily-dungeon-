@@ -262,6 +262,7 @@ p { line-height: 1.7; }
   color: #e5d6be;
 }
 .action-help p svg { flex: none; color: #edc78a; margin-top: 1px; }
+.action-panel > .action-help__finish { margin: 9px 0 0; font-size: 11px; color: #edc78a; line-height: 1.55; }
 .action-help__label {
   display: block;
   color: #ba9d75;
