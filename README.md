@@ -11,7 +11,7 @@ A mobile-first, bite-sized fantasy game where the whole world receives the same 
 - Three original three-room dungeons, rotating by UTC date from 23 October 2026.
 - Free-text actions. Use your inventory, bargain, make up an outrageous plan.
 - Three hearts, D20 rolls, room difficulties and inventory rewards.
-- An optional **Cloudflare Workers AI** judge that awards 0–3 creativity points and improvises alternate outcomes.
+- An optional **Cloudflare Workers AI** judge that awards 0–5 creativity points and improvises alternate outcomes.
 - The rules engine, not the LLM, owns the dice, hearts, difficulty, items and win/loss.
 - Scripted narration fallback if AI is switched off or returns malformed output.
 - A persistent adventure journal and spoiler-free result sharing.
@@ -42,7 +42,33 @@ npm run dev:worker
 
 Cloudflare Workers local emulation may not work on macOS 12.6: you can still use plain Vite mode above, or use a supported operating system for Wrangler.
 
-## Enable the real AI Dungeon Master
+## Enable the real AI Dungeon Master (private playtest)
+
+**This is a separate branch, feat/ai-dungeon-master.** Live inference is OFF by default. A private browser code and strict D1-based global daily model-call budget are required before enabling it.
+
+### In your Cloudflare dashboard
+
+1. Open **Storage & Databases → D1 SQL Database** and create a database named **daily-dungeon-playtest**. Copy its Database ID.
+2. Open the new database's **Console** and run the SQL in **migrations/0001_ai_budget.sql** to create the quota table.
+3. In **wrangler.jsonc**, uncomment the **d1_databases** example and paste your real database UUID. Keep the binding name exactly **DAILY_BUDGET_DB**.
+4. Change **AI_ENABLED** from `"false"` to `"true"`. Keep **AI_DAILY_LIMIT** at **36**, or lower it (the Worker clamps values to 1–100).
+5. Run `npm run deploy` in your checked-out feature branch. If needed, run `npx wrangler login` first to authorize deployment.
+6. Open your new Worker in the Cloudflare dashboard, under **Settings → Variables and Secrets**, and add **PLAYTEST_CODE** as a **Secret** (not plain text). Use a unique long random value. Alternatively run `npx wrangler secret put PLAYTEST_CODE` from the project directory. Do not share this code publicly or commit it.
+7. Reload the Worker website. Its action panel should show **AI Dungeon Master Awake**. Enter your private playtest code in the input, then start a new room.
+
+If you previously deployed with AI disabled, **redeploy after editing wrangler.jsonc**. Dashboard changes to vars can be overwritten by later Wrangler deployments.
+
+### Why the safeguards?
+
+The Cloudflare Rate Limiting API is approximate and only per location. Our strict D1 counter reserves an inference slot in one atomic SQL statement, preventing uncontrolled retries from spending beyond our configured daily request count. A private playtest secret blocks unauthorised visitors. The existing per-IP limiter remains an additional safety layer. When any safety requirement is missing, the server returns 503 and **does not call the model**.
+
+Each AI action asks Qwen for two possible short outcomes and a creativity score from 0–5. A score of 5 is a rare **Masterstroke** that bypasses a bad dice roll. The LLM never edits the inventory or health.
+
+**A successful local Vite playtest cannot prove Workers AI works.** The live model only runs in a properly configured Cloudflare Worker; local Workers AI emulation also makes real remote model calls and may incur charges.
+
+## Earlier optional AI notes
+
+
 
 Cloudflare Workers AI uses the model @cf/qwen/qwen3-30b-a3b-fp8. Its binding is already declared in wrangler.jsonc.
 
@@ -53,7 +79,7 @@ The AI_ENABLED variable defaults to "false" **to prevent accidental inference ch
 3. The /api/resolve endpoint will ask the model to score each action's creativity (0–3) and produce two possible narrations.
 4. The server adds the bounded creativity bonus to the dice roll and selects the appropriate narration. If AI fails, it falls back to scripted text.
 
-The Workers API includes an approximate Cloudflare rate limiter (12 actions per minute per IP/location). **This is not a strict global budget limit or anti-cheat protection.** Do not launch a publicly advertised AI version until a server-side daily quota, abuse controls and cost alert or spending limit have been added.
+The Workers API includes an approximate Cloudflare rate limiter (12 actions per minute per IP/location). **This is not a strict global budget limit or anti-cheat protection.** Do not launch a publicly advertised AI version until a a server-side daily quota, abuse controls and cost alert or spending limit have been added.
 
 No secret model key is embedded in the browser.
 
@@ -85,7 +111,7 @@ wrangler.jsonc     # Worker, assets, rate limiting, AI binding
 
 ## How decisions work
 
-Each room has a target difficulty. The system rolls a D20 and awards a small transparent modifier for using an existing item and for providing a detailed action. When Workers AI is enabled, it may award an extra **0–3 creativity points** based on inventiveness and relevance. A successful roll awards the room's item, otherwise one heart is lost. The story always advances, so each daily game stays short. Running out of hearts ends the adventure.
+Each room has a target difficulty. The system rolls a D20 and awards a small transparent modifier for using an existing item and for providing a detailed action. When Workers AI is enabled, it may award an extra **0–5 creativity points** based on inventiveness and relevance. A successful roll awards the room's item, otherwise one heart is lost. The story always advances, so each daily game stays short. Running out of hearts ends the adventure.
 
 Player-submitted words are treated as story input, never as instructions to change the game's rules.
 
@@ -93,7 +119,7 @@ Player-submitted words are treated as story input, never as instructions to chan
 
 1. Verify build and gameplay on the feature branch, improve judging quality and narrative consistency.
 2. Add 14–30 genuinely distinct daily dungeons and difficulty balancing.
-3. Introduce Cloudflare D1-backed runs and strict daily attempt limits.
+3. Introduce Cloudflare D1-backed player runs and strict per-user daily attempt limits (the AI-call budget table already exists).
 4. Add signed session identities, abuse prevention, quotas, and observability.
 5. Introduce streaks, cosmetic unlocks, amusing post-game highlights and opt-in sharing.
 6. Add weekly story arcs and persistent character flavour without penalising newcomers.
