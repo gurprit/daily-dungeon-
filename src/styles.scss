@@ -484,6 +484,37 @@ p { line-height: 1.7; }
   .room-artwork--compact .room-artwork__loading span { font-size: 11px; }
 }
 
+
+/* Temporary next-day QA experience. Never presented as the real daily challenge. */
+.preview-ribbon {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 15px;
+  margin: 0 0 22px;
+  padding: 12px 17px;
+  background: #2c293f;
+  border: 1px solid #aa8b62;
+  color: #e9d4ad;
+  font-size: 12px;
+  border-radius: 5px;
+}
+.preview-ribbon strong { font: 700 12px 'Courier New', monospace; }
+.preview-ribbon span { color: #c2b7b1; }
+.preview-ribbon a { margin-left: auto; color: #f4dca7; font-weight: 700; text-decoration: underline; }
+.preview-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 0;
+  margin: 10px 0 0;
+  color: #e9c18a;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.preview-link:hover, .preview-ribbon a:hover { color: #fff0c8; }
+
 @media (max-width: 1000px) {
   .site-header { padding: 0 25px; }
   .main { padding: 35px 26px 65px; }
