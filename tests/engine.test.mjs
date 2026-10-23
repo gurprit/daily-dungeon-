@@ -34,17 +34,19 @@ test("item use and originality give bounded bonuses", () => {
   const room = DUNGEONS[0].rooms[0];
   const action = "I carve the potato into an elaborate miniature statue, then proudly offer it as a rare royal artifact.";
   const outcome = resolveAction(room, action, STARTING_INVENTORY, 6, 3);
-  assert.equal(outcome.bonus, 6);
+  assert.equal(outcome.bonus, 5);
   assert.equal(outcome.creativity, 3);
   assert.equal(outcome.success, true);
   assert.equal(outcome.reward, room.reward);
   assert.equal(outcome.heartsLost, 0);
 });
 
-test("creativity modifier is clamped to 0..3", () => {
+test("creativity modifier is clamped to 0..5 and masterstrokes succeed", () => {
   const room = DUNGEONS[0].rooms[2];
   const outcome = resolveAction(room, "I negotiate calmly.", [], 1, 999);
-  assert.equal(outcome.creativity, 3);
-  assert.equal(outcome.bonus, 3);
+  assert.equal(outcome.creativity, 5);
+  assert.equal(outcome.bonus, 5);
+  assert.equal(outcome.masterstroke, true);
+  assert.equal(outcome.success, true);
   assert.ok(outcome.narration.length > 0);
 });

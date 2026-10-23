@@ -5,6 +5,7 @@ export type ActionOutcome = {
   roll: number;
   bonus: number;
   creativity: number;
+  masterstroke: boolean;
   difficulty: number;
   heartsLost: number;
   reward: string | null;
@@ -15,19 +16,21 @@ export type ActionOutcome = {
 function bonusForAction(action: string, inventory: readonly string[]): number {
   const lower = action.toLowerCase();
   const usesItem = inventory.some((item) => lower.includes(item.toLowerCase()));
-  return (usesItem ? 2 : 0) + (action.trim().length >= 75 ? 1 : 0);
+  return usesItem ? 2 : 0;
 }
 
 export function resolveAction(room: Room, action: string, inventory: readonly string[], roll: number, creativity = 0): ActionOutcome {
   const safeRoll = Math.max(1, Math.min(20, Math.floor(roll)));
-  const wit = Math.max(0, Math.min(3, Math.floor(creativity)));
+  const wit = Math.max(0, Math.min(5, Math.floor(creativity)));
   const bonus = bonusForAction(action, inventory) + wit;
-  const success = safeRoll + bonus >= room.difficulty;
+  const masterstroke = wit === 5;
+  const success = masterstroke || safeRoll + bonus >= room.difficulty;
   return {
     success,
     roll: safeRoll,
     bonus,
     creativity: wit,
+    masterstroke,
     difficulty: room.difficulty,
     heartsLost: success ? 0 : 1,
     reward: success ? room.reward : null,

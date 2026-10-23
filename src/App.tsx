@@ -127,6 +127,31 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [aiStatus, setAiStatus] = useState<"loading" | "scripted" | "playtest-locked" | "setup-required">("loading");
+  const [playtestCode, setPlaytestCode] = useState(() => {
+    try { return sessionStorage.getItem("daily-dungeon:playtest-code") ?? ""; }
+    catch { return ""; }
+  });
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/health")
+      .then(response => response.json())
+      .then((payload: { narrator?: string }) => {
+        if (!active) return;
+        if (payload.narrator === "playtest-locked" || payload.narrator === "setup-required") setAiStatus(payload.narrator);
+        else setAiStatus("scripted");
+      })
+      .catch(() => { if (active) setAiStatus("scripted"); });
+    return () => { active = false; };
+  }, []);
+
+  function savePlaytestCode(value: string) {
+    setPlaytestCode(value);
+    try {
+      if (value) sessionStorage.setItem("daily-dungeon:playtest-code", value);
+      else sessionStorage.removeItem("daily-dungeon:playtest-code");
+    } catch { /* Browsers may disable session storage */ }
+  }
 
   const room = daily.dungeon.rooms[Math.min(run.roomIndex, 2)];
   const last = run.history.at(-1);
@@ -146,7 +171,7 @@ export default function App() {
       try {
         const response = await fetch("/api/resolve", {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "application/json", "x-dungeon-playtest-code": playtestCode.trim() },
           body: JSON.stringify({
             day: daily.day,
             roomIndex: run.roomIndex,
@@ -291,7 +316,8 @@ export default function App() {
                     <RollBadge outcome={last.outcome}/>
                   </div>
                   <p>{last.outcome.narration}</p>
-                  {last.outcome.creativity > 0 && <span className="last-turn__reward"><Sparkles size={14}/> Creativity bonus: +{last.outcome.creativity}</span>}
+                  {last.outcome.masterstroke && <span className="last-turn__reward"><Crown size={14}/> MASTERSTROKE! Your idea beats the dice.</span>}
+                  {last.outcome.creativity > 0 && <span className="last-turn__reward"><Sparkles size={14}/> Creativity: {last.outcome.creativity}/5 (+{last.outcome.creativity})</span>}
                   {last.outcome.reward && <span className="last-turn__reward"><Sparkles size={14}/> Acquired: {last.outcome.reward}</span>}
                   <small>{last.outcome.mode === "ai" ? "Narrated by the AI Dungeon Master" : "Scripted narrator (AI not enabled)"}</small>
                 </div>
@@ -326,13 +352,32 @@ export default function App() {
                   <span>BE CREATIVE</span>
                 </div>
                 <p>Talk, bargain, improvise, use an item, or try something gloriously unexpected.</p>
+                <div className={"ai-playtest ai-playtest--" + aiStatus} aria-live="polite">
+                  <Sparkles size={16}/>
+                  <div>
+                    <strong>{aiStatus === "playtest-locked" ? "AI DUNGEON MASTER AWAKE" :
+                      aiStatus === "setup-required" ? "AI SETUP INCOMPLETE" :
+                      aiStatus === "loading" ? "Checking dungeon magic…" : "SCRIPTED PLAYTEST"}</strong>
+                    <span>{aiStatus === "playtest-locked" ? "Enter your private playtest code to hear the real AI." :
+                      aiStatus === "setup-required" ? "Connect the D1 quota database and playtest secret in Cloudflare." :
+                      aiStatus === "loading" ? "Verifying the storyteller." : "Deploy with Cloudflare AI enabled for improvised reactions."}</span>
+                  </div>
+                </div>
+                {aiStatus === "playtest-locked" && (
+                  <label className="playtest-secret">
+                    <span>PRIVATE PLAYTEST CODE</span>
+                    <input type="password" autoComplete="off" value={playtestCode}
+                      onChange={e => savePlaytestCode(e.target.value)}
+                      placeholder="Enter the code configured in Cloudflare" />
+                  </label>
+                )}
                 <label className="sr-only" htmlFor="player-action">Your next action</label>
                 <textarea id="player-action" value={action} onChange={e => setAction(e.target.value)}
                   placeholder="I take out my potato and..." maxLength={280} rows={3}
                   disabled={loading} onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); void submitAction(); } }} />
                 <div className="action-panel__footer">
                   <span className="action-panel__count">{action.length}/280</span>
-                  <button className="button button--primary" onClick={() => void submitAction()} disabled={loading || action.trim().length < 4}>
+                  <button className="button button--primary" onClick={() => void submitAction()} disabled={loading || action.trim().length < 4 || aiStatus === "loading" || aiStatus === "setup-required" || (aiStatus === "playtest-locked" && !playtestCode.trim())}>
                     {loading ? "The dice are rolling…" : "Take your chance"} <Dice5 size={18}/>
                   </button>
                 </div>
