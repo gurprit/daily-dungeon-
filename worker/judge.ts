@@ -1,3 +1,5 @@
+import { cleanGeneratedAchievement, type Achievement } from "../src/achievements.ts";
+
 /**
  * The AI is a theatrical judge, never the source of truth for gameplay state.
  * All its output is validated and its creativity score is capped at 5.
@@ -6,6 +8,7 @@ export type Judgment = {
   creativity: number;
   success: string;
   failure: string;
+  achievement?: Achievement;
 };
 
 type AiBinding = { run(model: string, input: Record<string, unknown>): Promise<unknown> };
@@ -40,10 +43,12 @@ export function parseJudgment(result: unknown): Judgment | null {
     typeof answer.success !== "string" || answer.success.trim().length < 15 ||
     typeof answer.failure !== "string" || answer.failure.trim().length < 15
   ) return null;
+  const achievement = answer.creativity >= 4 ? cleanGeneratedAchievement(answer.achievement) : null;
   return {
     creativity: answer.creativity,
     success: answer.success.trim().slice(0, 550),
-    failure: answer.failure.trim().slice(0, 550)
+    failure: answer.failure.trim().slice(0, 550),
+    ...(achievement ? { achievement } : {})
   };
 }
 
@@ -67,8 +72,11 @@ export async function judgeWithAI(
     "20-45 words each, reacting SPECIFICALLY to the action and character.",
     "On failure, the hero loses a heart but escapes to the next room unless dead.",
     "Never add or take inventory, change health or rolls, or invent later encounters.",
+    "If creativity is 4 or 5, invent a funny, highly specific achievement celebrating the player\u0027s method.",
+    "Use a title of 2-6 words (max 60 characters), and a playful description of 8-18 words (max 180 characters).",
+    "If creativity is 0-3, set achievement to null. Never invent an achievement for ordinary actions.",
     "Keep the adventure PG-13. No graphic violence, hate or explicit sexual content.",
-    "Return ONLY JSON: {\"creativity\":3,\"success\":\"...\",\"failure\":\"...\"}."
+    "Return ONLY JSON: {\"creativity\":4,\"success\":\"...\",\"failure\":\"...\",\"achievement\":{\"title\":\"Lord of the Dance\",\"description\":\"You danced a goblin out of collecting his toll.\"}}."
   ].join(" ");
   try {
     const result = await ai.run("@cf/qwen/qwen3-30b-a3b-fp8", {
@@ -79,7 +87,7 @@ export async function judgeWithAI(
           content: JSON.stringify({ scene, character, challenge, playerAction: action }) + "\n/no_think"
         }
       ],
-      max_tokens: 400,
+      max_tokens: 520,
       temperature: 0.7,
       top_p: 0.8
     });
