@@ -19,6 +19,8 @@ A mobile-first, bite-sized fantasy game where the whole world receives the same 
 - Auto-scroll to the top after each resolved turn.
 - A decorative end-of-dungeon certificate showing earned honours. Save or share a **1080 × 1350 PNG** generated locally in the browser (no extra API cost).
 - Existing saved adventures can retroactively receive a scripted award based on what the hero did (e.g. Lord of the Dance).
+- **Always-on handcrafted 16-bit homepage artwork:** themed preview scene for each of the three daily dungeons, with pixel hero/goblin/wizard/onion sprites and a retro HUD. No AI requests, secrets, R2 or image budget needed for these visuals.
+- Retro pixel-art scene previews in encounters, even before an action is submitted.
 - Responsive interface, local per-day progress, engine tests and GitHub Actions CI.
 
 **Not built yet:** player accounts, D1-backed player-run persistence, global leaderboards, verified one-attempt-per-day enforcement, streaks, generated puzzles or full production abuse protection. Only the global AI-call counter is stored in D1. The three sample dungeons repeat while we test the loop.
@@ -75,6 +77,12 @@ This is a budget-limited prototype, not a production-ready public game: anyone w
 Each AI request prompts Qwen3 for two possible short outcomes, a creativity score of 0–5, and an **optional achievement title + description** when the action earns 4–5 points. All three pieces come back in the *same inference call*; a rare **5/5 Masterstroke** overrides a bad dice roll. The rules engine, never the AI, decides hearts, inventory, rewards, and progression.
 
 `npm run dev` is **scripted-only** and uses a local fallback. Remote Workers AI can incur usage even when testing from Wrangler.
+
+## How the artwork works
+
+**Daily/homepage art is built in and always free:** Open or restart a dungeon to see the corresponding pixel-art hero scene, including the Goblin's Toll bridge, the Wizard's Complaint tavern and the Royal Pantry kitchen. The room encounter screen also has pixel art before you type anything. These illustrations are ordinary bundled SVG/React UI, not AI images.
+
+**Action-specific images are different:** If you enable the optional Cloudflare art feature below, the game also illustrates each resolved player action and adds those images to the end-of-run gallery. This requires the R2 bucket, the D1 migration, the signing secret and ART_ENABLED=true. If disabled, the built-in homepage and room scenes still appear.
 
 ## Optional: live 16-bit pixel-art chronicles
 
