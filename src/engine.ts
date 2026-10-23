@@ -13,6 +13,7 @@ export type ActionOutcome = {
   narration: string;
   mode: "ai" | "scripted";
   achievement?: Achievement | null;
+  artTicket?: string;
 };
 
 function bonusForAction(action: string, inventory: readonly string[]): number {
