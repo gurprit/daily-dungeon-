@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import worker from "../worker/index.ts";
 import { getDailyGame } from "../src/game.ts";
 
-function makeEnv({ aiEnabled = true, budget = true, allowed = true } = {}) {
+function makeEnv({ aiEnabled = true, budget = true, allowed = true, masterpiece = false } = {}) {
   let calls = 0;
   let reservations = 0;
   return {
@@ -14,7 +14,11 @@ function makeEnv({ aiEnabled = true, budget = true, allowed = true } = {}) {
         async run() {
           calls++;
           return { response: JSON.stringify({
-            creativity: 3,
+            creativity: masterpiece ? 5 : 3,
+            ...(masterpiece ? { achievement: {
+              title: "Lord of the Dance",
+              description: "You danced an entire bridge toll out of existence."
+            } } : {}),
             success: "Boggle studies your eccentric solution and stamps your imaginary permit. The bridge is yours.",
             failure: "Boggle consults a regulation written upside down and rejects your offer. You sneak past, chastened."
           }) };
@@ -87,4 +91,17 @@ test("scripted mode remains accessible without a password or D1", async () => {
   assert.equal(result.status, 200);
   assert.equal((await result.json()).mode, "scripted");
   assert.deepEqual(env.count(), { calls: 0, reservations: 0 });
+});
+
+
+test("high-creativity AI narration also returns a badge in the same request", async () => {
+  const env = makeEnv({ masterpiece: true });
+  const result = await worker.fetch(actionRequest(), env.vars);
+  assert.equal(result.status, 200);
+  const body = await result.json();
+  assert.equal(body.mode, "ai");
+  assert.equal(body.creativity, 5);
+  assert.equal(body.success, true);
+  assert.equal(body.achievement?.title, "Lord of the Dance");
+  assert.deepEqual(env.count(), { calls: 1, reservations: 1 });
 });
