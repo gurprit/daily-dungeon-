@@ -233,6 +233,20 @@ p { line-height: 1.7; }
 .encounter__body { padding: 25px 26px 27px; }
 .encounter__body h2 { font-size: 23px; color: #eed5ac; margin: 0 0 12px; }
 .encounter__body > p { color: #c0b8b8; font-size: 14px; line-height: 1.8; }
+.encounter__body > p.encounter__arrival {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 13px;
+  padding: 10px 12px;
+  background: #27232b;
+  border-left: 2px solid #947148;
+  color: #d7b995;
+  border-radius: 0 4px 4px 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.encounter__arrival svg { flex: none; margin-top: 2px; }
 .dm-quote { display: flex; align-items: flex-start; gap: 14px; margin-top: 22px; background: #25222a; border-left: 3px solid #b79051; padding: 19px 19px 15px; border-radius: 0 5px 5px 0; }
 .dm-quote__avatar { border: 1px solid #715937; width: 36px; height: 36px; display: grid; place-items: center; color: #e5b975; background: #3f312b; border-radius: 50%; flex: none; }
 .dm-quote__name { color: #d9b87c; font-size: 11px; font-weight: 800; letter-spacing: .04em; margin-bottom: 7px; }
