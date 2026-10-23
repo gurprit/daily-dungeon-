@@ -179,10 +179,14 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [certificateNotice, setCertificateNotice] = useState("");
   const [canPreviewTomorrow, setCanPreviewTomorrow] = useState(false);
+  const [artService, setArtService] = useState<{ status: "ready" | "disabled" | "setup-required"; missing?: string[] } | null>(null);
   useEffect(() => {
     void fetch("/api/health")
       .then(response => response.json())
-      .then((data: { previewTomorrowEnabled?: boolean }) => setCanPreviewTomorrow(data.previewTomorrowEnabled === true))
+      .then((data: { previewTomorrowEnabled?: boolean; art?: { status: "ready" | "disabled" | "setup-required"; missing?: string[] } }) => {
+        setCanPreviewTomorrow(data.previewTomorrowEnabled === true);
+        setArtService(data.art ?? null);
+      })
       .catch(() => setCanPreviewTomorrow(false));
   }, []);
   const artInflight = useRef(new Set<string>());
@@ -400,7 +404,17 @@ export default function App() {
       </header>
 
       <main className="main">
-        {previewTomorrow && <div className="preview-ribbon"><strong>⏭ Tomorrow’s dungeon · Test mode</strong><span>Real date and shared AI/art budgets are unchanged.</span><a href={window.location.pathname}>Return to today</a></div>}
+        {previewTomorrow && <div className="preview-ribbon">
+          <strong>⏭ Tomorrow’s dungeon · Test mode</strong>
+          <span>Real date and shared AI/art budgets are unchanged.</span>
+          {artService && <span className={"preview-ribbon__art " + (artService.status === "ready" ? "preview-ribbon__art--ready" : "preview-ribbon__art--warning")}>
+            <Sparkles size={14}/>
+            {artService.status === "ready" ? "AI portraits ready" : artService.status === "disabled"
+              ? "AI portraits are disabled in the deployed Worker"
+              : "AI portraits need setup: " + (artService.missing?.join(", ") ?? "check Worker bindings")}
+          </span>}
+          <a href={window.location.pathname}>Return to today</a>
+        </div>
         {!run.started && (
           <section className="intro">
             <div className="intro__visual">
@@ -460,6 +474,11 @@ export default function App() {
                 </div>
               )}
               {last?.outcome.achievement && <AchievementUnlock achievement={last.outcome.achievement}/>}
+              {previewTomorrow && artService && !last?.outcome.artTicket && last && <p className="art-debug-note">
+                <Sparkles size={16}/> No personalised image was requested for this turn.
+                {artService.status === "ready" ? " Please check the deployed /api/resolve artwork ticket." : " " + (artService.status === "disabled"
+                  ? "AI portraits are disabled on the server." : "Missing: " + (artService.missing?.join(", ") ?? "Worker setup"))}
+              </p>}
               {last && <RoomArtwork turn={last}/> }
 
               <section className="encounter">
@@ -547,6 +566,11 @@ export default function App() {
               <div><strong>{wins}/3</strong><span>TRIALS PASSED</span></div>
               <div><strong>{run.hearts}/3</strong><span>HEARTS LEFT</span></div>
             </div>
+            {previewTomorrow && artService && !run.history.some(turn => turn.art) && <p className="art-debug-note">
+              <Sparkles size={16}/> No AI portraits were requested during this playtest.
+              {artService.status === "ready" ? " The portrait service reports ready, so check /api/resolve." : " " + (artService.status === "disabled"
+                ? "The deployed ART_ENABLED flag is off." : "Server setup needed: " + (artService.missing?.join(", ") ?? "check bindings"))}
+            </p>}
             {run.history.some(turn => turn.art) && (
               <section className="room-art-gallery" aria-label="Your 16-bit adventure gallery">
                 <p className="eyebrow">YOUR ADVENTURE IN PIXELS</p>
