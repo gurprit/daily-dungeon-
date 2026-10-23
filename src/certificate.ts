@@ -108,16 +108,17 @@ export async function createCertificateImage(data: CertificateData): Promise<Fil
   const awards = data.achievements.slice(0, 3);
   center(ctx, awards.length ? "HONOURS BESTOWED" : "OFFICIAL VERDICT", 715, 27, "#e0b56d", "Arial");
   if (awards.length) {
-    let y = 788;
+    let y = awards.length === 3 ? 758 : awards.length === 2 ? 792 : 840;
+    const many = awards.length === 3;
     for (const award of awards) {
       ctx.fillStyle = "#dfb77e";
-      star(ctx, 210, y - 15, 15);
-      ctx.font = "bold 32px Georgia";
+      star(ctx, 158, y - 15, 12);
+      ctx.font = "bold " + (many ? 27 : 32) + "px Georgia";
       ctx.fillStyle = "#f2ddba";
-      y = wrap(ctx, award.title, y, 640, 39, 2);
+      y = wrap(ctx, award.title, y, 730, many ? 32 : 39, 2);
       ctx.fillStyle = "#bdb4b7";
-      ctx.font = "25px Georgia";
-      y = wrap(ctx, award.description, y + 4, 750, 32, 2) + 25;
+      ctx.font = (many ? 21 : 25) + "px Georgia";
+      y = wrap(ctx, award.description, y + 3, 770, many ? 26 : 32, 2) + (many ? 13 : 25);
     }
   } else {
     ctx.fillStyle = "#bdb4b7";
