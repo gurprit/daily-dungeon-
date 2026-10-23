@@ -365,6 +365,57 @@ p { line-height: 1.7; }
 .ending__entry-title { color: #e0c28e; font-size: 12px; font-weight: 800; }
 .ending__entry p { color: #b9b1ba; font-size: 13px; line-height: 1.7; margin: 8px 0 0; }
 .ending__entry p em { color: #e1d6cb; }
+/* A single illustrated journal ties action, artwork and consequence together. */
+.ending__journal-intro {
+  margin: 0 0 13px;
+  color: #a9a0a5;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.ending__entry { padding: 21px 0 24px; }
+.ending__entry-title { display: flex; align-items: center; gap: 10px; line-height: 1.5; }
+.ending__entry-number {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 29px;
+  height: 29px;
+  background: #393039;
+  border: 1px solid #836943;
+  border-radius: 3px;
+  color: #e0bf8b;
+  font: 700 11px/1 'Courier New', monospace;
+}
+.ending__entry-label {
+  display: block;
+  color: #bba17a;
+  font: 700 10px/1.3 'Courier New', monospace;
+  letter-spacing: .11em;
+}
+.ending__entry-action { margin: 16px 0 12px; }
+.ending__entry-action p {
+  margin: 7px 0 0;
+  color: #e3d4c4;
+  overflow-wrap: anywhere;
+}
+.ending__entry .room-artwork {
+  width: min(100%, 370px);
+  max-width: 100%;
+  margin: 15px auto;
+  border-color: #655243;
+}
+.ending__entry .room-artwork__frame { max-height: none; aspect-ratio: 1 / 1; }
+.ending__entry .room-artwork figcaption { font-size: 11px; }
+.ending__entry-response {
+  background: #24222b;
+  border-left: 3px solid #ac885c;
+  padding: 12px 15px 14px;
+  border-radius: 0 5px 5px 0;
+  margin-top: 16px;
+}
+.ending__entry-response p { margin: 8px 0 0; color: #cdc3bd; overflow-wrap: anywhere; }
+.ending__entry .ending__award { margin-top: 14px; }
+
 .ending__actions { display: flex; justify-content: center; gap: 12px; margin: 28px 0; flex-wrap: wrap; }
 .ending__tomorrow { display: flex; justify-content: center; align-items: center; gap: 9px; color: #c2a777; font-size: 12px; margin-top: 34px; }
 .footer { max-width: 1420px; padding: 22px 48px; border-top: 1px solid #282830; display: flex; justify-content: space-between; gap: 20px; align-items: center; margin: auto; color: #767780; font-size: 10px; }
