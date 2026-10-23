@@ -414,7 +414,7 @@ export default function App() {
               : "AI portraits need setup: " + (artService.missing?.join(", ") ?? "check Worker bindings")}
           </span>}
           <a href={window.location.pathname}>Return to today</a>
-        </div>
+        </div>}
         {!run.started && (
           <section className="intro">
             <div className="intro__visual">
