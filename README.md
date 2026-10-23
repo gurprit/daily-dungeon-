@@ -15,7 +15,7 @@ A mobile-first, bite-sized fantasy game where the whole world receives the same 
 - The rules engine, not the LLM, owns the dice, hearts, difficulty, items and win/loss.
 - Scripted narration fallback if AI is switched off or returns malformed output.
 - A persistent adventure journal, **personalised achievements for ingenious successful solutions**, and spoiler-free result sharing.
-- Optional personal 16-bit room artwork and a three-panel illustrated end-of-run gallery.
+- Optional per-room 16-bit artwork woven directly into each illustrated end-of-run journal entry: hero action → portrait → DM outcome → achievement.
 - Auto-scroll to the top after each resolved turn.
 - A decorative end-of-dungeon certificate showing earned honours. Save or share a **1080 × 1350 PNG** generated locally in the browser (no extra API cost).
 - Existing saved adventures can retroactively receive a scripted award based on what the hero did (e.g. Lord of the Dance).
@@ -82,7 +82,7 @@ Each AI request prompts Qwen3 for two possible short outcomes, a creativity scor
 
 **Daily/homepage art is built in and always free:** Open or restart a dungeon to see the corresponding pixel-art hero scene, including the Goblin's Toll bridge, the Wizard's Complaint tavern and the Royal Pantry kitchen. The room encounter screen also has pixel art before you type anything. These illustrations are ordinary bundled SVG/React UI, not AI images.
 
-**Action-specific images are different:** If you enable the optional Cloudflare art feature below, the game also illustrates each resolved player action and adds those images to the end-of-run gallery. This requires the R2 bucket, the D1 migration, the signing secret and ART_ENABLED=true. If disabled, the built-in homepage and room scenes still appear.
+**Action-specific images are different:** If you enable the optional Cloudflare art feature below, the game also illustrates each resolved player action and places each portrait directly between its action and narration in the final Hero’s Journal. This requires the R2 bucket, the D1 migration, the signing secret and ART_ENABLED=true. If disabled, the built-in homepage and room scenes still appear.
 
 ## First-time player hints and pixel-art style
 
@@ -103,7 +103,7 @@ While testing, set `PREVIEW_TOMORROW_ENABLED` to `"true"` in `wrangler.jsonc` (t
 
 ## Optional: live 16-bit pixel-art chronicles
 
-After every room, the game automatically scrolls to the top, shows the DM's verdict immediately, and **starts a non-blocking personalised retro pixel-art job** based on that room, your action and the result. The final screen shows all generated artwork as a gallery.
+After every room, the game automatically scrolls to the top, shows the DM's verdict immediately, and **starts a non-blocking personalised retro pixel-art job** based on that room, your action and the result. The final Hero’s Journal embeds the portrait after each player action and before the Dungeon Master’s response, with achievements below. There is no separate image gallery.
 
 Images are generated once per server-signed receipt and cached in R2. Reloading or continuing the adventure reuses the existing job. An image failure never affects the dice, health, inventory or story.
 
@@ -169,6 +169,12 @@ wrangler.jsonc     # Worker, assets, rate limiting, AI binding
 Each room has a target difficulty. The system rolls a D20 and awards a small modifier for using an existing inventory item. When Workers AI is enabled, it may award an extra **0–5 creativity points** based on inventiveness and relevance. A successful roll awards the room's item, otherwise one heart is lost. The story always advances, so each daily game stays short. Running out of hearts ends the adventure.
 
 Player-submitted words are treated as story input, never as instructions to change the game's rules.
+
+## Continuity between rooms
+
+Each dungeon now contains a short hand-written bridge into rooms two and three, so its three encounters feel like one journey. Within the **same** judging request (no extra AI call), the Dungeon Master receives up to two bounded, validated earlier actions and outcomes, allowing occasional brief callbacks to the hero’s exploits. Previous results never change difficulty, hearts, rewards or whether the next puzzle can be solved. The player can still freely improvise each room as a standalone challenge.
+
+The final illustrated journal retains the exact order of play. Existing R2 pictures are reused, so moving them into the journal never regenerates or bills for new art.
 
 ## Near-term roadmap
 
