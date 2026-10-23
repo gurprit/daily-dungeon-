@@ -2,8 +2,9 @@ import { getDailyGame, STARTING_INVENTORY } from "../src/game.ts";
 import { resolveAction } from "../src/engine.ts";
 import { achievementFromJudgment } from "../src/achievements.ts";
 import { judgeWithAI } from "./judge.ts";
+import { handleArtRoute, makeArtTicket, type ArtEnv } from "./art.ts";
 
-type Env = {
+type Env = ArtEnv & {
   AI_ENABLED?: string;
   AI_DAILY_LIMIT?: string;
   DAILY_BUDGET_DB?: {
@@ -56,7 +57,7 @@ async function reserveDailyBudget(env: Env, day: string): Promise<boolean> {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, context?: { waitUntil: (task: Promise<unknown>) => void }): Promise<Response> {
     const url = new URL(request.url);
     const aiRequested = env.AI_ENABLED === "true";
     const aiConfigured = !!env.DAILY_BUDGET_DB && !!env.AI;
@@ -67,6 +68,9 @@ export default {
         day: getDailyGame().day
       });
     }
+
+    const artResponse = await handleArtRoute(request, env, context);
+    if (artResponse) return artResponse;
 
     if (url.pathname === "/api/resolve") {
       if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
@@ -121,6 +125,8 @@ export default {
           outcome.achievement = achievementFromJudgment(room, body.action, outcome.success, judgment.creativity, judgment.achievement);
         }
       }
+      const artTicket = await makeArtTicket(env, Number(body.roomIndex), body.action, outcome.narration, outcome.success);
+      if (artTicket) outcome.artTicket = artTicket;
       return json(outcome);
     }
 
