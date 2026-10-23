@@ -8,6 +8,8 @@ import { resolveAction, type ActionOutcome } from "./engine";
 import { fallbackAchievement, isAchievement, type Achievement } from "./achievements";
 import { createCertificateImage } from "./certificate";
 import PixelScene from "./PixelScene";
+import { actionStarters, firstRoomTip } from "./action-help";
+import PixelPortrait from "./PixelPortrait";
 
 // Date preview is opt-in and never overwrites genuine daily progress.
 const previewTomorrow = new URLSearchParams(window.location.search).get("preview") === "tomorrow";
@@ -135,7 +137,7 @@ function RoomArtwork({ turn, compact = false }: { turn: Turn; compact?: boolean 
     <figure className={"room-artwork " + (compact ? "room-artwork--compact" : "")}>
       <div className="room-artwork__frame">
         {turn.art.status === "ready" && turn.art.url ? (
-          <img loading="lazy" src={turn.art.url} alt={"16-bit illustration of " + turn.roomTitle + " based on your adventure"} />
+          <PixelPortrait src={turn.art.url} alt={"16-bit illustration of " + turn.roomTitle + " based on your adventure"}/>
         ) : turn.art.status === "pending" ? (
           <div className="room-artwork__loading" role="status"><Sparkles size={26}/><span>Painting your legend…</span><small>The royal portrait artist is working on it.</small></div>
         ) : (
@@ -174,6 +176,7 @@ function RollBadge({ outcome }: { outcome: ActionOutcome }) {
 export default function App() {
   const { daily, run, setRun } = useDailyRun();
   const [action, setAction] = useState("");
+  const actionField = useRef<HTMLTextAreaElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -191,6 +194,7 @@ export default function App() {
   }, []);
   const artInflight = useRef(new Set<string>());
   const room = daily.dungeon.rooms[Math.min(run.roomIndex, 2)];
+  const starterIdeas = actionStarters(room, run.inventory);
   const last = run.history.at(-1);
   const wins = run.history.filter(t => t.outcome.success).length;
   const achievements = run.history
@@ -307,6 +311,14 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function useStarter(draft: string) {
+    setAction(draft);
+    requestAnimationFrame(() => {
+      actionField.current?.focus();
+      actionField.current?.setSelectionRange(draft.length, draft.length);
+    });
   }
 
   function start() {
@@ -508,10 +520,37 @@ export default function App() {
                   <h3>What do you do, adventurer?</h3>
                   <span>BE CREATIVE</span>
                 </div>
-                <p>Talk, bargain, improvise, use an item, or try something gloriously unexpected.</p>
+                {run.roomIndex === 0 ? (
+                  <div className="action-help action-help--intro">
+                    <p><Sparkles size={16}/>{firstRoomTip()}</p>
+                    <span className="action-help__label">NEED A STARTING IDEA? TAP ONE AND FINISH THE SENTENCE.</span>
+                    <div className="action-help__chips">
+                      {starterIdeas.map(idea => (
+                        <button key={idea.label} type="button" className="action-help__chip"
+                          title={idea.tip} disabled={loading} onClick={() => useStarter(idea.draft)}>
+                          {idea.label}<ArrowRight size={13}/>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="action-help action-help--later">
+                    <p>Try anything. There is no single correct solution.</p>
+                    <details><summary>Need inspiration?</summary>
+                      <div className="action-help__chips">
+                        {starterIdeas.map(idea => (
+                          <button key={idea.label} type="button" className="action-help__chip"
+                            title={idea.tip} disabled={loading} onClick={() => useStarter(idea.draft)}>
+                            {idea.label}<ArrowRight size={13}/>
+                          </button>
+                        ))}
+                      </div>
+                    </details>
+                  </div>
+                )}
                 <label className="sr-only" htmlFor="player-action">Your next action</label>
-                <textarea id="player-action" value={action} onChange={e => setAction(e.target.value)}
-                  placeholder="I take out my potato and..." maxLength={280} rows={3}
+                <textarea ref={actionField} id="player-action" value={action} onChange={e => setAction(e.target.value)}
+                  placeholder={run.roomIndex === 0 ? "What would YOU try? There are no wrong kinds of ideas..." : "I take out my potato and..."} maxLength={280} rows={3}
                   disabled={loading} onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); void submitAction(); } }} />
                 <div className="action-panel__footer">
                   <span className="action-panel__count">{action.length}/280</span>
