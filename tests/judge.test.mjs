@@ -27,13 +27,29 @@ test("strip Qwen reasoning and reject malformed judgments", () => {
   assert.equal(parseJudgment({ choices: [] }), null);
 });
 
+test("parse optional AI achievements without changing legacy judgments", () => {
+  const decorated = {
+    ...sample,
+    achievement: {
+      title: "Lord of the Dance",
+      description: "You danced your way through an unamused goblin's checkpoint."
+    }
+  };
+  assert.deepEqual(parseJudgment({ response: JSON.stringify(decorated) }), decorated);
+  const invalid = {
+    ...sample,
+    achievement: { title: "<script>alert(1)</script>", description: "A very elaborate but unsuitable achievement." }
+  };
+  assert.deepEqual(parseJudgment({ response: invalid }), sample);
+});
+
 test("judge uses Qwen without trusting result beyond validation", async () => {
   let modelName = "";
   const ai = {
     async run(name, args) {
       modelName = name;
       assert.match(args.messages[1].content, /potato/);
-      assert.equal(args.max_tokens, 400);
+      assert.equal(args.max_tokens, 520);
       return { response: JSON.stringify(sample) };
     }
   };
