@@ -115,7 +115,7 @@ test("trusted result ticket is signed; arbitrary and altered inputs are rejected
   assert.ok(ticket);
   const valid = await verifyArtTicket(mock.env, ticket);
   assert.equal(valid.roomIndex, 0);
-  assert.match(createPixelArtPrompt(valid), /1990s console fantasy RPG/);
+  assert.match(createPixelArtPrompt(valid), /1990s 16-bit console RPG PIXEL ART/);
   assert.equal(await verifyArtTicket(mock.env, ticket.slice(0, -5) + "hello"), null);
   const rejection = await handleArtRoute(makeRequest("unsigned-invented-ticket"), mock.env);
   assert.equal(rejection.status, 403);
