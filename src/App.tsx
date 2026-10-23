@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import {
-  ArrowRight, BookOpen, Check, Crown, Dice5, Flame,
+  ArrowRight, BookOpen, Check, Crown, Dice5, Download, Flame,
   Heart, ScrollText, Share2, Shield, Skull, Sparkles, Swords
 } from "lucide-react";
 import { getDailyGame, STARTING_INVENTORY } from "./game";
 import { resolveAction, type ActionOutcome } from "./engine";
+import { fallbackAchievement, isAchievement, type Achievement } from "./achievements";
+import { createCertificateImage } from "./certificate";
 
 type Turn = {
   roomTitle: string;
@@ -41,7 +43,18 @@ function loadRun(day: string): Run {
       typeof parsed.hearts === "number" &&
       typeof parsed.roomIndex === "number" &&
       Array.isArray(parsed.inventory) && Array.isArray(parsed.history)
-    ) return parsed;
+    ) {
+      // Give existing saved heroes their due: old AI runs predate achievement objects.
+      parsed.history = parsed.history.map((entry: Turn) => {
+        if (!entry || !entry.outcome || typeof entry.action !== "string") return entry;
+        const savedAward = isAchievement(entry.outcome.achievement) ? entry.outcome.achievement : null;
+        const recovered = savedAward ?? fallbackAchievement(
+          entry.action, entry.roomTitle, entry.outcome.success, entry.outcome.creativity ?? 0
+        );
+        return { ...entry, outcome: { ...entry.outcome, achievement: recovered } };
+      });
+      return parsed;
+    }
   } catch { /* Local storage may be disabled */ }
   return freshRun(day);
 }
@@ -97,6 +110,19 @@ function Hearts({ count }: { count: number }) {
   );
 }
 
+function AchievementUnlock({ achievement }: { achievement: Achievement }) {
+  return (
+    <div className="achievement-unlocked" role="status">
+      <div className="achievement-unlocked__medal"><Crown size={25}/></div>
+      <div className="achievement-unlocked__copy">
+        <span className="eyebrow">✦ ACHIEVEMENT UNLOCKED</span>
+        <strong>{achievement.title}</strong>
+        <p>{achievement.description}</p>
+      </div>
+    </div>
+  );
+}
+
 function Inventory({ items }: { items: string[] }) {
   return (
     <div className="inventory">
@@ -127,9 +153,13 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [certificateNotice, setCertificateNotice] = useState("");
   const room = daily.dungeon.rooms[Math.min(run.roomIndex, 2)];
   const last = run.history.at(-1);
   const wins = run.history.filter(t => t.outcome.success).length;
+  const achievements = run.history
+    .map(turn => turn.outcome.achievement)
+    .filter((value): value is Achievement => isAchievement(value));
   const won = run.finished && run.hearts > 0;
   const title = won
     ? (wins === 3 ? "A Legend Is Born" : "The Unlikely Survivor")
@@ -194,6 +224,7 @@ export default function App() {
     setAction("");
     setError("");
     setCopied(false);
+    setCertificateNotice("");
   }
 
   function shareText() {
@@ -204,6 +235,7 @@ export default function App() {
       rooms + " · " + wins + "/3 rooms cleared",
       won ? "🏆 " + title : "💀 " + title,
       "Hearts: " + run.hearts + "/3",
+      ...(achievements.length ? ["🏅 Honours: " + achievements.map(a => a.title).join(" · ")] : []),
       "How did YOUR story end?"
     ].join("\n");
   }
@@ -219,6 +251,42 @@ export default function App() {
         await navigator.clipboard.writeText(text);
         setCopied(true);
       } catch { setError("Sharing is unavailable here. Try another browser."); }
+    }
+  }
+
+  async function shareCertificate() {
+    setCertificateNotice("");
+    try {
+      const file = await createCertificateImage({
+        dungeon: daily.dungeon.title,
+        day: daily.day,
+        number: daily.number,
+        resultTitle: title,
+        roomsPassed: wins,
+        heartsLeft: run.hearts,
+        achievements
+      });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], text: shareText() });
+          setCertificateNotice("Certificate shared.");
+          return;
+        } catch (problem) {
+          // Cancelling a native share is not a request to download anything.
+          if (problem instanceof Error && problem.name === "AbortError") return;
+        }
+      }
+      const url = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.name;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+      setCertificateNotice("Certificate saved as a PNG, ready to share.");
+    } catch (problem) {
+      setCertificateNotice(problem instanceof Error ? problem.message : "Unable to prepare the certificate.");
     }
   }
 
@@ -296,6 +364,7 @@ export default function App() {
                   <small>{last.outcome.mode === "ai" ? "Narrated by the AI Dungeon Master" : "Scripted narrator (AI not enabled)"}</small>
                 </div>
               )}
+              {last?.outcome.achievement && <AchievementUnlock achievement={last.outcome.achievement}/>}
 
               <section className="encounter">
                 <div className="encounter__top">
@@ -359,6 +428,7 @@ export default function App() {
                     <summary><span>{entry.outcome.success ? "✦" : "✕"} {entry.roomTitle}</span><span>{entry.outcome.success ? "Passed" : "Lost a heart"}</span></summary>
                     <p><strong>You tried:</strong> {entry.action}</p>
                     <p>{entry.outcome.narration}</p>
+                    {entry.outcome.achievement && <p className="journal-entry__award"><Crown size={14}/> {entry.outcome.achievement.title}</p>}
                   </details>
                 ))}
               </div>
@@ -381,6 +451,24 @@ export default function App() {
               <div><strong>{wins}/3</strong><span>TRIALS PASSED</span></div>
               <div><strong>{run.hearts}/3</strong><span>HEARTS LEFT</span></div>
             </div>
+            <section className="hero-certificate" aria-label="Your dungeon certificate">
+              <div className="hero-certificate__ornament">✦</div>
+              <p className="hero-certificate__eyebrow">THE DAILY DUNGEON PRESENTS</p>
+              <h2>Certificate of Questionable Heroism</h2>
+              <p className="hero-certificate__intro">Officially bestowed upon a most improbable adventurer</p>
+              <strong className="hero-certificate__name">{title}</strong>
+              <p className="hero-certificate__dungeon">{daily.dungeon.title} · Dungeon #{String(daily.number).padStart(3, "0")}</p>
+              <div className="hero-certificate__awards">
+                <span className="eyebrow">{achievements.length ? "HONOURS BESTOWED" : "OFFICIAL VERDICT"}</span>
+                {achievements.length ? achievements.map((award, i) => (
+                  <div className="hero-certificate__award" key={i}>
+                    <Crown size={20}/>
+                    <div><strong>{award.title}</strong><p>{award.description}</p></div>
+                  </div>
+                )) : <p>The Dungeon Master remains undecided about your greatness.</p>}
+              </div>
+              <p className="hero-certificate__seal">✦ ONE DUNGEON. ENDLESS POSSIBILITIES. ✦</p>
+            </section>
             <div className="ending__journal">
               <h2><ScrollText size={19}/> Your Hero's Journal</h2>
               {run.history.map((entry, i) => (
@@ -388,6 +476,7 @@ export default function App() {
                   <div className="ending__entry-title">{entry.outcome.success ? "✦" : "✕"} {entry.roomTitle}</div>
                   <p><em>"{entry.action}"</em></p>
                   <p>{entry.outcome.narration}</p>
+                  {entry.outcome.achievement && <p className="ending__award"><Crown size={16}/> {entry.outcome.achievement.title}</p>}
                 </div>
               ))}
             </div>
@@ -395,9 +484,11 @@ export default function App() {
               <button className="button button--primary button--large" onClick={() => void share()}>
                 {copied ? <Check size={19}/> : <Share2 size={19}/>} {copied ? "Result ready to share" : "Share your legend"}
               </button>
+              <button className="button button--secondary" onClick={() => void shareCertificate()}><Download size={18}/> Save / share certificate</button>
               <button className="button button--secondary" onClick={reset}>Replay playtest</button>
             </div>
             {error && <p className="error" role="alert">{error}</p>}
+            {certificateNotice && <p className="ending__notice" role="status">{certificateNotice}</p>}
             <div className="ending__tomorrow"><Sparkles size={17}/> A new dungeon opens tomorrow at midnight UTC.</div>
           </div>
         )}
