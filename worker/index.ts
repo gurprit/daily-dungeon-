@@ -1,5 +1,6 @@
 import { getDailyGame, STARTING_INVENTORY } from "../src/game.ts";
 import { resolveAction } from "../src/engine.ts";
+import { achievementFromJudgment } from "../src/achievements.ts";
 import { judgeWithAI } from "./judge.ts";
 
 type Env = {
@@ -117,6 +118,7 @@ export default {
           outcome = resolveAction(room, body.action, inventory, die, judgment.creativity);
           outcome.narration = outcome.success ? judgment.success : judgment.failure;
           outcome.mode = "ai";
+          outcome.achievement = achievementFromJudgment(room, body.action, outcome.success, judgment.creativity, judgment.achievement);
         }
       }
       return json(outcome);
