@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  ArrowRight, BookOpen, Check, Copy, Crown, Dice5, Flame,
+  ArrowRight, BookOpen, Check, Crown, Dice5, Flame,
   Heart, ScrollText, Share2, Shield, Skull, Sparkles, Swords
 } from "lucide-react";
 import { getDailyGame, STARTING_INVENTORY } from "./game";
