@@ -14,7 +14,9 @@ A mobile-first, bite-sized fantasy game where the whole world receives the same 
 - An optional **Cloudflare Workers AI** judge that awards 0–5 creativity points and improvises alternate outcomes.
 - The rules engine, not the LLM, owns the dice, hearts, difficulty, items and win/loss.
 - Scripted narration fallback if AI is switched off or returns malformed output.
-- A persistent adventure journal and spoiler-free result sharing.
+- A persistent adventure journal, **personalised achievements for ingenious successful solutions**, and spoiler-free result sharing.
+- A decorative end-of-dungeon certificate showing earned honours. Save or share a **1080 × 1350 PNG** generated locally in the browser (no extra API cost).
+- Existing saved adventures can retroactively receive a scripted award based on what the hero did (e.g. Lord of the Dance).
 - Responsive interface, local per-day progress, engine tests and GitHub Actions CI.
 
 **Not built yet:** player accounts, D1-backed player-run persistence, global leaderboards, verified one-attempt-per-day enforcement, streaks, generated puzzles or full production abuse protection. Only the global AI-call counter is stored in D1. The three sample dungeons repeat while we test the loop.
@@ -68,7 +70,7 @@ The Worker allows code-free play and applies an approximate per-IP rate limit. I
 
 This is a budget-limited prototype, not a production-ready public game: anyone with the URL can use the limited shared AI allowance, and browser-side game state can be manipulated, so these runs cannot support a trusted leaderboard. Workers, D1, and AI usage may have separate account-level charges or allowances. Check account limits before enabling traffic.
 
-Each AI request prompts Qwen3 for two possible short outcomes and a creativity score of 0–5; a rare **5/5 Masterstroke** overrides a bad dice roll. The rules engine, never the AI, decides hearts, inventory, rewards, and progression.
+Each AI request prompts Qwen3 for two possible short outcomes, a creativity score of 0–5, and an **optional achievement title + description** when the action earns 4–5 points. All three pieces come back in the *same inference call*; a rare **5/5 Masterstroke** overrides a bad dice roll. The rules engine, never the AI, decides hearts, inventory, rewards, and progression.
 
 `npm run dev` is **scripted-only** and uses a local fallback. Remote Workers AI can incur usage even when testing from Wrangler.
 
@@ -110,7 +112,7 @@ Player-submitted words are treated as story input, never as instructions to chan
 2. Add 14–30 genuinely distinct daily dungeons and difficulty balancing.
 3. Introduce Cloudflare D1-backed player runs and strict per-user daily attempt limits (the AI-call budget table already exists).
 4. Add signed session identities, abuse prevention, quotas, and observability.
-5. Introduce streaks, cosmetic unlocks, amusing post-game highlights and opt-in sharing.
+5. Introduce streaks, cosmetic unlocks, amusing post-game highlights and richer opt-in sharing (personalised achievements and a locally generated certificate already work).
 6. Add weekly story arcs and persistent character flavour without penalising newcomers.
 
 The game uses original fantasy settings, not proprietary Dungeons & Dragons characters or branding.
