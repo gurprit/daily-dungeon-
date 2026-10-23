@@ -17,13 +17,16 @@
       "simple": { "limit": 12, "period": 60 }
     }
   ],
-  // To enable AI, create a D1 database in Cloudflare (daily-dungeon-playtest),
-  // run migrations/0001_ai_budget.sql, then add the binding below with its real ID.
-  // "d1_databases": [
-  //   { "binding": "DAILY_BUDGET_DB", "database_name": "daily-dungeon-playtest", "database_id": "YOUR-CLOUDFLARE-D1-ID" }
-  // ],
+  "d1_databases": [
+    {
+      "binding": "DAILY_BUDGET_DB",
+      "database_name": "daily-dungeon-playtest",
+      "database_id": "85cc344e-65d4-428e-bf08-17b466e44e66",
+      "migrations_dir": "migrations"
+    }
+  ],
   "vars": {
-    "AI_ENABLED": "false",
+    "AI_ENABLED": "true",
     "AI_DAILY_LIMIT": "36"
   }
 }
