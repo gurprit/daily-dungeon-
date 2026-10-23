@@ -4,7 +4,7 @@
 
 A mobile-first, bite-sized fantasy game where the whole world receives the same dungeon each UTC day. Write your own actions, roll the dice and improvise your way through a theatrical Dungeon Master with a questionable sense of humour.
 
-> **Current status:** protected AI playtest on `feat/ai-dungeon-master`, not a public launch.
+> **Current status:** AI-enabled prototype on `feat/ai-dungeon-master`, not a full public launch.
 
 ## What's playable
 
@@ -42,9 +42,9 @@ npm run dev:worker
 
 Cloudflare Workers local emulation may not work on macOS 12.6: you can still use plain Vite mode above, or use a supported operating system for Wrangler.
 
-## Enable the real AI Dungeon Master (private playtest)
+## Enable the real AI Dungeon Master (code-free play)
 
-**The Cloudflare D1 database is already bound in `wrangler.jsonc`, and AI_ENABLED is now `"true"`.** The deployed Worker still refuses to call the AI unless its private secret and D1 budget table exist. Daily limit: **36 AI calls across all players worldwide**. No inference has been deployed or tested automatically.
+**The Cloudflare D1 database is already bound in `wrangler.jsonc`, and AI_ENABLED is `"true"`.** Players can submit actions immediately without a password. The Worker will only make AI calls when its D1 budget database is configured. Daily limit: **36 AI calls across all players worldwide** (roughly 12 three-room adventures).
 
 ### One-time setup
 
@@ -56,21 +56,17 @@ npm test && npm run build
 npx wrangler login
 npx wrangler d1 migrations apply daily-dungeon-playtest --remote
 npm run deploy
-npx wrangler secret put PLAYTEST_CODE
 ~~~
 
 1. **Migration:** Confirm the migration targets the database named `daily-dungeon-playtest`. It runs the SQL in `migrations/0001_ai_budget.sql` and creates the daily budget counter. If you already executed the SQL in Cloudflare's D1 Console, it's safe to apply the idempotent migration as well.
-2. **Deploy:** `npm run deploy` builds and deploys the site and API. It prints the Worker's public URL. Until the playtest secret exists, the AI endpoint fails closed without calling a model.
-3. **Secret:** `npx wrangler secret put PLAYTEST_CODE` prompts for a **long, random private passcode**. This is a secret stored by Cloudflare, not a normal variable in GitHub. The command creates a new Worker version and deploys it immediately.
-4. **Play:** Visit the new Worker URL, start a dungeon, and enter that same private passcode in the form. The `/api/health` endpoint should report `"narrator":"playtest-locked"` when the Worker is configured correctly.
-
-Never paste `PLAYTEST_CODE` into chat, commit it to GitHub, or type it as a shell argument that ends up in terminal history. You can instead add it in your Worker dashboard at **Settings → Variables and Secrets** with **Type: Secret**.
+2. **Deploy:** `npm run deploy` builds and deploys the site and API. It prints the Worker's public URL. Without a working D1 quota database, the AI endpoint fails closed and does not call a model.
+3. **Play:** Visit the Worker URL, start a dungeon and submit an action. **There is no player passcode.** The `/api/health` endpoint should report `"narrator":"ai-ready"` when the AI and D1 bindings are configured.
 
 ### Safety, costs, and test boundaries
 
-The Worker checks a playtest passcode and applies an approximate per-IP rate limit. It also **reserves a slot in an atomic D1 daily counter before calling Workers AI**. The cap is 36 inference attempts per UTC day, configurable via `AI_DAILY_LIMIT` and clamped to 1–100 by the Worker. Exhausted or unavailable budget fails closed. Repeated attempts or malformed AI responses can consume slots.
+The Worker allows code-free play and applies an approximate per-IP rate limit. It also **reserves a slot in an atomic D1 daily counter before calling Workers AI**. The cap is 36 inference attempts per UTC day, configurable via `AI_DAILY_LIMIT` and clamped to 1–100 by the Worker. Exhausted or unavailable budget fails closed. Repeated attempts or malformed AI responses can consume slots.
 
-This is a controlled playtest, not a production-ready public game: the shared passcode can be copied and browser-side state can be manipulated, so these runs cannot support a trusted leaderboard. Workers, D1, and AI usage may have separate account-level charges or allowances. Check account limits before enabling traffic.
+This is a budget-limited prototype, not a production-ready public game: anyone with the URL can use the limited shared AI allowance, and browser-side game state can be manipulated, so these runs cannot support a trusted leaderboard. Workers, D1, and AI usage may have separate account-level charges or allowances. Check account limits before enabling traffic.
 
 Each AI request prompts Qwen3 for two possible short outcomes and a creativity score of 0–5; a rare **5/5 Masterstroke** overrides a bad dice roll. The rules engine, never the AI, decides hearts, inventory, rewards, and progression.
 
