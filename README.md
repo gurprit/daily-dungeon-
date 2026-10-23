@@ -15,6 +15,8 @@ A mobile-first, bite-sized fantasy game where the whole world receives the same 
 - The rules engine, not the LLM, owns the dice, hearts, difficulty, items and win/loss.
 - Scripted narration fallback if AI is switched off or returns malformed output.
 - A persistent adventure journal, **personalised achievements for ingenious successful solutions**, and spoiler-free result sharing.
+- Optional personal 16-bit room artwork and a three-panel illustrated end-of-run gallery.
+- Auto-scroll to the top after each resolved turn.
 - A decorative end-of-dungeon certificate showing earned honours. Save or share a **1080 × 1350 PNG** generated locally in the browser (no extra API cost).
 - Existing saved adventures can retroactively receive a scripted award based on what the hero did (e.g. Lord of the Dance).
 - Responsive interface, local per-day progress, engine tests and GitHub Actions CI.
@@ -73,6 +75,41 @@ This is a budget-limited prototype, not a production-ready public game: anyone w
 Each AI request prompts Qwen3 for two possible short outcomes, a creativity score of 0–5, and an **optional achievement title + description** when the action earns 4–5 points. All three pieces come back in the *same inference call*; a rare **5/5 Masterstroke** overrides a bad dice roll. The rules engine, never the AI, decides hearts, inventory, rewards, and progression.
 
 `npm run dev` is **scripted-only** and uses a local fallback. Remote Workers AI can incur usage even when testing from Wrangler.
+
+## Optional: live 16-bit pixel-art chronicles
+
+After every room, the game automatically scrolls to the top, shows the DM's verdict immediately, and **starts a non-blocking personalised retro pixel-art job** based on that room, your action and the result. The final screen shows all generated artwork as a gallery.
+
+Images are generated once per server-signed receipt and cached in R2. Reloading or continuing the adventure reuses the existing job. An image failure never affects the dice, health, inventory or story.
+
+**Art is disabled by default**, so deploying this branch won't silently start generating images. It has a separate global quota of **36 images per UTC day** by default. This does not change the existing text AI limit. A 512 × 512 Flux 2 Klein 4B image is listed at approximately $0.000287 before the shared Cloudflare free Workers AI allocation. Actual billing depends on your total usage: https://developers.cloudflare.com/workers-ai/platform/pricing/
+
+### One-time setup
+
+From the feat/ai-dungeon-master branch:
+
+~~~bash
+git pull origin feat/ai-dungeon-master
+npm install
+npm test && npm run build
+npx wrangler r2 bucket create daily-dungeon-art
+npx wrangler d1 migrations apply daily-dungeon-playtest --remote
+npx wrangler secret put ART_SIGNING_KEY
+~~~
+
+When prompted for ART_SIGNING_KEY, provide a newly generated long random secret (at least 32 characters). Never commit it or paste it into chat. The R2 bucket must exist before any deployment using its binding, even when art is disabled.
+
+Change ART_ENABLED to "true" in wrangler.jsonc and deploy:
+
+~~~bash
+npm run deploy
+~~~
+
+Requirements: Cloudflare AI binding, existing D1 database daily-dungeon-playtest, R2 bucket daily-dungeon-art, and ART_SIGNING_KEY. If a requirement is missing, regular gameplay still works but artwork cannot start. To stop future generations, switch ART_ENABLED to "false" and redeploy.
+
+Images use model @cf/black-forest-labs/flux-2-klein-4b at 512 × 512. They are returned in Base64, stored in R2, and served through the Worker. The browser gets a short-lived HMAC-signed art ticket only after a legitimate game resolution, not arbitrary prompt-submission access. The generation endpoint is POST /api/generate-room-art, with status at GET /api/art-status/{id} and images at GET /api/art/{id}.
+
+**Playtest limitations:** Runs are still saved locally, not authenticated or protected from replay. New signed tickets from repeated replays can consume the finite global image quota. Background image tasks may remain pending if interrupted. Before public scaling, add verified player sessions, stale-job recovery, and stronger moderation.
 
 ## Commands
 
