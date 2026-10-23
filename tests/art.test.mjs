@@ -65,6 +65,19 @@ function mockArt() {
       async run(name, input) {
         assert.equal(name, "@cf/black-forest-labs/flux-2-klein-4b");
         assert.ok(input.multipart.body);
+        const fields = await new Response(input.multipart.body, {
+          headers: { "content-type": input.multipart.contentType }
+        }).formData();
+        const style = fields.get("input_image_0");
+        assert.ok(style, "model receives a real reference image");
+        assert.equal(style.type, "image/png");
+        assert.ok(style.size > 500, "reference image is not empty");
+        const signature = new Uint8Array(await style.arrayBuffer()).slice(0, 8);
+        assert.deepEqual([...signature], [137, 80, 78, 71, 13, 10, 26, 10]);
+        assert.match(fields.get("prompt"), /PIXEL ART/);
+        assert.match(fields.get("prompt"), /speech bubbles/);
+        assert.equal(fields.get("width"), "512");
+        assert.equal(fields.get("height"), "512");
         stats.imageCalls++;
         return { image: tinyImage };
       }
