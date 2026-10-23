@@ -84,6 +84,14 @@ Each AI request prompts Qwen3 for two possible short outcomes, a creativity scor
 
 **Action-specific images are different:** If you enable the optional Cloudflare art feature below, the game also illustrates each resolved player action and adds those images to the end-of-run gallery. This requires the R2 bucket, the D1 migration, the signing secret and ART_ENABLED=true. If disabled, the built-in homepage and room scenes still appear.
 
+## First-time player hints and pixel-art style
+
+The first encounter now includes a one-sentence explanation of free-form play and three **editable** sentence starters: Use an item, Talk it out, Be ridiculous. Clicking a starter only fills and focuses the action textbox; the player finishes the thought and presses the same button as before. This is zero-cost browser UI and does not grant an automatic pass. Later encounters tuck the same optional help into a small Need inspiration? disclosure. The upside-down tavern copy now spells out the goal of righting the building without breaking glasses.
+
+The art model now receives one tiny PNG style reference based on the built-in handcrafted pixel scene as `input_image_0`, plus a stricter 16-bit art-direction prompt. Cloudflare FLUX.2 Klein 4B supports input image references (under 512×512). The already-generated room image is also displayed on a coarse browser canvas with posterised colour and nearest-neighbour enlargement. **That browser processing incurs no model calls**. Reference inputs may add inference usage; the global image-call limit remains 36/day and all output images are still cached in R2. Earlier finished adventures and cached portraits are not retroactively regenerated.
+
+Source: https://developers.cloudflare.com/changelog/post/2026-01-15-flux-2-klein-4b-workers-ai/
+
 ## QA shortcut: pretend it's tomorrow
 
 While testing, set `PREVIEW_TOMORROW_ENABLED` to `"true"` in `wrangler.jsonc` (the feature branch has it enabled temporarily). Deploy the Worker, then choose **Test tomorrow's dungeon** on the homepage or end-of-run screen, or visit `/?preview=tomorrow`.
