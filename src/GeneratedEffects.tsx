@@ -12,6 +12,7 @@ export default function GeneratedEffects({ input, recipe }: { input: VisualInput
   const layout = generatedEffectAnchors(input);
   const plan = makeEffectPlan(input, recipe);
   const { x, y } = layout.focal;
+  const { x: hx, y: hy } = layout.hero;
   const magical = layout.magicAllowed || plan.action.includes("runes");
   const sound = plan.action.includes("sound");
   const notes = plan.action.includes("notes");
@@ -32,15 +33,15 @@ export default function GeneratedEffects({ input, recipe }: { input: VisualInput
       <circle cx={x+23} cy={y-15} r="1.3" className="generated-fx__twinkle"/>
     </g>}
     {notes && <g stroke="#fce1a0" fill="none" opacity=".84" strokeWidth="2">
-      <path d={"M"+(x-13)+" "+(y-25)+"v-15 l10 -3 v15 M"+(x+22)+" "+(y-35)+"v-18 l9 -3 v18"}/>
+      <path d={"M"+(hx-13)+" "+(hy-25)+"v-15 l10 -3 v15 M"+(hx+22)+" "+(hy-35)+"v-18 l9 -3 v18"}/>
       <circle cx={x-13} cy={y-25} r="4" fill="#fce1a0"/>
       <circle cx={x+22} cy={y-35} r="4" fill="#fce1a0"/>
     </g>}
-    {hearts && <g transform={"translate("+(x+11)+" "+(y-35)+")"}
+    {hearts && <g transform={"translate("+(hx+17)+" "+(hy-29)+")"}
       className="generated-fx__float" opacity=".86">
       <path d="M0 10 L-10 0 Q-13 -9 -4 -10 Q0 -10 2 -4 Q10 -13 15 -7 Q20 0 0 10Z" fill="#f3a2bb"/>
     </g>}
-    {sound && <g transform={"translate("+x+" "+y+")"} fill="none" stroke="#f4daaa"
+    {sound && <g transform={"translate("+hx+" "+hy+")"} fill="none" stroke="#f4daaa"
       strokeWidth="1.7" opacity=".5">
       <path d="M4 -11 Q18 0 4 11 M11 -18 Q34 0 11 18" className="generated-fx__sound"/>
     </g>}
