@@ -77,11 +77,11 @@ export function emittersForScene(plan: EffectPlan, input: VisualInput, imageMode
     if (plan.ambient.includes("curse")) addImage("magic", x, y, 9, 22, "#d9a8f5");
     if (input.kind === "action") {
       if (plan.action.includes("runes")) addImage("magic", x, y, 10, 24);
-      if (plan.action.includes("notes")) addImage("magic", x, y-27, 8, 20, "#f9d78a");
-      if (plan.action.includes("hearts")) addImage("magic", x, y-29, 6, 18, "#ffc0d2");
+      if (plan.action.includes("notes")) addImage("magic", layout.hero.x, layout.hero.y-26, 8, 20, "#f9d78a");
+      if (plan.action.includes("hearts")) addImage("magic", layout.hero.x+14, layout.hero.y-24, 6, 18, "#ffc0d2");
       if (plan.action.includes("sparks") || plan.action.includes("impact"))
         addImage("impact", x, y, 8, 18);
-      if (plan.action.includes("sound")) addImage("magic", x, y-5, 6, 17, "#d6c9fc");
+      if (plan.action.includes("sound")) addImage("magic", layout.hero.x+15, layout.hero.y, 6, 17, "#d6c9fc");
       if (plan.result.includes("failure")) addImage("impact", x+17, y+11, 5, 18, "#e7889e");
       if (plan.result.includes("triumph")) addImage("ember", x+12, y+22, 4, 18, "#f9dfad");
     } else if (input.kind === "ending") addImage("magic", x, y, 12, 40, "#b8f0d1");
