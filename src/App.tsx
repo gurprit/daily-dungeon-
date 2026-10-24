@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight, BookOpen, Check, Crown, Dice5, Download, Flame,
-  Heart, ScrollText, Share2, Shield, Skull, Sparkles, Swords
+  Heart, ScrollText, Share2, Shield, Skull, Sparkles, Swords, ChevronDown
 } from "lucide-react";
 import { getDailyGame, getPreviewDailyGame, STARTING_INVENTORY } from "./game";
 import { resolveAction, type ActionOutcome } from "./engine";
@@ -257,13 +257,14 @@ export default function App() {
     }
   }, [run.history, run.day, setRun]);
 
+  // Starting the game and every resolved turn should display the new scene, not
+  // leave a mobile player stranded beside the old action box / keyboard.
   useEffect(() => {
-    if (run.history.length === 0) return;
-    window.scrollTo({
-      top: 0,
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth"
-    });
-  }, [run.history.length]);
+    if (!run.started) return;
+    window.scrollTo(0, 0);
+    const frame = window.requestAnimationFrame(() => window.scrollTo(0, 0));
+    return () => window.cancelAnimationFrame(frame);
+  }, [run.started, run.history.length]);
 
   async function submitAction() {
     const attempt = action.trim();
@@ -302,6 +303,7 @@ export default function App() {
         if (!import.meta.env.DEV || (problem instanceof Error && problem.message.includes("new dungeon"))) throw problem;
         outcome = resolveAction(room, attempt, run.inventory, Math.floor(Math.random() * 20) + 1);
       }
+      actionField.current?.blur();
       const remaining = Math.max(0, run.hearts - outcome.heartsLost);
       const nextIndex = run.roomIndex + 1;
       setRun(current => ({
@@ -331,6 +333,7 @@ export default function App() {
   function start() {
     setRun(current => ({ ...current, started: true }));
     setError("");
+    window.scrollTo(0, 0);
   }
 
   function reset() {
@@ -352,7 +355,8 @@ export default function App() {
       won ? "🏆 " + title : "💀 " + title,
       "Hearts: " + run.hearts + "/3",
       ...(achievements.length ? ["🏅 Honours: " + achievements.map(a => a.title).join(" · ")] : []),
-      "How did YOUR story end?"
+      "How did YOUR story end?",
+      "Play: https://dailydungeon.titkok.co/"
     ].join("\n");
   }
 
@@ -619,7 +623,7 @@ export default function App() {
               {artService.status === "ready" ? " The portrait service reports ready, so check /api/resolve." : " " + (artService.status === "disabled"
                 ? "The deployed ART_ENABLED flag is off." : "Server setup needed: " + (artService.missing?.join(", ") ?? "check bindings"))}
             </p>}
-            <section className="hero-certificate" aria-label="Your dungeon certificate">
+            <section className="hero-certificate hero-chronicle" aria-label="Your certificate and illustrated adventure">
               <div className="hero-certificate__ornament">✦</div>
               <p className="hero-certificate__eyebrow">THE DAILY DUNGEON PRESENTS</p>
               <h2>Certificate of Questionable Heroism</h2>
@@ -635,40 +639,64 @@ export default function App() {
                   </div>
                 )) : <p>The Dungeon Master remains undecided about your greatness.</p>}
               </div>
+              {run.history.some(turn => turn.art) && (
+                <div className="hero-chronicle__gallery" aria-label="Your three illustrated moments">
+                  <p className="eyebrow">✦ YOUR ADVENTURE IN PIXELS ✦</p>
+                  <div className="hero-chronicle__gallery-grid">
+                    {run.history.filter(turn => turn.art).map((turn, i) => (
+                      <RoomArtwork key={turn.roomTitle + i} turn={turn} compact/>
+                    ))}
+                  </div>
+                </div>
+              )}
               <p className="hero-certificate__seal">✦ ONE DUNGEON. ENDLESS POSSIBILITIES. ✦</p>
-            </section>
-            <section className="ending__journal" aria-label="Your illustrated adventure journal">
-              <h2><ScrollText size={19}/> Your Hero's Journal</h2>
-              <p className="ending__journal-intro">Three rooms. One unlikely story. Every choice made it yours.</p>
-              {run.history.map((entry, i) => (
-                <article className="ending__entry" key={i}>
-                  <div className="ending__entry-title">
-                    <span className="ending__entry-number">{String(i + 1).padStart(2, "0")}</span>
-                    <span>{entry.outcome.success ? "✦" : "✕"} {entry.roomTitle}</span>
-                  </div>
-                  <div className="ending__entry-action">
-                    <span className="ending__entry-label">YOU TRIED</span>
-                    <p><em>"{entry.action}"</em></p>
-                  </div>
-                  <RoomArtwork turn={entry} compact/>
-                  <div className="ending__entry-response">
-                    <span className="ending__entry-label">THE DUNGEON MASTER</span>
-                    <p>{entry.outcome.narration}</p>
-                  </div>
-                  {entry.outcome.achievement && <p className="ending__award"><Crown size={16}/> {entry.outcome.achievement.title}</p>}
-                </article>
-              ))}
+
+              <div className="hero-chronicle__actions">
+                <button className="button button--primary" onClick={() => void share()}>
+                  {copied ? <Check size={18}/> : <Share2 size={18}/>}
+                  {copied ? "Result ready to share" : "Share your legend"}
+                </button>
+                <button className="button button--secondary" onClick={() => void shareCertificate()}>
+                  <Download size={17}/> Save certificate
+                </button>
+              </div>
+              {certificateNotice && <p className="hero-chronicle__notice" role="status">{certificateNotice}</p>}
+
+              <details className="hero-chronicle__journal">
+                <summary>
+                  <ScrollText size={21}/>
+                  <span>
+                    <strong>Read your hero's journal</strong>
+                    <small>{run.history.length} room{run.history.length === 1 ? "" : "s"} · Your decisions and the Dungeon Master's story</small>
+                  </span>
+                  <ChevronDown size={19} className="hero-chronicle__chevron"/>
+                </summary>
+                <div className="hero-chronicle__journal-body">
+                  {run.history.map((entry, i) => (
+                    <article className="ending__entry" key={i}>
+                      <div className="ending__entry-title">
+                        <span className="ending__entry-number">{String(i + 1).padStart(2, "0")}</span>
+                        <span>{entry.outcome.success ? "✦" : "✕"} {entry.roomTitle}</span>
+                      </div>
+                      <div className="ending__entry-action">
+                        <span className="ending__entry-label">YOU TRIED</span>
+                        <p><em>"{entry.action}"</em></p>
+                      </div>
+                      <RoomArtwork turn={entry} compact/>
+                      <div className="ending__entry-response">
+                        <span className="ending__entry-label">THE DUNGEON MASTER</span>
+                        <p>{entry.outcome.narration}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </details>
             </section>
             <div className="ending__actions">
-              <button className="button button--primary button--large" onClick={() => void share()}>
-                {copied ? <Check size={19}/> : <Share2 size={19}/>} {copied ? "Result ready to share" : "Share your legend"}
-              </button>
-              <button className="button button--secondary" onClick={() => void shareCertificate()}><Download size={18}/> Save / share certificate</button>
               <button className="button button--secondary" onClick={reset}>Replay playtest</button>
               {!previewTomorrow && canPreviewTomorrow && <a className="button button--secondary" href="?preview=tomorrow">⏭ Test tomorrow’s dungeon</a>}
             </div>
             {error && <p className="error" role="alert">{error}</p>}
-            {certificateNotice && <p className="ending__notice" role="status">{certificateNotice}</p>}
             <div className="ending__tomorrow"><Sparkles size={17}/> A new dungeon opens tomorrow at midnight UTC.</div>
           </div>
         )}
