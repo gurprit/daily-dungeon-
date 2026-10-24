@@ -11,8 +11,10 @@ objectives and consequences.
 
 **There is NO image-generation model or image-inference service in the game.**
 Every illustrated moment is composed immediately in the browser from reusable
-React SVG geometry and CSS. The images are not downloaded from a remote service,
-and nothing needs pre-generation, R2 storage, signing keys or art API endpoints.
+React SVG geometry and CSS, with a transparent **JavaScript Canvas particle
+overlay** for live fire, embers, magic sparks, drifting motes and impact effects.
+Nothing needs pre-generation, image inference, R2 storage, signing keys or
+image-art API endpoints.
 
 The illustration system provides:
 
@@ -42,6 +44,9 @@ Relevant files:
 - src/illustration-recipe.ts: pure deterministic action/prop/mood rules
 - src/ProceduralIllustration.tsx: layered React SVG sprites and outcomes
 - src/styles.scss: atmosphere, responsive layout and accessible animation
+- src/effect-presets.ts + src/ProceduralEffects.tsx: scene-specific SVG effects
+- src/particle-engine.ts: deterministic, bounded JavaScript particle physics
+- src/ParticleCanvas.tsx: requestAnimationFrame renderer, visibility and motion controls
 
 PNG export of the **certificate** happens locally in the browser and likewise
 does not require an image-generation model.
@@ -147,3 +152,26 @@ preserving readable static illustrations.
 The museum's three encounters also use distinct SVG subjects (escaped
 painting, clockwork skeleton, forbidden cursed exhibit) instead of reusing
 the goblin for every action.
+
+
+## JavaScript particles and the victory-glow fix
+
+The previous solid yellow disc was an SVG victory-glow circle whose intended
+low opacity was overridden by a CSS animation. It has been replaced by two
+faint outlined halos that **never cover the illustrated characters**.
+
+Each illustration can now have a transparent, JavaScript-driven Canvas overlay:
+- Two torch emitters produce fluttering flame particles and rising embers.
+- Magic and cursed relics emit swirling motes, runes and magical sparks.
+- Other effect emitters cover spectral trails, paint, dust and impacts.
+- Outcomes combine ambient room effects with action and success/failure cues.
+
+Particle composition is deterministic from the existing visual recipe and
+strictly bounded to at most 62 particles per illustrated scene. The renderer
+only runs while that illustration is on screen, automatically pauses in
+background tabs, clamps elapsed time on return, and stops animation for
+prefers-reduced-motion users. The Canvas is local browser drawing, **not**
+an AI-generated image or downloaded graphic.
+
+Test with npm test and npm run build. /?preview=hollowmere provides an immediate
+visual playtest. The old fixed SVG effects still complement the Canvas layer.
