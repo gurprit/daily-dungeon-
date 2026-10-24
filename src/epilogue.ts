@@ -10,13 +10,29 @@ export function writeEpilogue(options: {
   visited: number;
   hearts: number;
   lastHonour?: string;
-  moments?: ReadonlyArray<{ room: string; success: boolean }>;
+  moments?: ReadonlyArray<{ room: string; success: boolean; action?: string }>;
 }): string {
   const { dungeon, room, hearts, lastHonour, moments = [] } = options;
   const lostEarlier = moments.some(beat => !beat.success);
   const heroOfTheHour = lastHonour
     ? `And that business with “${lastHonour}”? I have entered it into the royal archives under 'Things We Are Not Encouraging'.`
     : "I shall file your exploits under 'Not a Recommended Method', right beside the exploding trousers.";
+
+  // Even an older saved adventure deserves a callback to something the player
+  // actually tried, not a generic score summary. Curated so arbitrary player
+  // input is never echoed unfiltered into the Dungeon Master's voice.
+  const rememberedActions = moments.map(beat => beat.action ?? "").join(" ");
+  const callback = [
+    [/\\bkazoo\\b/i, "That kazoo recital has been classified as a weather event. The whale insists it was not informed it would be your backing orchestra."],
+    [/\\bumbrella\\b/i, "Your umbrella has been nominated for a medal. It wisely declined, citing professional embarrassment."],
+    [/\\bpotato\\b/i, "The potato has lodged a formal complaint against you. I have filed it under 'Evidence', next to your common sense."],
+    [/\\bcheese\\b/i, "The cheese oracle has begun charging for consultations. Your name is scribbled under 'Unpaid Debts'."],
+    [/\\bpainting\\b/i, "One of the paintings has started blinking nervously whenever your name is mentioned."],
+    [/\\bskeleton\\b/i, "The skeleton is still trying to convince its kneecaps that what happened was an authorised manoeuvre."],
+    [/\\bdanc(?:e|ing)\\b/i, "Your dancing has been reported to the authorities as an arcane disturbance. I cannot say the witnesses are wrong."],
+    [/\\bwhistle\\b/i, "The whistle is now on the museum's prohibited objects list, alongside cursed crowns and unattended adventurers."],
+    [/\\bdragon\\b/i, "The dragon is claiming credit for your finest moment. I have filed an appeal, purely for entertainment."],
+  ].find(([pattern]) => (pattern as RegExp).test(rememberedActions))?.[1] as string | undefined;
 
   const flavour: Record<string, string> = {
     "The Goblin's Toll": "Between a goblin with a clipboard, a library that files criminal charges against the moon, and a dragon running a tax office, this kingdom desperately needs new management.",
@@ -37,6 +53,7 @@ export function writeEpilogue(options: {
     lostEarlier
       ? "You escaped with your heroic reputation slightly dented, which is more than I expected after watching your earlier decisions unfold. Your confidence, however, appears completely unharmed."
       : "You somehow made it through with your dignity largely unaccounted for. The witnesses keep using the word 'genius'. I keep asking whether they were present for the same adventure.",
+    ...(callback ? [callback] : []),
     heroOfTheHour
   ].join(" ");
 }
