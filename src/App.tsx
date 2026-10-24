@@ -9,7 +9,7 @@ import { resolveAction, type ActionOutcome } from "./engine";
 import { fallbackAchievement, isAchievement, type Achievement } from "./achievements";
 import { createCertificateImage } from "./certificate";
 import PixelScene from "./PixelScene";
-import { actionStarters, firstRoomTip } from "./action-help";
+import { rollBreakdown } from "./roll-math";
 import PixelPortrait from "./PixelPortrait";
 import { writeEpilogue } from "./epilogue";
 
@@ -172,12 +172,26 @@ function Inventory({ items }: { items: string[] }) {
 }
 
 function RollBadge({ outcome }: { outcome: ActionOutcome }) {
+  const roll = rollBreakdown(outcome);
   return (
-    <div className={"roll-badge " + (outcome.success ? "roll-badge--win" : "roll-badge--loss")}>
-      <Dice5 size={18}/>
-      <span>Rolled <strong>{outcome.roll}{outcome.bonus ? " +" + outcome.bonus : ""}</strong></span>
-      <span className="roll-badge__divider" />
-      <span>Needed {outcome.difficulty}</span>
+    <div className={"roll-badge " + (outcome.success ? "roll-badge--win" : "roll-badge--loss")}
+      aria-label={`D20 rolled ${roll.die}, plus ${roll.creativity} creativity and ${roll.itemBonus} item bonus, total ${roll.total}, difficulty ${roll.target}. ${outcome.success ? "Success" : "Failure"}.`}>
+      <div className="roll-badge__die" aria-hidden="true">
+        <span>D20</span><strong>{roll.die}</strong>
+      </div>
+      <div className="roll-badge__details">
+        <span className="roll-badge__label">YOUR DICE ROLL</span>
+        <div className="roll-badge__formula">
+          <strong>{roll.die}</strong>
+          <span>+ {roll.creativity} creativity</span>
+          {roll.itemBonus > 0 && <span>+ {roll.itemBonus} item</span>}
+          <span>= <strong>{roll.total}</strong></span>
+        </div>
+        <div className="roll-badge__verdict">
+          <span>Total <strong>{roll.total}</strong> vs DC <strong>{roll.target}</strong></span>
+          <b>{roll.automaticSuccess ? "MASTERSTROKE! Automatic success" : outcome.success ? "SUCCESS" : "FAILED ROLL"}</b>
+        </div>
+      </div>
     </div>
   );
 }
@@ -203,8 +217,6 @@ export default function App() {
   }, []);
   const artInflight = useRef(new Set<string>());
   const room = daily.dungeon.rooms[Math.min(run.roomIndex, 2)];
-  const starterIdeas = actionStarters(room, run.inventory);
-  const starterNeedsFinishing = starterIdeas.some(idea => action.trim() === idea.draft.trim());
   const last = run.history.at(-1);
   const wins = run.history.filter(t => t.outcome.success).length;
   const achievements = run.history
@@ -277,7 +289,7 @@ export default function App() {
 
   async function submitAction() {
     const attempt = action.trim();
-    if (loading || !run.started || run.finished || attempt.length < 4 || attempt.length > 280 || starterNeedsFinishing) return;
+    if (loading || !run.started || run.finished || attempt.length < 4 || attempt.length > 280) return;
     setLoading(true);
     setError("");
     try {
@@ -329,14 +341,6 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }
-
-  function useStarter(draft: string) {
-    setAction(draft);
-    requestAnimationFrame(() => {
-      actionField.current?.focus();
-      actionField.current?.setSelectionRange(draft.length, draft.length);
-    });
   }
 
   function start() {
@@ -496,11 +500,10 @@ export default function App() {
                 <div className={"last-turn " + (last.outcome.success ? "last-turn--win" : "last-turn--loss")} aria-live="polite">
                   <div className="last-turn__heading">
                     <span>{last.outcome.success ? "✦ YOUR PLAN WORKED" : "✦ AN UNFORTUNATE SETBACK"}</span>
-                    <RollBadge outcome={last.outcome}/>
                   </div>
+                  <RollBadge outcome={last.outcome}/>
                   <p>{last.outcome.narration}</p>
                   {last.outcome.masterstroke && <span className="last-turn__reward"><Crown size={14}/> MASTERSTROKE! Your idea beats the dice.</span>}
-                  {last.outcome.creativity > 0 && <span className="last-turn__reward"><Sparkles size={14}/> Creativity: {last.outcome.creativity}/5 (+{last.outcome.creativity})</span>}
                   {(last.outcome.usedItems?.length ?? 0) > 0 && <span className="last-turn__spent"><Shield size={14}/> Used up: {last.outcome.usedItems.join(", ")}</span>}
                   {last.outcome.reward && <span className="last-turn__reward"><Sparkles size={14}/> Acquired: {last.outcome.reward}</span>}
                   <small>{last.outcome.mode === "ai" ? "Narrated by the AI Dungeon Master" : "Scripted narrator (AI not enabled)"}</small>
@@ -540,45 +543,15 @@ export default function App() {
               <section className="action-panel">
                 <div className="action-panel__heading">
                   <h3>What do you do, adventurer?</h3>
-                  <span>BE CREATIVE</span>
                 </div>
-                {run.roomIndex === 0 ? (
-                  <div className="action-help action-help--intro">
-                    <p><Sparkles size={16}/>{firstRoomTip()}</p>
-                    <span className="action-help__label">NEED A STARTING IDEA? TAP ONE AND FINISH THE SENTENCE.</span>
-                    <div className="action-help__chips">
-                      {starterIdeas.map(idea => (
-                        <button key={idea.label} type="button" className="action-help__chip"
-                          title={idea.tip} disabled={loading} onClick={() => useStarter(idea.draft)}>
-                          {idea.label}<ArrowRight size={13}/>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="action-help action-help--later">
-                    <p>Try anything. There is no single correct solution.</p>
-                    <details><summary>Need inspiration?</summary>
-                      <div className="action-help__chips">
-                        {starterIdeas.map(idea => (
-                          <button key={idea.label} type="button" className="action-help__chip"
-                            title={idea.tip} disabled={loading} onClick={() => useStarter(idea.draft)}>
-                            {idea.label}<ArrowRight size={13}/>
-                          </button>
-                        ))}
-                      </div>
-                    </details>
-                  </div>
-                )}
                 <label className="sr-only" htmlFor="player-action">Your next action</label>
                 <textarea ref={actionField} id="player-action" value={action} onChange={e => setAction(e.target.value)}
-                  placeholder={run.roomIndex === 0 ? "What would YOU try? There are no wrong kinds of ideas..." : "I take out my potato and..."} maxLength={280} rows={3}
+                  placeholder="Tell the Dungeon Master what you would like to do…" maxLength={280} rows={3}
                   disabled={loading} onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); void submitAction(); } }} />
-                {starterNeedsFinishing && <p className="action-help__finish">✦ Finish this idea in your own words before rolling.</p>}
                 <div className="action-panel__footer">
                   <span className="action-panel__count">{action.length}/280</span>
-                  <button className="button button--primary" onClick={() => void submitAction()} disabled={loading || action.trim().length < 4 || starterNeedsFinishing}>
-                    {loading ? "The dice are rolling…" : "Take your chance"} <Dice5 size={18}/>
+                  <button className="button button--primary" onClick={() => void submitAction()} disabled={loading || action.trim().length < 4}>
+                    {loading ? "Rolling the dice…" : "Roll the dice"} <Dice5 size={18}/>
                   </button>
                 </div>
                 {error && <p className="error" role="alert">{error}</p>}
