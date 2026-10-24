@@ -1238,3 +1238,26 @@ p { line-height: 1.7; }
 @media (prefers-reduced-motion: reduce) {
   .hybrid-art__image { transition: none; }
 }
+
+
+/* Strict 8-bit NES visual language, independent of model style drift. */
+.hybrid-art .hybrid-art__nes {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  background: #171629;
+}
+.generated-fx { pointer-events: none; }
+.generated-fx__flame {
+  animation: nes-flame .72s steps(3, end) infinite alternate;
+}
+.generated-fx__rune { animation: nes-glimmer 4s steps(4, end) infinite alternate; }
+.generated-fx__float { animation: nes-glimmer 2s steps(3, end) infinite alternate; }
+.generated-fx__twinkle { animation: nes-glimmer 1.8s steps(2, end) infinite alternate; }
+.generated-fx__sound { animation: nes-sound 2s steps(4, end) infinite; stroke-dasharray: 18 8; }
+@keyframes nes-flame { from { opacity: .45; } to { opacity: .85; } }
+@keyframes nes-glimmer { from { opacity: .18; } to { opacity: .75; } }
+@keyframes nes-sound { to { stroke-dashoffset: -26; } }
+@media (prefers-reduced-motion: reduce) {
+  .generated-fx * { animation: none !important; }
+}
