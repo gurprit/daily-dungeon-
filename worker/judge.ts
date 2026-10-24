@@ -103,7 +103,9 @@ export async function judgeWithAI(
     "Do NOT resurrect spent gear from an earlier room. The currentInventory list is the only set of objects the player carries.",
     "Never add or take inventory, change health or rolls, or invent later encounters.",
     "If creativity is 4 or 5, invent a funny, highly specific achievement celebrating the player\u0027s method.",
-    "Use a title of 2-6 words (max 60 characters), and a playful description of 8-18 words (max 180 characters).",
+    "Give each achievement a surprising, action-specific title of 2-5 words. Avoid stock titles like Lord of the Dance or Hero of Unlikely Schemes.",
+    "The achievement description is exactly ONE short witty line, 6-12 words, spoken in your own warm, dry Dungeon Master voice.",
+    "A tiny joke is enough. Vary sentence structure, avoid repetitive You... openings, never use another paragraph.",
     "If creativity is 0-3, set achievement to null. Never invent an achievement for ordinary actions.",
     "Keep the adventure PG-13. No graphic violence, hate or explicit sexual content.",
     generatedEpilogue
@@ -125,7 +127,7 @@ export async function judgeWithAI(
       ? 'Return ONLY JSON: {"creativity":4,"success":"...","failure":"...","achievement":{"title":"...","description":"..."},"epilogueSuccess":"...","epilogueFailure":"..."}.'
       : authoredStory && finalRoom
         ? 'Return ONLY JSON: {"creativity":3,"success":"...","failure":"...","finaleChoice":"reconcile","achievement":null}.'
-        : 'Return ONLY JSON: {"creativity":4,"success":"...","failure":"...","achievement":{"title":"Lord of the Dance","description":"You danced a goblin out of collecting his toll."}}.'
+        : 'Return ONLY JSON: {"creativity":4,"success":"...","failure":"...","achievement":{"title":"Permit by Pirouette","description":"The goblin inspected your footwork. Regrettably, it passed."}}.'
   ].join(" ");
   try {
     const result = await ai.run("@cf/qwen/qwen3-30b-a3b-fp8", {
