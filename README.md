@@ -118,3 +118,32 @@ required.
 
 The current three-room adventure is designed for approximately five minutes,
 with a satisfying stopping point rather than endless generated content.
+
+
+## Animated SVG effects (FX studio)
+
+The illustrations now have a composable effects layer with no image model,
+external asset request or cost. src/effect-presets.ts maps dungeon and room
+identities to ambient effects; it also chooses effects from the player's
+free-form action and success/failure outcome. src/ProceduralEffects.tsx
+draws bounded, deterministic particles and shapes over the existing artwork.
+
+- Museum: paint drips and a living portrait; clockwork skeleton with rattling
+  bones and spinning gears; cursed relic with rotating magical sigils.
+- Hollowmere: torch fire, embers, moonlight and mist; mechanical gears and
+  sparks; spectral glow and repeated bell-pulse rings.
+- Player choices: floating music for dancing, hearts for affection, animated
+  runes for spells, metallic sparks for unlocking, sound waves for shouting or
+  whistling, shadows for stealth, and impact trails for combat.
+- Resolution: warm success glints versus red-pink failure crackles.
+- Generic dungeons: ambient dust, torches, moonlight or mist where applicable.
+
+Effects use a small number of SVG nodes with transform/opacity CSS keyframes.
+Particle positions and timing are seeded from the same stable visual recipe.
+No timers, repeated generation, or randomness per animation frame.
+The prefers-reduced-motion CSS setting disables looping movement while
+preserving readable static illustrations.
+
+The museum's three encounters also use distinct SVG subjects (escaped
+painting, clockwork skeleton, forbidden cursed exhibit) instead of reusing
+the goblin for every action.
