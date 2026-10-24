@@ -5,8 +5,10 @@ import { achievementFromJudgment } from "../src/achievements.ts";
 import { judgeWithAI } from "./judge.ts";
 import { priorStoryContext } from "./continuity.ts";
 import { storyRoom, storyGuidance, storyEnding } from "../src/story.ts";
+import { handleArtRoute, artServiceStatus, makeArtTicket, type ArtEnv } from "./art.ts";
+import { handleSharedArtRoute } from "./shared-art.ts";
 
-type Env = {
+type Env = ArtEnv & {
   AI_ENABLED?: string;
   AI_DAILY_LIMIT?: string;
   PREVIEW_TOMORROW_ENABLED?: string;
@@ -62,8 +64,12 @@ async function reserveDailyBudget(env: Env, day: string): Promise<boolean> {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, context?: { waitUntil: (task: Promise<unknown>) => void }): Promise<Response> {
     const url = new URL(request.url);
+    const sharedArtResponse = await handleSharedArtRoute(request, env, context);
+    if (sharedArtResponse) return sharedArtResponse;
+    const artResponse = await handleArtRoute(request, env, context);
+    if (artResponse) return artResponse;
     const aiRequested = env.AI_ENABLED === "true";
     const aiConfigured = !!env.DAILY_BUDGET_DB && !!env.AI;
     if (url.pathname === "/api/health") {
@@ -73,7 +79,8 @@ export default {
         day: getDailyGame().day,
         previewTomorrowEnabled: env.PREVIEW_TOMORROW_ENABLED === "true",
         previewStoryEnabled: env.PREVIEW_STORY_ENABLED === "true",
-        illustrations: "client-side-svg"
+        illustrations: "generated-with-svg-fallback-and-particles",
+        art: artServiceStatus(env)
       });
     }
 
@@ -161,6 +168,10 @@ export default {
         const conclusion = storyEnding(daily.dungeon.slug, body.action, outcome.success, Math.max(0, 3 - earlierMoments.filter(beat => !beat.success).length - outcome.heartsLost), earlierMoments);
         if (conclusion) { outcome.storyEnding = conclusion; outcome.epilogue = conclusion.epilogue; }
       }
+      // The browser cannot submit arbitrary image prompts: only a successful
+      // resolution creates a short-lived signed ticket for this exact moment.
+      const artTicket = await makeArtTicket(env, Number(body.roomIndex), body.action, outcome.narration, outcome.success, daily.day);
+      if (artTicket) outcome.artTicket = artTicket;
       return json(outcome);
     }
 

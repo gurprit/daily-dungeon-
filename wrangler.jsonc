@@ -17,6 +17,7 @@
       "simple": { "limit": 12, "period": 60 }
     }
   ],
+  "r2_buckets": [{ "binding": "ART_BUCKET", "bucket_name": "daily-dungeon-art" }],
   "d1_databases": [
     {
       "binding": "DAILY_BUDGET_DB",
@@ -28,6 +29,8 @@
   "vars": {
     "AI_ENABLED": "true",
     "AI_DAILY_LIMIT": "36",
+    "ART_ENABLED": "true",
+    "ART_DAILY_LIMIT": "600",
     "PREVIEW_TOMORROW_ENABLED": "true",
     "PREVIEW_STORY_ENABLED": "true"
   }
