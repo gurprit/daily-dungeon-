@@ -1,3 +1,5 @@
+import { HOLLOWMERE_DUNGEON } from "./story";
+
 export type Room = {
   title: string;
   subtitle: string;
@@ -15,6 +17,7 @@ export type Dungeon = {
   title: string;
   subtitle: string;
   intro: string;
+  objective?: string;
   startingInventory?: readonly string[];
   edition?: number;
   rooms: readonly [Room, Room, Room];
@@ -222,7 +225,8 @@ export const NEW_DAILY_DUNGEONS: readonly Dungeon[] = [
 /** Date-scoped replacement: keeps earlier achievements intact but refreshes 24/25 Oct. */
 const DAILY_OVERRIDE: Record<string, Dungeon> = {
   "2026-10-24": NEW_DAILY_DUNGEONS[0],
-  "2026-10-25": NEW_DAILY_DUNGEONS[1]
+  "2026-10-25": NEW_DAILY_DUNGEONS[1],
+  "2026-10-26": HOLLOWMERE_DUNGEON
 };
 
 const EPOCH_UTC = Date.UTC(2026, 9, 23);

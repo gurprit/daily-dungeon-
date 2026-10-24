@@ -33,6 +33,7 @@
     "AI_DAILY_LIMIT": "36",
     "ART_ENABLED": "true",
     "ART_DAILY_LIMIT": "36",
-    "PREVIEW_TOMORROW_ENABLED": "true"
+    "PREVIEW_TOMORROW_ENABLED": "true",
+    "PREVIEW_STORY_ENABLED": "true"
   }
 }
