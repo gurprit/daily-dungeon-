@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight, BookOpen, Check, Crown, Dice5, Download, Flame,
-  Heart, ScrollText, Share2, Shield, Skull, Sparkles, Swords, ChevronDown
+  Heart, ScrollText, Share2, Shield, Skull, Sparkles, Swords
 } from "lucide-react";
 import { getDailyGame, getPreviewDailyGame } from "./game";
 import { startingItems, inventoryAfterTurn } from "./inventory";
@@ -11,6 +11,7 @@ import { createCertificateImage } from "./certificate";
 import PixelScene from "./PixelScene";
 import { actionStarters, firstRoomTip } from "./action-help";
 import PixelPortrait from "./PixelPortrait";
+import { writeEpilogue } from "./epilogue";
 
 // Date preview is opt-in and never overwrites genuine daily progress.
 const previewTomorrow = new URLSearchParams(window.location.search).get("preview") === "tomorrow";
@@ -136,6 +137,10 @@ function AchievementUnlock({ achievement }: { achievement: Achievement }) {
 
 function RoomArtwork({ turn, compact = false }: { turn: Turn; compact?: boolean }) {
   if (!turn.art) return null;
+  // A failed art job must never occupy a whole screen of empty portrait space.
+  if (turn.art.status === "failed") {
+    return <p className="room-artwork__unavailable"><Sparkles size={15}/> The portrait artist missed this scene. The story is safe.</p>;
+  }
   return (
     <figure className={"room-artwork " + (compact ? "room-artwork--compact" : "")}>
       <div className="room-artwork__frame">
@@ -645,16 +650,6 @@ export default function App() {
                   </div>
                 )) : <p>The Dungeon Master remains undecided about your greatness.</p>}
               </div>
-              {run.history.some(turn => turn.art) && (
-                <div className="hero-chronicle__gallery" aria-label="Your three illustrated moments">
-                  <p className="eyebrow">✦ YOUR ADVENTURE IN PIXELS ✦</p>
-                  <div className="hero-chronicle__gallery-grid">
-                    {run.history.filter(turn => turn.art).map((turn, i) => (
-                      <RoomArtwork key={turn.roomTitle + i} turn={turn} compact/>
-                    ))}
-                  </div>
-                </div>
-              )}
               <p className="hero-certificate__seal">✦ ONE DUNGEON. ENDLESS POSSIBILITIES. ✦</p>
 
               <div className="hero-chronicle__actions">
@@ -668,15 +663,8 @@ export default function App() {
               </div>
               {certificateNotice && <p className="hero-chronicle__notice" role="status">{certificateNotice}</p>}
 
-              <details className="hero-chronicle__journal">
-                <summary>
-                  <ScrollText size={21}/>
-                  <span>
-                    <strong>Read your hero's journal</strong>
-                    <small>{run.history.length} room{run.history.length === 1 ? "" : "s"} · Your decisions and the Dungeon Master's story</small>
-                  </span>
-                  <ChevronDown size={19} className="hero-chronicle__chevron"/>
-                </summary>
+              <section className="hero-chronicle__journal" aria-label="Hero's Journey">
+                <h3 className="hero-chronicle__journal-title"><ScrollText size={21}/> Hero's Journey</h3>
                 <div className="hero-chronicle__journal-body">
                   {run.history.map((entry, i) => (
                     <article className="ending__entry" key={i}>
@@ -696,15 +684,27 @@ export default function App() {
                       </div>
                     </article>
                   ))}
+
                 </div>
-              </details>
+                <div className="hero-chronicle__epilogue">
+                  <span className="eyebrow">✦ THE FINAL WORD ✦</span>
+                  <p>{writeEpilogue({
+                    dungeon: daily.dungeon.title,
+                    room: last?.roomTitle ?? "the final chamber",
+                    cleared: wins,
+                    visited: run.history.length,
+                    hearts: run.hearts,
+                    lastHonour: achievements.at(-1)?.title
+                  })}</p>
+                  <p className="hero-chronicle__return"><Sparkles size={18}/> Come back tomorrow for more adventuring. A new dungeon opens at midnight UTC!</p>
+                </div>
+              </section>
             </section>
             <div className="ending__actions">
               <button className="button button--secondary" onClick={reset}>Replay playtest</button>
               {!previewTomorrow && canPreviewTomorrow && <a className="button button--secondary" href="?preview=tomorrow">⏭ Test tomorrow’s dungeon</a>}
             </div>
             {error && <p className="error" role="alert">{error}</p>}
-            <div className="ending__tomorrow"><Sparkles size={17}/> A new dungeon opens tomorrow at midnight UTC.</div>
           </div>
         )}
       </main>
