@@ -393,7 +393,7 @@ function MidnightMuseum({ p }: { p: Palette }) {
 
 function SkywhaleDeck({ p }: { p: Palette }) {
   return <g>
-    <rect x="0" y="46" width="320" height="174" fill="#24466b"/>
+    <rect x="0" y="46" width="320" height="174" fill={p.sky}/>
     {Array.from({length: 5}, (_,i) => <g key={i}>
       <rect x={i * 80 - 22} y={88 + (i%2)*24} width="86" height="19" fill="#698eaf"/>
       <rect x={i * 80 - 8} y={81 + (i%2)*24} width="55" height="15" fill="#a0b4c4"/>
