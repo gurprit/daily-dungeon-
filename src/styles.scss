@@ -1158,3 +1158,83 @@ p { line-height: 1.7; }
   .procedural-art__particles { display: none; }
   .procedural-fx .fx-win-halo { animation: none !important; opacity: .4; }
 }
+
+
+/* Hybrid illustrated scenes. Generated storybook art supplies visual clarity;
+   the SVG effects and JavaScript particles stay above it. */
+.hybrid-art {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+  background: radial-gradient(ellipse at 50% 35%, #44394f, #131626 85%);
+}
+.hybrid-art > .procedural-art { width: 100%; height: 100%; }
+.hybrid-art__image {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity .45s ease;
+}
+.hybrid-art__image--ready { opacity: 1; }
+.hybrid-art__svgfx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+/* The detailed generated image is the foreground story, so keep oversized
+   SVG props/rings subordinate. The moving, small-scale effects remain. */
+.hybrid-art__svgfx .procedural-fx { opacity: .46; }
+.hybrid-art__svgfx .fx-gear,
+.hybrid-art__svgfx .fx-cursed,
+.hybrid-art__svgfx .fx-bones { opacity: .2; }
+.hybrid-art .procedural-art__particles { z-index: 3; }
+.hybrid-art__painting {
+  position: absolute;
+  z-index: 5;
+  left: 11px;
+  bottom: 11px;
+  padding: 7px 12px;
+  border-radius: 40px;
+  border: 1px solid rgba(230,198,148,.42);
+  background: rgba(25,22,34,.8);
+  color: #ecd3ad;
+  font-size: 11px;
+  letter-spacing: .04em;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+.pixel-scene__viewport > .hybrid-art.procedural-art--welcome { height: 100%; }
+.encounter__art--illustrated > .hybrid-art.procedural-art--room { height: 100%; }
+.room-artwork__frame > .hybrid-art { height: 100%; aspect-ratio: 3 / 2; }
+.story-clues__entry .hybrid-art.procedural-art--clue {
+  flex: 0 0 34%;
+  width: 34%;
+  height: auto;
+  max-width: 210px;
+  aspect-ratio: 3 / 2;
+  border: 1px solid #8a765c;
+  border-radius: 8px;
+}
+.ending .hybrid-art.procedural-art--ending {
+  height: auto;
+  aspect-ratio: 3 / 2;
+}
+@media (max-width: 540px) {
+  .story-clues__entry .hybrid-art.procedural-art--clue {
+    min-width: 86px;
+    flex-basis: 35%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hybrid-art__image { transition: none; }
+}
