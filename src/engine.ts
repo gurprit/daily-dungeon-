@@ -70,7 +70,16 @@ export function fallbackNarration(room: Room, success: boolean): string {
     "The Moon Station": "The passengers make it across just in time. Conductor Crescent awards you a medal under moonlight.",
     "The Frightened Guard": "Spoon lowers his sword and unlocks the tower. He whispers a warning about something sleeping below.",
     "The Whispering Stair": "You steady the cracked gears long enough to read the inscription: willing promises can replace stolen names.",
-    "The Bell and the Keeper": "Elowen listens as your audacious plan takes shape. The tower shudders, awaiting its final fate."
+    "The Bell and the Keeper": "Elowen listens as your audacious plan takes shape. The tower shudders, awaiting its final fate.",
+    "The Drowsy Harbour": "Pip's lantern catches your solution and flickers brightly enough for the nearest fishing boat to find the harbour wall. The otter cheers, though the missing sunrise still needs saving.",
+    "The Singing Spiral Stair": "Mallow folds her wings and recognises the morning note in your solution. The moon-moth lets you climb toward the lens, humming along behind you.",
+    "The Sunrise Lens": "Solbit listens to your promise. The small sun takes courage and leaps from its glass prison, turning Brinewatch's cold horizon gold.",
+    "The Beekeeper's Workshop": "Tock's copper bees begin buzzing again, delighted by your odd but effective idea. Their tiny wings mark a safe path to the orchard's damaged apple.",
+    "The Upside-Down Apple": "Nutmeg watches your invention halt the backward gears. The clockwork apple shivers back into balance and reveals a hidden route to the great tree.",
+    "The Heartwood Clock": "Professor Caw caws his approval as the sunflower clock ticks toward spring. The brass petals unfold, and warm light travels through the orchard.",
+    "The Cold Dragon Oven": "Crumpet's little oven roars warmly back to life, filling the bakery with the scent of fresh bread. Unfortunately, the dough has noticed too.",
+    "The Runaway Dough": "Doughbert stops long enough to hear your plan. Crumpet rescues the yeast, and the once-rebellious loaf agrees to help prepare the giant's dinner.",
+    "The Hungry Hill": "Grumble considers your astonishing feast and accepts it with a pleased rumble. The bakery is safe, and the giant asks whether the position of official taster is available."
   };
   const sad: Record<string, string> = {
     "The Old Stone Bridge": "Boggle is unmoved. He charges you a toll in dignity instead. You squeeze past, one heart lighter.",
@@ -90,7 +99,18 @@ export function fallbackNarration(room: Room, success: boolean): string {
     "The Moon Station": "The drifting platform clips your boots. You make a messy landing while losing one precious heart.",
     "The Frightened Guard": "Spoon panics and flees. You slip into the tower through a broken side gate, bruised but alive.",
     "The Whispering Stair": "The gears splinter, costing you a heart. A broken cog still reveals that the bell keeps something asleep.",
-    "The Bell and the Keeper": "The bell refuses your plan and takes another memory. You stumble from the tower as Elowen holds the ward."
+    "The Bell and the Keeper": "The bell refuses your plan and takes another memory. You stumble from the tower as Elowen holds the ward.",
+    "The Drowsy Harbour": "The lantern sputters instead of shining. Pip is worried but points you toward the lighthouse stair. You'll have to find the lost morning without a guiding flame.",
+    "The Singing Spiral Stair": "Mallow shakes her fuzzy head. The wrong song echoes through the stairwell as you squeeze through an emergency hatch toward the lens.",
+    "The Sunrise Lens": "Solbit remains trapped. Brinewatch survives another dark hour, but the sea rises, and the villagers will have to try again tomorrow.",
+    "The Beekeeper's Workshop": "The copper bees refuse to cooperate. Tock sighs and gives you directions to the apple, where the orchard's clockwork trouble is getting worse.",
+    "The Upside-Down Apple": "The apple refuses your plan and turns another tick backward. Nutmeg reveals a narrow tunnel into the heartwood before winter can close it.",
+    "The Heartwood Clock": "Professor Caw squawks as the clock stalls again. Frost creeps across the brass petals; the orchard will need another improbable saviour.",
+    "The Cold Dragon Oven": "The oven coughs out a pathetic curl of smoke. Crumpet points at the runaway dough, hoping you can retrieve the bakery's last yeast before it escapes.",
+    "The Runaway Dough": "Doughbert bounces away with the last yeast. Crumpet goes pale beneath the flour, and you must face the hungry giant without a proper loaf.",
+    "The Hungry Hill": "Grumble's stomach roars louder than your plan can satisfy. The gentle giant backs away hungry, and the villagers begin counting their remaining biscuits."
   };
-  return (success ? happy[room.title] : sad[room.title]) ?? (success ? "Somehow, your audacity works. The path opens." : "Your attempt goes sideways. You stagger onward, minus one heart.");
+  const narration = (success ? happy[room.title] : sad[room.title]) ??
+    (success ? "Somehow, your audacity works. The path opens." : "Your attempt goes sideways. You stagger onward, minus one heart.");
+  return room.echo ? narration + " " + room.echo : narration;
 }
