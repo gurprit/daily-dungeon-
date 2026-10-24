@@ -59,7 +59,7 @@ function envMock() {
         const form = await new Response(request.multipart.body, {
           headers: { "content-type": request.multipart.contentType }
         }).formData();
-        assert.match(form.get("prompt"), /storybook/);
+        assert.match(form.get("prompt"), /8-bit NES/);
         assert.equal(form.get("width"), "768");
         assert.equal(form.get("height"), "512");
         return { image: Buffer.alloc(512, 8).toString("base64") };
