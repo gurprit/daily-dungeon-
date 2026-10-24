@@ -1261,3 +1261,38 @@ p { line-height: 1.7; }
 @media (prefers-reduced-motion: reduce) {
   .generated-fx * { animation: none !important; }
 }
+
+
+/* Fresh NES QA dungeon switcher: compact, mobile-friendly, not part of normal play. */
+.preview-ribbon .preview-fresh-nav {
+  display: flex;
+  flex: 0 0 100%;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 6px;
+}
+.preview-ribbon .preview-fresh-nav a {
+  flex: 1 1 175px;
+  margin: 0;
+  padding: 9px 10px;
+  color: #e9d6b4;
+  border: 1px solid #786b68;
+  border-radius: 5px;
+  background: #22222f;
+  text-decoration: none;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+.preview-ribbon .preview-fresh-nav a[aria-current="page"] {
+  color: #1e1a28;
+  background: #e4c187;
+  border-color: #e4c187;
+  font-weight: 800;
+}
+.preview-ribbon .preview-fresh-nav a:focus-visible {
+  outline: 3px solid #ffe0a8;
+  outline-offset: 2px;
+}
