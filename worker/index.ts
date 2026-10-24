@@ -6,6 +6,7 @@ import { judgeWithAI } from "./judge.ts";
 import { priorStoryContext } from "./continuity.ts";
 import { storyRoom, storyGuidance, storyEnding } from "../src/story.ts";
 import { artServiceStatus, handleArtRoute, makeArtTicket, type ArtEnv } from "./art.ts";
+import { handleSharedArtRoute } from "./shared-art.ts";
 
 type Env = ArtEnv & {
   AI_ENABLED?: string;
@@ -78,6 +79,8 @@ export default {
       });
     }
 
+    const sharedArt = await handleSharedArtRoute(request, env, context);
+    if (sharedArt) return sharedArt;
     const artResponse = await handleArtRoute(request, env, context);
     if (artResponse) return artResponse;
 
