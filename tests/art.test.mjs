@@ -68,8 +68,8 @@ function mockArt() {
         const fields = await new Response(input.multipart.body, {
           headers: { "content-type": input.multipart.contentType }
         }).formData();
-        assert.equal(fields.get("input_image_0"), null, "storybook mode is prompt-only");
-        assert.match(fields.get("prompt"), /storybook/);
+        assert.equal(fields.get("input_image_0"), null, "NES mode is prompt-only");
+        assert.match(fields.get("prompt"), /8-bit NES/);
         assert.match(fields.get("prompt"), /speech bubbles/);
         assert.equal(fields.get("width"), "768");
         assert.equal(fields.get("height"), "512");
@@ -110,7 +110,7 @@ test("trusted result ticket is signed; arbitrary and altered inputs are rejected
   assert.ok(ticket);
   const valid = await verifyArtTicket(mock.env, ticket);
   assert.equal(valid.roomIndex, 0);
-  assert.match(createPixelArtPrompt(valid), /illustrated fantasy|storybook/i);
+  assert.match(createPixelArtPrompt(valid), /8-bit NES/i);
   assert.equal(await verifyArtTicket(mock.env, ticket.slice(0, -5) + "hello"), null);
   const rejection = await handleArtRoute(makeRequest("unsigned-invented-ticket"), mock.env);
   assert.equal(rejection.status, 403);
