@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import worker from "../worker/index.ts";
 import { getDailyGame, getPreviewDailyGame } from "../src/game.ts";
 
-function makeEnv({ aiEnabled = true, budget = true, allowed = true, masterpiece = false } = {}) {
+function makeEnv({ aiEnabled = true, budget = true, allowed = true, masterpiece = false, epilogues = false } = {}) {
   let calls = 0;
   let reservations = 0;
   return {
@@ -20,7 +20,11 @@ function makeEnv({ aiEnabled = true, budget = true, allowed = true, masterpiece 
               description: "You danced an entire bridge toll out of existence."
             } } : {}),
             success: "Boggle studies your eccentric solution and stamps your imaginary permit. The bridge is yours.",
-            failure: "Boggle consults a regulation written upside down and rejects your offer. You sneak past, chastened."
+            failure: "Boggle consults a regulation written upside down and rejects your offer. You sneak past, chastened.",
+            ...(epilogues ? {
+              epilogueSuccess: "The museum has somehow survived your extraordinary encounter with a flying potato. The curator is still looking for a form that will permit your return. For the sake of his blood pressure, I recommend never telling him where you learned those dance steps. Personally, I thought the whole business was magnificent, though the insurance company disagrees.",
+              epilogueFailure: "The museum has officially requested that I remove you from its guest list. I consider this a glowing endorsement of your methods. The paintings are whispering about your reckless bravado, and the curator is trying to explain the situation to a lawyer who specialises in haunted furniture. I will give you points for flair, but absolutely none for common sense."
+            } : {})
           }) };
         }
       },
@@ -163,4 +167,35 @@ test("next-day preview keeps today's globally shared LLM budget", async () => {
   }), env.vars);
   assert.equal(response.status, 200);
   assert.deepEqual(days, [today.day]);
+});
+
+test("the final-room AI judgment returns its own success ending without a second model call", async () => {
+  const env = makeEnv({ masterpiece: true, epilogues: true });
+  const game = getDailyGame();
+  const result = await worker.fetch(new Request("https://dungeon.test/api/resolve", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      day: game.day, roomIndex: 2,
+      action: "I negotiate with the enchanted exhibit using a dance and an elaborate apology.",
+      inventory: [...game.dungeon.startingInventory],
+      priorTurns: [
+        { roomIndex: 0, action: "I sing a tune.", narration: "The gallery was charmed.", success: true },
+        { roomIndex: 1, action: "I dance.", narration: "The skeleton assembled itself.", success: true }
+      ]
+    })
+  }), env.vars);
+  assert.equal(result.status, 200);
+  const outcome = await result.json();
+  assert.equal(outcome.success, true, "5/5 creativity always beats the dice");
+  assert.match(outcome.epilogue, /museum has somehow survived/);
+  assert.deepEqual(env.count(), { calls: 1, reservations: 1 });
+});
+
+test("earlier rooms do not leak a final monologue into the middle of play", async () => {
+  const env = makeEnv({ masterpiece: true, epilogues: true });
+  const response = await worker.fetch(actionRequest(), env.vars);
+  const outcome = await response.json();
+  assert.equal(outcome.epilogue, undefined);
+  assert.deepEqual(env.count(), { calls: 1, reservations: 1 });
 });
