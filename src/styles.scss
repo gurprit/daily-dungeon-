@@ -253,65 +253,9 @@ p { line-height: 1.7; }
 .dm-quote p { color: #e2d7ce; font: italic 17px/1.6 Georgia, serif; margin-bottom: 0; }
 
 .action-panel { margin-top: 20px; background: #1b1b24; border: 1px solid #36323d; padding: 24px; border-radius: 8px; }
-.action-panel__heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.action-panel__heading { margin-bottom: 13px; }
 .action-panel__heading h3 { font: 600 18px/1.4 Georgia, serif; color: #f1e0c2; margin: 0; }
-.action-panel__heading span { font-size: 10px; font-weight: 800; letter-spacing: .1em; color: #cda76d; }
 .action-panel > p { font-size: 12px; color: #a6a0a4; margin: 6px 0 17px; }
-/* The first room teaches the free-form action format without a tutorial screen. */
-.action-help {
-  margin: 12px 0 16px;
-  padding: 12px 14px;
-  border: 1px solid #66583f;
-  border-radius: 5px;
-  background: #292631;
-}
-.action-help--intro { border-color: #8f7455; background: #292730; }
-.action-help p {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  margin: 0 0 10px;
-  font-size: 12px;
-  line-height: 1.65;
-  color: #e5d6be;
-}
-.action-help p svg { flex: none; color: #edc78a; margin-top: 1px; }
-.action-panel > .action-help__finish { margin: 9px 0 0; font-size: 11px; color: #edc78a; line-height: 1.55; }
-.action-help__label {
-  display: block;
-  color: #ba9d75;
-  font: 700 10px/1.45 'Courier New', monospace;
-  letter-spacing: .065em;
-  margin-bottom: 10px;
-}
-.action-help__chips { display: flex; gap: 8px; flex-wrap: wrap; }
-.action-help__chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: #383038;
-  color: #f2d5a0;
-  border: 1px solid #80654a;
-  padding: 9px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  min-height: 38px;
-}
-.action-help__chip:hover, .action-help__chip:focus-visible {
-  background: #564036;
-  border-color: #d9b578;
-  outline-offset: 3px;
-}
-.action-help__chip:disabled { opacity: .5; cursor: not-allowed; }
-.action-help--later { padding: 8px 12px; background: transparent; border-color: #45404a; }
-.action-help--later p { margin: 0 0 5px; color: #b9aca9; }
-.action-help--later details summary {
-  color: #d5b783; font-size: 12px; font-weight: 700; cursor: pointer;
-}
-.action-help--later details[open] .action-help__chips { margin-top: 12px; }
 .room-artwork__pixel-canvas {
   display: block;
   width: 100%;
@@ -319,11 +263,6 @@ p { line-height: 1.7; }
   object-fit: contain;
   image-rendering: pixelated;
 }
-@media (max-width: 540px) {
-  .action-help { padding: 12px; }
-  .action-help__chip { flex: 1 1 auto; padding: 8px 10px; font-size: 11px; }
-}
-
 .action-panel textarea { width: 100%; display: block; resize: vertical; min-height: 108px; background: #12131a; color: #f5eee5; border: 1px solid #4d454d; border-radius: 5px; padding: 15px; font-size: 14px; line-height: 1.7; }
 .action-panel textarea::placeholder { color: #7e7882; }
 .action-panel__footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; }
@@ -336,8 +275,75 @@ p { line-height: 1.7; }
 .last-turn p { color: #e7ded1; font: 15px/1.7 Georgia, serif; margin: 14px 0 10px; }
 .last-turn small { display: block; color: #a5a2a1; font-size: 10px; margin-top: 9px; }
 .last-turn__reward { color: #deb779; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; }
-.roll-badge { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 10px; color: #d3c9b5; font-weight: 500; letter-spacing: 0; }
-.roll-badge__divider { width: 1px; height: 13px; margin: 0 4px; background: #6a645e; }
+/* Compact, readable tabletop D20 breakdown. The die and modifiers come from
+   the actual rules engine, not a decorative random animation. */
+.roll-badge {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 5px;
+  background: #18231f;
+  border: 1px solid #4d6454;
+  color: #e4dacf;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.roll-badge--loss { background: #342729; border-color: #785552; }
+.roll-badge__die {
+  width: 62px;
+  height: 69px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.05;
+  color: #fff0cb;
+  background: #4a413a;
+  clip-path: polygon(50% 0, 90% 15%, 100% 67%, 50% 100%, 0 67%, 10% 15%);
+  filter: drop-shadow(0 2px 1px #0003);
+}
+.roll-badge--loss .roll-badge__die { background: #6b4544; }
+.roll-badge__die span { font: 700 10px/1.2 'Courier New', monospace; letter-spacing: .07em; }
+.roll-badge__die strong { font: 700 28px/1.15 Georgia, serif; }
+.roll-badge__details { min-width: 0; flex: 1; }
+.roll-badge__label {
+  color: #ddc399;
+  font: 700 10px/1.3 'Courier New', monospace;
+  letter-spacing: .08em;
+}
+.roll-badge__formula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 8px;
+  margin: 5px 0 7px;
+  color: #f3e6d4;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.roll-badge__formula strong { color: #ffe3a3; font-weight: 800; }
+.roll-badge__verdict {
+  display: flex;
+  align-items: baseline;
+  gap: 5px 14px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #c3b8b0;
+}
+.roll-badge__verdict strong { color: #f9e8c5; }
+.roll-badge__verdict b { color: #a9dab7; letter-spacing: .05em; }
+.roll-badge--loss .roll-badge__verdict b { color: #efa5a3; }
+@media (max-width: 540px) {
+  .roll-badge { gap: 10px; padding: 10px; }
+  .roll-badge__die { width: 55px; height: 62px; }
+  .roll-badge__die strong { font-size: 25px; }
+  .roll-badge__formula { font-size: 12px; gap: 3px 6px; }
+}
 
 .sidebar { position: sticky; top: 24px; background: #1a1b23; border: 1px solid #34333b; border-radius: 8px; padding: 0 22px; }
 .sidebar__section { padding: 24px 0; border-bottom: 1px solid #36333a; }
