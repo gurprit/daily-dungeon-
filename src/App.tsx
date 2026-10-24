@@ -461,7 +461,7 @@ export default function App() {
               <button className="button button--primary button--large" onClick={start}>
                 Enter the dungeon <ArrowRight size={19}/>
               </button>
-              <p className="intro__small">No account. No downloads. Just your imagination. Pixel art is free to enjoy.</p>
+              <p className="intro__small">No account. No downloads. Just your imagination. Your three starting items are single-use.</p>
               {!previewTomorrow && canPreviewTomorrow && <a className="preview-link" href="?preview=tomorrow">⏭ Pretend it’s tomorrow · Playtest next dungeon</a>}
             </div>
           </section>
@@ -496,6 +496,7 @@ export default function App() {
                   <p>{last.outcome.narration}</p>
                   {last.outcome.masterstroke && <span className="last-turn__reward"><Crown size={14}/> MASTERSTROKE! Your idea beats the dice.</span>}
                   {last.outcome.creativity > 0 && <span className="last-turn__reward"><Sparkles size={14}/> Creativity: {last.outcome.creativity}/5 (+{last.outcome.creativity})</span>}
+                  {(last.outcome.usedItems?.length ?? 0) > 0 && <span className="last-turn__spent"><Shield size={14}/> Used up: {last.outcome.usedItems.join(", ")}</span>}
                   {last.outcome.reward && <span className="last-turn__reward"><Sparkles size={14}/> Acquired: {last.outcome.reward}</span>}
                   <small>{last.outcome.mode === "ai" ? "Narrated by the AI Dungeon Master" : "Scripted narrator (AI not enabled)"}</small>
                 </div>
@@ -598,6 +599,7 @@ export default function App() {
                     <summary><span>{entry.outcome.success ? "✦" : "✕"} {entry.roomTitle}</span><span>{entry.outcome.success ? "Passed" : "Lost a heart"}</span></summary>
                     <p><strong>You tried:</strong> {entry.action}</p>
                     <p>{entry.outcome.narration}</p>
+                    {(entry.outcome.usedItems?.length ?? 0) > 0 && <p><strong>Used up:</strong> {entry.outcome.usedItems?.join(", ")}</p>}
                     {entry.outcome.achievement && <p className="journal-entry__award"><Crown size={14}/> {entry.outcome.achievement.title}</p>}
                   </details>
                 ))}
@@ -686,6 +688,7 @@ export default function App() {
                         <span className="ending__entry-label">YOU TRIED</span>
                         <p><em>"{entry.action}"</em></p>
                       </div>
+                      {(entry.outcome.usedItems?.length ?? 0) > 0 && <p className="ending__entry-spent">Used up: {entry.outcome.usedItems?.join(", ")}</p>}
                       <RoomArtwork turn={entry} compact/>
                       <div className="ending__entry-response">
                         <span className="ending__entry-label">THE DUNGEON MASTER</span>
