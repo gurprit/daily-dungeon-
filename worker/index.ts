@@ -4,12 +4,14 @@ import { resolveAction } from "../src/engine.ts";
 import { achievementFromJudgment } from "../src/achievements.ts";
 import { judgeWithAI } from "./judge.ts";
 import { priorStoryContext } from "./continuity.ts";
+import { storyRoom, storyGuidance, storyEnding } from "../src/story.ts";
 import { artServiceStatus, handleArtRoute, makeArtTicket, type ArtEnv } from "./art.ts";
 
 type Env = ArtEnv & {
   AI_ENABLED?: string;
   AI_DAILY_LIMIT?: string;
   PREVIEW_TOMORROW_ENABLED?: string;
+  PREVIEW_STORY_ENABLED?: string;
   DAILY_BUDGET_DB?: {
     prepare: (sql: string) => {
       bind: (...values: unknown[]) => {
@@ -28,6 +30,7 @@ type ActionRequest = {
   action?: unknown;
   inventory?: unknown;
   previewTomorrow?: unknown;
+  previewHollowmere?: unknown;
   priorTurns?: unknown;
 };
 
@@ -70,6 +73,7 @@ export default {
         narrator: aiRequested ? (aiConfigured ? "ai-ready" : "setup-required") : "scripted",
         day: getDailyGame().day,
         previewTomorrowEnabled: env.PREVIEW_TOMORROW_ENABLED === "true",
+        previewStoryEnabled: env.PREVIEW_STORY_ENABLED === "true",
         art: artServiceStatus(env)
       });
     }
@@ -100,6 +104,9 @@ export default {
       } catch { return json({ error: "Invalid JSON." }, 400); }
 
       const isPreview = body.previewTomorrow === true;
+      const isStoryPreview = body.previewHollowmere === true;
+      if (isPreview && isStoryPreview) return json({ error: "Choose one preview mode." }, 400);
+      if (body.previewHollowmere !== undefined && typeof body.previewHollowmere !== "boolean") return json({ error: "Invalid story preview." }, 400);
       // A playtest preview never modifies the actual daily dungeon, clock or quotas.
       if (body.previewTomorrow !== undefined && typeof body.previewTomorrow !== "boolean") {
         return json({ error: "Invalid preview selection." }, 400);
@@ -107,7 +114,8 @@ export default {
       if (isPreview && env.PREVIEW_TOMORROW_ENABLED !== "true") {
         return json({ error: "Tomorrow's playtest is not enabled." }, 403);
       }
-      const daily = isPreview ? getPreviewDailyGame() : getDailyGame();
+      if (isStoryPreview && env.PREVIEW_STORY_ENABLED !== "true") return json({ error: "Story playtest is disabled." }, 403);
+      const daily = isStoryPreview ? getDailyGame(new Date("2026-10-26T12:00:00Z")) : isPreview ? getPreviewDailyGame() : getDailyGame();
       if (body.day !== daily.day) return json({ error: "A new dungeon has begun. Refresh to continue." }, 409);
       if (!Number.isInteger(body.roomIndex) || Number(body.roomIndex) < 0 || Number(body.roomIndex) > 2) {
         return json({ error: "Invalid room." }, 400);
@@ -116,13 +124,13 @@ export default {
         return json({ error: "Use between 4 and 280 characters." }, 400);
       }
 
-      const room = daily.dungeon.rooms[Number(body.roomIndex)];
       const inventory = normaliseInventory(body.inventory, daily);
       const unavailable = unavailableItems(body.action, inventory, itemCatalog(daily.dungeon));
       if (unavailable.length) {
         return json({ error: unavailable.join(", ") + " is no longer in your inventory. Try another idea!" }, 409);
       }
       const earlierMoments = priorStoryContext(body.priorTurns, daily.dungeon.rooms, Number(body.roomIndex));
+      const room = storyRoom(daily.dungeon, Number(body.roomIndex), earlierMoments);
       const die = crypto.getRandomValues(new Uint32Array(1))[0] % 20 + 1;
       let outcome = resolveAction(room, body.action, inventory, die);
 
@@ -137,7 +145,7 @@ export default {
           return json({ error: "The AI budget gate is unavailable. No model call was made." }, 503);
         }
         const isFinalRoom = Number(body.roomIndex) === daily.dungeon.rooms.length - 1;
-        const judgment = await judgeWithAI(env.AI, room.scene, room.character, room.challenge, body.action, earlierMoments, inventory, isFinalRoom);
+        const judgment = await judgeWithAI(env.AI, room.scene, room.character, room.challenge, body.action, earlierMoments, inventory, isFinalRoom, storyGuidance(daily.dungeon.slug, Number(body.roomIndex)));
         if (judgment) {
           outcome = resolveAction(room, body.action, inventory, die, judgment.creativity);
           outcome.narration = outcome.success ? judgment.success : judgment.failure;
@@ -147,7 +155,15 @@ export default {
             const closing = outcome.success ? judgment.epilogueSuccess : judgment.epilogueFailure;
             if (closing) outcome.epilogue = closing;
           }
+          if (isFinalRoom && daily.dungeon.slug === "bell-of-hollowmere") {
+            const conclusion = storyEnding(daily.dungeon.slug, body.action, outcome.success, Math.max(0, 3 - earlierMoments.filter(beat => !beat.success).length - outcome.heartsLost), earlierMoments, judgment.finaleChoice);
+            if (conclusion) { outcome.storyEnding = conclusion; outcome.epilogue = conclusion.epilogue; }
+          }
         }
+      }
+      if (Number(body.roomIndex) === 2 && daily.dungeon.slug === "bell-of-hollowmere" && !outcome.storyEnding) {
+        const conclusion = storyEnding(daily.dungeon.slug, body.action, outcome.success, Math.max(0, 3 - earlierMoments.filter(beat => !beat.success).length - outcome.heartsLost), earlierMoments);
+        if (conclusion) { outcome.storyEnding = conclusion; outcome.epilogue = conclusion.epilogue; }
       }
       const artTicket = await makeArtTicket(env, Number(body.roomIndex), body.action, outcome.narration, outcome.success, daily.day);
       if (artTicket) outcome.artTicket = artTicket;
