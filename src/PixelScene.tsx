@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 /**
  * Always-on, hand-authored 16-bit scenes: zero inference charges, no remote image
- * dependency. Custom images generated from actions arrive separately in the journal.
+ * dependency. Action illustrations are assembled from these SVG components.
  */
 type PixelSceneProps = {
   dungeonSlug: string;

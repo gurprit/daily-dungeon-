@@ -1,4 +1,4 @@
-/** A lightweight ink-and-parchment sketch shown until the AI clue image arrives. */
+/** Hand-drawn, instant SVG clue illustration. Rendered locally without model inference. */
 export default function ClueSketch({ variant }: { variant: string }) {
   const note = variant === "note";
   const goblin = variant === "spoon";
