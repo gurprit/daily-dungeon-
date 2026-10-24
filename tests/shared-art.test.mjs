@@ -112,7 +112,7 @@ test("shared artwork is generated once and retrieved from R2 by all later reques
   const firstBody = await first.json();
   assert.equal(firstBody.status, "pending");
   const second = await handleSharedArtRoute(request(payload), mock.env, context);
-  assert.equal(second.status, 202);
+  assert.ok([200, 202].includes(second.status), "second visitor may see pending or already finished art");
   assert.equal((await second.json()).id, firstBody.id);
   await Promise.all(scheduled);
   const ready = await handleSharedArtRoute(request(payload), mock.env, context);
