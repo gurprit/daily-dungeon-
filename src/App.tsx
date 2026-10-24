@@ -3,7 +3,8 @@ import {
   ArrowRight, BookOpen, Check, Crown, Dice5, Download, Flame,
   Heart, ScrollText, Share2, Shield, Skull, Sparkles, Swords, ChevronDown
 } from "lucide-react";
-import { getDailyGame, getPreviewDailyGame, STARTING_INVENTORY } from "./game";
+import { getDailyGame, getPreviewDailyGame } from "./game";
+import { startingItems, inventoryAfterTurn } from "./inventory";
 import { resolveAction, type ActionOutcome } from "./engine";
 import { fallbackAchievement, isAchievement, type Achievement } from "./achievements";
 import { createCertificateImage } from "./certificate";
@@ -31,13 +32,14 @@ type Run = {
   inventory: string[];
   history: Turn[];
   finished: boolean;
+  edition?: number;
 };
 
 function freshRun(day: string): Run {
   return {
     day, started: false, roomIndex: 0,
-    hearts: 3, inventory: [...STARTING_INVENTORY],
-    history: [], finished: false
+    hearts: 3, inventory: startingItems(gameForPage().dungeon),
+    history: [], finished: false, edition: gameForPage().dungeon.edition ?? 1
   };
 }
 
@@ -48,6 +50,7 @@ function loadRun(day: string): Run {
     const parsed = JSON.parse(saved) as Run;
     if (
       parsed.day === day &&
+      (parsed.edition ?? 1) === (gameForPage().dungeon.edition ?? 1) &&
       typeof parsed.started === "boolean" &&
       typeof parsed.hearts === "number" &&
       typeof parsed.roomIndex === "number" &&
@@ -153,6 +156,7 @@ function Inventory({ items }: { items: string[] }) {
   return (
     <div className="inventory">
       <div className="eyebrow inventory__title"><Shield size={14} /> YOUR INVENTORY</div>
+      <p className="inventory__hint">One use each. Used items disappear, even if your plan fails.</p>
       <div className="inventory__items">
         {items.length ? items.map((item, index) => (
           <span className="inventory__item" key={item + index}>{item}</span>
@@ -309,7 +313,7 @@ export default function App() {
       setRun(current => ({
         ...current,
         hearts: remaining,
-        inventory: outcome.reward ? [...current.inventory, outcome.reward] : current.inventory,
+        inventory: inventoryAfterTurn(current.inventory, outcome.usedItems ?? [], outcome.reward),
         history: [...current.history, { roomTitle: room.title, action: attempt, outcome, ...(outcome.artTicket ? { art: { status: "pending" as const } } : {}) }],
         roomIndex: nextIndex,
         finished: nextIndex >= daily.dungeon.rooms.length || remaining === 0
