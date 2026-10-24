@@ -84,6 +84,14 @@ Each AI request prompts Qwen3 for two possible short outcomes, a creativity scor
 
 **Action-specific images are different:** If you enable the optional Cloudflare art feature below, the game also illustrates each resolved player action and places each portrait directly between its action and narration in the final Hero’s Journal. This requires the R2 bucket, the D1 migration, the signing secret and ART_ENABLED=true. If disabled, the built-in homepage and room scenes still appear.
 
+## Fresh dungeons and single-use inventory (24–25 October 2026)
+
+For 24 October **The Museum After Midnight** replaces the Wizard's Complaint, with **Pocket mirror**, **Paper crown**, and **Tin whistle**. The 25 October next-day preview now opens **The Skywhale Express**, with **Feather umbrella**, **Bottle of bubbles**, and **Copper kazoo**. Both have three completely new encounters and bespoke zero-inference pixel art. The old dungeons are retained in the historic rotation but are no longer today's/tomorrow's adventures.
+
+New dungeons use `edition: 2`: existing browser saves for either replaced daily adventure are automatically reset on the next page load, without deleting other days' progress. Preview saves remain separate. This is a story-data reset, **not** a reset of the shared Cloudflare daily AI or image quotas.
+
+Inventory rules: all carried items are single-use. Referencing one during an action consumes it on both success and failure; multiple named items are all spent. The rules engine returns `usedItems`, the browser removes those items from persisted inventory, and the UI labels them **Used up**. The narrator receives current inventory to avoid reviving consumed props. Successful challenges add their awarded item, which can also be spent later. Familiar short names like "mirror" for "Pocket mirror" also count. If an action explicitly tries to use a known missing item, the API rejects it before reserving AI quota. These rules are deterministic; they don't add model calls.
+
 ## Compact end-of-game chronicle and mobile navigation
 
 The ending uses **one** certificate-and-journal keepsake. Honours and a small three-image illustrated gallery are followed immediately by **Share your legend** and **Save certificate**. The full illustrated room-by-room journal is preserved behind an accessible **Read your hero's journal** disclosure (closed by default). No older progress, certificates or generated images are discarded, and viewing these cached illustrations does not trigger another AI call.
