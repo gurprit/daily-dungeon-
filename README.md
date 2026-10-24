@@ -204,3 +204,25 @@ The final illustrated journal retains the exact order of play. Existing R2 pictu
 6. Add weekly story arcs and persistent character flavour without penalising newcomers.
 
 The game uses original fantasy settings, not proprietary Dungeons & Dragons characters or branding.
+
+
+## v0.2 story update: The Bell of Hollowmere
+
+The UTC daily adventure for **26 October 2026** is an authored, connected
+three-room mystery. A clear mission, a goblin NPC with motives, two discoverable
+clues, and a final moral dilemma replace unrelated encounter prompts.
+
+- Decisions at the gate alter the staircase introduction and later reactions.
+- Success and failure both reveal enough clues to continue; deciphering the
+  full inscription can change the third-way outcome.
+- Three distinct final approaches create canonical endings independent of AI
+  prose. The AI still interprets free-form plans, creative solutions, and dice.
+- The visuals are hand-authored SVG tilemaps (with CSS/SCSS effects), rather than
+  requiring a new generated image for each room.
+- The deployed **ART_ENABLED** default is now false, avoiding all future image
+  generation inference until the feature is deliberately switched on again.
+  This does NOT disable text AI or remove previously cached R2 portraits.
+- To test immediately, visit /?preview=hollowmere while
+  PREVIEW_STORY_ENABLED=true. The preview uses a separate local save and still
+  counts against the actual current UTC day's text-AI quota. Disable the preview
+  flag before public launch.
