@@ -10,6 +10,9 @@
     "run_worker_first": ["/api/*"]
   },
   "ai": { "binding": "AI" },
+  "r2_buckets": [
+    { "binding": "ART_BUCKET", "bucket_name": "daily-dungeon-art" }
+  ],
   "ratelimits": [
     {
       "name": "ACTION_LIMITER",
@@ -17,7 +20,19 @@
       "simple": { "limit": 12, "period": 60 }
     }
   ],
+  "d1_databases": [
+    {
+      "binding": "DAILY_BUDGET_DB",
+      "database_name": "daily-dungeon-playtest",
+      "database_id": "85cc344e-65d4-428e-bf08-17b466e44e66",
+      "migrations_dir": "migrations"
+    }
+  ],
   "vars": {
-    "AI_ENABLED": "false"
+    "AI_ENABLED": "true",
+    "AI_DAILY_LIMIT": "36",
+    "ART_ENABLED": "true",
+    "ART_DAILY_LIMIT": "36",
+    "PREVIEW_TOMORROW_ENABLED": "true"
   }
 }

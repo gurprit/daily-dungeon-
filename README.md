@@ -4,20 +4,26 @@
 
 A mobile-first, bite-sized fantasy game where the whole world receives the same dungeon each UTC day. Write your own actions, roll the dice and improvise your way through a theatrical Dungeon Master with a questionable sense of humour.
 
-> **Current status:** playable foundation/playtest on the feat/foundation branch, not a production launch.
+> **Current status:** AI-enabled prototype on `feat/ai-dungeon-master`, not a full public launch.
 
 ## What's playable
 
-- Three original three-room dungeons, rotating by UTC date from 23 October 2026.
+- Three original three-room dungeons, rotating by UTC date from 23 October 2026 (sample content repeats after three days).
 - Free-text actions. Use your inventory, bargain, make up an outrageous plan.
 - Three hearts, D20 rolls, room difficulties and inventory rewards.
-- An optional **Cloudflare Workers AI** judge that awards 0–3 creativity points and improvises alternate outcomes.
+- An optional **Cloudflare Workers AI** judge that awards 0–5 creativity points and improvises alternate outcomes.
 - The rules engine, not the LLM, owns the dice, hearts, difficulty, items and win/loss.
 - Scripted narration fallback if AI is switched off or returns malformed output.
-- A persistent adventure journal and spoiler-free result sharing.
+- A persistent adventure journal, **personalised achievements for ingenious successful solutions**, and spoiler-free result sharing.
+- Optional per-room 16-bit artwork woven directly into each illustrated end-of-run journal entry: hero action → portrait → DM outcome → achievement.
+- Auto-scroll to the top after each resolved turn.
+- A decorative end-of-dungeon certificate showing earned honours. Save or share a **1080 × 1350 PNG** generated locally in the browser (no extra API cost).
+- Existing saved adventures can retroactively receive a scripted award based on what the hero did (e.g. Lord of the Dance).
+- **Always-on handcrafted 16-bit homepage artwork:** themed preview scene for each of the three daily dungeons, with pixel hero/goblin/wizard/onion sprites and a retro HUD. No AI requests, secrets, R2 or image budget needed for these visuals.
+- Retro pixel-art scene previews in encounters, even before an action is submitted.
 - Responsive interface, local per-day progress, engine tests and GitHub Actions CI.
 
-**Not built yet:** player accounts, D1 persistence, global leaderboards, verified one-attempt-per-day enforcement, streaks, generated puzzles or a production abuse-prevention system. The three sample dungeons repeat while we test the loop.
+**Not built yet:** player accounts, D1-backed player-run persistence, global leaderboards, verified one-attempt-per-day enforcement, streaks, generated puzzles or full production abuse protection. Only the global AI-call counter is stored in D1. The three sample dungeons repeat while we test the loop.
 
 ## Getting started
 
@@ -26,7 +32,7 @@ Requirements: Node.js 22+ and npm.
 ~~~bash
 git clone https://github.com/gurprit/daily-dungeon-.git
 cd daily-dungeon-
-git checkout feat/foundation
+git checkout feat/ai-dungeon-master
 npm install
 npm run dev
 ~~~
@@ -42,20 +48,113 @@ npm run dev:worker
 
 Cloudflare Workers local emulation may not work on macOS 12.6: you can still use plain Vite mode above, or use a supported operating system for Wrangler.
 
-## Enable the real AI Dungeon Master
+## Enable the real AI Dungeon Master (code-free play)
 
-Cloudflare Workers AI uses the model @cf/qwen/qwen3-30b-a3b-fp8. Its binding is already declared in wrangler.jsonc.
+**The Cloudflare D1 database is already bound in `wrangler.jsonc`, and AI_ENABLED is `"true"`.** Players can submit actions immediately without a password. The Worker will only make AI calls when its D1 budget database is configured. Daily limit: **36 AI calls across all players worldwide** (roughly 12 three-room adventures).
 
-The AI_ENABLED variable defaults to "false" **to prevent accidental inference charges**. Once your Cloudflare account, AI allowance, and usage safeguards are ready:
+### One-time setup
 
-1. Change AI_ENABLED to "true" in the Wrangler configuration.
-2. Deploy or run the Worker with npm run dev:worker.
-3. The /api/resolve endpoint will ask the model to score each action's creativity (0–3) and produce two possible narrations.
-4. The server adds the bounded creativity bonus to the dice roll and selects the appropriate narration. If AI fails, it falls back to scripted text.
+On the `feat/ai-dungeon-master` branch:
 
-The Workers API includes an approximate Cloudflare rate limiter (12 actions per minute per IP/location). **This is not a strict global budget limit or anti-cheat protection.** Do not launch a publicly advertised AI version until a server-side daily quota, abuse controls and cost alert or spending limit have been added.
+~~~bash
+git pull origin feat/ai-dungeon-master
+npm test && npm run build
+npx wrangler login
+npx wrangler d1 migrations apply daily-dungeon-playtest --remote
+npm run deploy
+~~~
 
-No secret model key is embedded in the browser.
+1. **Migration:** Confirm the migration targets the database named `daily-dungeon-playtest`. It runs the SQL in `migrations/0001_ai_budget.sql` and creates the daily budget counter. If you already executed the SQL in Cloudflare's D1 Console, it's safe to apply the idempotent migration as well.
+2. **Deploy:** `npm run deploy` builds and deploys the site and API. It prints the Worker's public URL. Without a working D1 quota database, the AI endpoint fails closed and does not call a model.
+3. **Play:** Visit the Worker URL, start a dungeon and submit an action. **There is no player passcode.** The `/api/health` endpoint should report `"narrator":"ai-ready"` when the AI and D1 bindings are configured.
+
+### Safety, costs, and test boundaries
+
+The Worker allows code-free play and applies an approximate per-IP rate limit. It also **reserves a slot in an atomic D1 daily counter before calling Workers AI**. The cap is 36 inference attempts per UTC day, configurable via `AI_DAILY_LIMIT` and clamped to 1–100 by the Worker. Exhausted or unavailable budget fails closed. Repeated attempts or malformed AI responses can consume slots.
+
+This is a budget-limited prototype, not a production-ready public game: anyone with the URL can use the limited shared AI allowance, and browser-side game state can be manipulated, so these runs cannot support a trusted leaderboard. Workers, D1, and AI usage may have separate account-level charges or allowances. Check account limits before enabling traffic.
+
+Each AI request prompts Qwen3 for two possible short outcomes, a creativity score of 0–5, and an **optional achievement title + description** when the action earns 4–5 points. All three pieces come back in the *same inference call*; a rare **5/5 Masterstroke** overrides a bad dice roll. The rules engine, never the AI, decides hearts, inventory, rewards, and progression.
+
+`npm run dev` is **scripted-only** and uses a local fallback. Remote Workers AI can incur usage even when testing from Wrangler.
+
+## How the artwork works
+
+**Daily/homepage art is built in and always free:** Open or restart a dungeon to see the corresponding pixel-art hero scene, including the Goblin's Toll bridge, the Wizard's Complaint tavern and the Royal Pantry kitchen. The room encounter screen also has pixel art before you type anything. These illustrations are ordinary bundled SVG/React UI, not AI images.
+
+**Action-specific images are different:** If you enable the optional Cloudflare art feature below, the game also illustrates each resolved player action and places each portrait directly between its action and narration in the final Hero’s Journal. This requires the R2 bucket, the D1 migration, the signing secret and ART_ENABLED=true. If disabled, the built-in homepage and room scenes still appear.
+
+## Fresh dungeons and single-use inventory (24–25 October 2026)
+
+For 24 October **The Museum After Midnight** replaces the Wizard's Complaint, with **Pocket mirror**, **Paper crown**, and **Tin whistle**. The 25 October next-day preview now opens **The Skywhale Express**, with **Feather umbrella**, **Bottle of bubbles**, and **Copper kazoo**. Both have three completely new encounters and bespoke zero-inference pixel art. The old dungeons are retained in the historic rotation but are no longer today's/tomorrow's adventures.
+
+New dungeons use `edition: 2`: existing browser saves for either replaced daily adventure are automatically reset on the next page load, without deleting other days' progress. Preview saves remain separate. This is a story-data reset, **not** a reset of the shared Cloudflare daily AI or image quotas.
+
+Inventory rules: all carried items are single-use. Referencing one during an action consumes it on both success and failure; multiple named items are all spent. The rules engine returns `usedItems`, the browser removes those items from persisted inventory, and the UI labels them **Used up**. The narrator receives current inventory to avoid reviving consumed props. Successful challenges add their awarded item, which can also be spent later. Familiar short names like "mirror" for "Pocket mirror" also count. If an action explicitly tries to use a known missing item, the API rejects it before reserving AI quota. These rules are deterministic; they don't add model calls.
+
+## Compact end-of-game chronicle and mobile navigation
+
+The ending uses **one** certificate-and-story keepsake. The standalone **Your Adventure in Pixels** gallery has been removed to avoid duplicating images; AI artwork appears only in the chronological illustrated **Hero's Journey**, which is always visible (no expand/collapse control). Sharing and certificate download remain above the journey. After the last room, an **untitled Dungeon Master monologue** closes the story with theatrical, lightly mocking commentary, a callback to earlier choices, and an invitation to return tomorrow. On the third room, the **existing** Qwen judgment request produces both a success and failure ending; only the outcome chosen by the actual D20 rules is returned. It uses one inference call (with a modestly larger final-room token budget, so final-room usage may be slightly higher). Existing saved games, early defeats, or missing/malformed AI epilogues use a cheeky, dungeon-specific written fallback with no model call. Failed artwork now occupies only a small notice instead of a huge empty portrait. No saved progress, certificates, or previous artwork is discarded.
+
+Entering the dungeon and completing any room dismisses the mobile action textbox and scrolls to the top so the player sees the next scene/result. Shared results include the new public URL supplied by the developer: `https://dailydungeon.titkok.co/`. Confirm this custom domain remains current before broader promotion.
+
+## Simple action input and D20 results
+
+The action panel deliberately contains just **What do you do, adventurer?**, a free-text field that says **Tell the Dungeon Master what you would like to do…**, and **Roll the dice**. Tutorial paragraphs, inspiration chips, and extra labels were removed after mobile playtesting, to keep each three-room adventure quick and uncluttered.
+
+After the action resolves, a genuine **D20** result appears above the narrator's reply. It shows the actual 1–20 die number, +0–5 creativity, +2 when an inventory item was used, their sum, and the room's DC (difficulty class). The rules engine still determines success; a creativity 5/5 **masterstroke** can succeed even below the DC, and that special rule is labelled as an automatic success. There is no extra AI usage or second random roll.
+
+## Pixel-art style
+
+The art model now receives one tiny PNG style reference based on the built-in handcrafted pixel scene as `input_image_0`, plus a stricter 16-bit art-direction prompt. Cloudflare FLUX.2 Klein 4B supports input image references (under 512×512). The already-generated room image is also displayed on a coarse browser canvas with posterised colour and nearest-neighbour enlargement. **That browser processing incurs no model calls**. Reference inputs may add inference usage; the global image-call limit remains 36/day and all output images are still cached in R2. Earlier finished adventures and cached portraits are not retroactively regenerated.
+
+Source: https://developers.cloudflare.com/changelog/post/2026-01-15-flux-2-klein-4b-workers-ai/
+
+## QA shortcut: pretend it's tomorrow
+
+While testing, set `PREVIEW_TOMORROW_ENABLED` to `"true"` in `wrangler.jsonc` (the feature branch has it enabled temporarily). Deploy the Worker, then choose **Test tomorrow's dungeon** on the homepage or end-of-run screen, or visit `/?preview=tomorrow`.
+
+- Tomorrow's UTC date is used to select the next three-room storyline (for example 23 October 2026 previews the Wizard's Complaint on 24 October 2026).
+- The preview saves to its own browser key and doesn't overwrite today's actual run. Use **Return to today** to switch back.
+- API resolution verifies the preview flag and the submitted future date. AI and image calls still count against **today's real worldwide daily quotas**. Image tickets use the preview's dungeon date to illustrate the correct room.
+- Never change your computer clock or edit the real D1 date. When public daily challenges are ready, switch `PREVIEW_TOMORROW_ENABLED` to `"false"` and deploy. A disabled backend rejects preview submissions.
+
+## Optional: live 16-bit pixel-art chronicles
+
+After every room, the game automatically scrolls to the top, shows the DM's verdict immediately, and **starts a non-blocking personalised retro pixel-art job** based on that room, your action and the result. The final Hero’s Journal embeds the portrait after each player action and before the Dungeon Master’s response, with achievements below. There is no separate image gallery.
+
+Images are generated once per server-signed receipt and cached in R2. Reloading or continuing the adventure reuses the existing job. An image failure never affects the dice, health, inventory or story.
+
+**Art is enabled for the active playtest**, with a separate global quota of **36 images per UTC day**. Before deploying, confirm the R2 bucket, D1 migrations, and signing secret are configured. To avoid image charges, set `ART_ENABLED` to `"false"` in `wrangler.jsonc` and redeploy. This does not change the existing text AI limit. A 512 × 512 Flux 2 Klein 4B image is listed at approximately $0.000287 before the shared Cloudflare free Workers AI allocation. Actual billing depends on your total usage: https://developers.cloudflare.com/workers-ai/platform/pricing/
+
+### One-time setup
+
+From the feat/ai-dungeon-master branch:
+
+~~~bash
+git pull origin feat/ai-dungeon-master
+npm install
+npm test && npm run build
+npx wrangler r2 bucket create daily-dungeon-art
+npx wrangler d1 migrations apply daily-dungeon-playtest --remote
+npx wrangler secret put ART_SIGNING_KEY
+~~~
+
+When prompted for ART_SIGNING_KEY, provide a newly generated long random secret (at least 32 characters). Never commit it or paste it into chat. The R2 bucket must exist before any deployment using its binding, even when art is disabled.
+
+Ensure ART_ENABLED is "true" in wrangler.jsonc and deploy:
+
+~~~bash
+npm run deploy
+~~~
+
+Requirements: Cloudflare AI binding, existing D1 database daily-dungeon-playtest, R2 bucket daily-dungeon-art, and ART_SIGNING_KEY. If a requirement is missing, regular gameplay still works but artwork cannot start. To stop future generations, switch ART_ENABLED to "false" and redeploy.
+
+Images use model @cf/black-forest-labs/flux-2-klein-4b at 512 × 512. They are returned in Base64, stored in R2, and served through the Worker. The browser gets a short-lived HMAC-signed art ticket only after a legitimate game resolution, not arbitrary prompt-submission access. The generation endpoint is POST /api/generate-room-art, with status at GET /api/art-status/{id} and images at GET /api/art/{id}.
+
+**Diagnosing missing images:** Open `/api/health` on the deployed Worker and inspect `art.status`. A value of `ready` means the art flag, R2 binding, D1 binding, AI binding and a sufficiently long signing secret are present. `disabled` means the deployed `ART_ENABLED` flag is off, and `setup-required` includes the missing binding names (never secret contents). In `?preview=tomorrow`, a status is also shown directly in the test banner. If the browser produces no art ticket, there will be no portrait in the Hero's Journey, even when AI narration works.
+
+**Playtest limitations:** Runs are still saved locally, not authenticated or protected from replay. New signed tickets from repeated replays can consume the finite global image quota. Background image tasks may remain pending if interrupted. Before public scaling, add verified player sessions, stale-job recovery, and stronger moderation.
 
 ## Commands
 
@@ -85,17 +184,23 @@ wrangler.jsonc     # Worker, assets, rate limiting, AI binding
 
 ## How decisions work
 
-Each room has a target difficulty. The system rolls a D20 and awards a small transparent modifier for using an existing item and for providing a detailed action. When Workers AI is enabled, it may award an extra **0–3 creativity points** based on inventiveness and relevance. A successful roll awards the room's item, otherwise one heart is lost. The story always advances, so each daily game stays short. Running out of hearts ends the adventure.
+Each room has a target difficulty. The system rolls a D20 and awards a small modifier for using an existing inventory item. When Workers AI is enabled, it may award an extra **0–5 creativity points** based on inventiveness and relevance. A successful roll awards the room's item, otherwise one heart is lost. The story always advances, so each daily game stays short. Running out of hearts ends the adventure.
 
 Player-submitted words are treated as story input, never as instructions to change the game's rules.
+
+## Continuity between rooms
+
+Each dungeon now contains a short hand-written bridge into rooms two and three, so its three encounters feel like one journey. Within the **same** judging request (no extra AI call), the Dungeon Master receives up to two bounded, validated earlier actions and outcomes, allowing occasional brief callbacks to the hero’s exploits. Previous results never change difficulty, hearts, rewards or whether the next puzzle can be solved. The player can still freely improvise each room as a standalone challenge.
+
+The final illustrated journal retains the exact order of play. Existing R2 pictures are reused, so moving them into the journal never regenerates or bills for new art.
 
 ## Near-term roadmap
 
 1. Verify build and gameplay on the feature branch, improve judging quality and narrative consistency.
 2. Add 14–30 genuinely distinct daily dungeons and difficulty balancing.
-3. Introduce Cloudflare D1-backed runs and strict daily attempt limits.
+3. Introduce Cloudflare D1-backed player runs and strict per-user daily attempt limits (the AI-call budget table already exists).
 4. Add signed session identities, abuse prevention, quotas, and observability.
-5. Introduce streaks, cosmetic unlocks, amusing post-game highlights and opt-in sharing.
+5. Introduce streaks, cosmetic unlocks, amusing post-game highlights and richer opt-in sharing (personalised achievements and a locally generated certificate already work).
 6. Add weekly story arcs and persistent character flavour without penalising newcomers.
 
 The game uses original fantasy settings, not proprietary Dungeons & Dragons characters or branding.

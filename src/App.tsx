@@ -1,15 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  ArrowRight, BookOpen, Check, Crown, Dice5, Flame,
+  ArrowRight, BookOpen, Check, Crown, Dice5, Download, Flame,
   Heart, ScrollText, Share2, Shield, Skull, Sparkles, Swords
 } from "lucide-react";
-import { getDailyGame, STARTING_INVENTORY } from "./game";
+import { getDailyGame, getPreviewDailyGame } from "./game";
+import { startingItems, inventoryAfterTurn } from "./inventory";
 import { resolveAction, type ActionOutcome } from "./engine";
+import { fallbackAchievement, isAchievement, type Achievement } from "./achievements";
+import { createCertificateImage } from "./certificate";
+import PixelScene from "./PixelScene";
+import { rollBreakdown } from "./roll-math";
+import PixelPortrait from "./PixelPortrait";
+import { chooseEpilogue } from "./epilogue";
+
+// Date preview is opt-in and never overwrites genuine daily progress.
+const previewTomorrow = new URLSearchParams(window.location.search).get("preview") === "tomorrow";
+const gameForPage = () => previewTomorrow ? getPreviewDailyGame() : getDailyGame();
+const runStorageKey = (day: string) => "daily-dungeon:" + (previewTomorrow ? "test-tomorrow:" : "") + day;
 
 type Turn = {
   roomTitle: string;
   action: string;
   outcome: ActionOutcome;
+  art?: { status: "pending" | "ready" | "failed"; id?: string; url?: string };
 };
 
 type Run = {
@@ -20,42 +33,55 @@ type Run = {
   inventory: string[];
   history: Turn[];
   finished: boolean;
+  edition?: number;
 };
 
 function freshRun(day: string): Run {
   return {
     day, started: false, roomIndex: 0,
-    hearts: 3, inventory: [...STARTING_INVENTORY],
-    history: [], finished: false
+    hearts: 3, inventory: startingItems(gameForPage().dungeon),
+    history: [], finished: false, edition: gameForPage().dungeon.edition ?? 1
   };
 }
 
 function loadRun(day: string): Run {
   try {
-    const saved = localStorage.getItem("daily-dungeon:" + day);
+    const saved = localStorage.getItem(runStorageKey(day));
     if (!saved) return freshRun(day);
     const parsed = JSON.parse(saved) as Run;
     if (
       parsed.day === day &&
+      (parsed.edition ?? 1) === (gameForPage().dungeon.edition ?? 1) &&
       typeof parsed.started === "boolean" &&
       typeof parsed.hearts === "number" &&
       typeof parsed.roomIndex === "number" &&
       Array.isArray(parsed.inventory) && Array.isArray(parsed.history)
-    ) return parsed;
+    ) {
+      // Give existing saved heroes their due: old AI runs predate achievement objects.
+      parsed.history = parsed.history.map((entry: Turn) => {
+        if (!entry || !entry.outcome || typeof entry.action !== "string") return entry;
+        const savedAward = isAchievement(entry.outcome.achievement) ? entry.outcome.achievement : null;
+        const recovered = savedAward ?? fallbackAchievement(
+          entry.action, entry.roomTitle, entry.outcome.success, entry.outcome.creativity ?? 0
+        );
+        return { ...entry, outcome: { ...entry.outcome, achievement: recovered } };
+      });
+      return parsed;
+    }
   } catch { /* Local storage may be disabled */ }
   return freshRun(day);
 }
 
 function useDailyRun() {
-  const [daily, setDaily] = useState(getDailyGame);
-  const [run, setRun] = useState<Run>(() => loadRun(getDailyGame().day));
+  const [daily, setDaily] = useState(gameForPage);
+  const [run, setRun] = useState<Run>(() => loadRun(gameForPage().day));
   useEffect(() => {
-    try { localStorage.setItem("daily-dungeon:" + run.day, JSON.stringify(run)); }
+    try { localStorage.setItem(runStorageKey(run.day), JSON.stringify(run)); }
     catch { /* Local storage unavailable */ }
   }, [run]);
   useEffect(() => {
     const interval = window.setInterval(() => {
-      const next = getDailyGame();
+      const next = gameForPage();
       if (next.day !== daily.day) {
         setDaily(next);
         setRun(loadRun(next.day));
@@ -66,21 +92,20 @@ function useDailyRun() {
   return { daily, run, setRun };
 }
 
-function DungeonDoor() {
+function DungeonDoor({ slug, title }: { slug: string; title: string }) {
   return (
-    <div className="dungeon-art" aria-hidden="true">
-      <div className="dungeon-art__halo" />
-      <div className="dungeon-art__torch dungeon-art__torch--left"><Flame size={23} /></div>
-      <div className="dungeon-art__torch dungeon-art__torch--right"><Flame size={23} /></div>
-      <div className="dungeon-art__arch">
-        <div className="dungeon-art__keystone"><Crown size={20} /></div>
-        <div className="dungeon-art__door">
-          <div className="dungeon-art__star">✦</div>
-          <div className="dungeon-art__knocker" />
-        </div>
+    <div className="dungeon-art dungeon-art--pixel">
+      <div className="pixel-scene__topbar"><span>✦ QUEST PREVIEW</span><span>16 BIT / 3 ROOMS</span></div>
+      <div className="pixel-scene__viewport">
+        <PixelScene dungeonSlug={slug} className="pixel-scene__canvas"/>
+        <div className="pixel-scene__scanlines" aria-hidden="true"/>
       </div>
-      <div className="dungeon-art__mist dungeon-art__mist--one" />
-      <div className="dungeon-art__mist dungeon-art__mist--two" />
+      <div className="pixel-scene__bottombar">
+        <span><span className="pixel-scene__life">♥ ♥ ♥</span> HP:03</span>
+        <span className="pixel-scene__quest-name">{title}</span>
+      </div>
+      <div className="pixel-scene__glimmer pixel-scene__glimmer--one" aria-hidden="true">✧</div>
+      <div className="pixel-scene__glimmer pixel-scene__glimmer--two" aria-hidden="true">✦</div>
     </div>
   );
 }
@@ -97,10 +122,46 @@ function Hearts({ count }: { count: number }) {
   );
 }
 
+function AchievementUnlock({ achievement }: { achievement: Achievement }) {
+  return (
+    <div className="achievement-unlocked" role="status">
+      <div className="achievement-unlocked__medal"><Crown size={25}/></div>
+      <div className="achievement-unlocked__copy">
+        <span className="eyebrow">✦ ACHIEVEMENT UNLOCKED</span>
+        <strong>{achievement.title}</strong>
+        <p>{achievement.description}</p>
+      </div>
+    </div>
+  );
+}
+
+function RoomArtwork({ turn, compact = false }: { turn: Turn; compact?: boolean }) {
+  if (!turn.art) return null;
+  // A failed art job must never occupy a whole screen of empty portrait space.
+  if (turn.art.status === "failed") {
+    return <p className="room-artwork__unavailable"><Sparkles size={15}/> The portrait artist missed this scene. The story is safe.</p>;
+  }
+  return (
+    <figure className={"room-artwork " + (compact ? "room-artwork--compact" : "")}>
+      <div className="room-artwork__frame">
+        {turn.art.status === "ready" && turn.art.url ? (
+          <PixelPortrait src={turn.art.url} alt={"16-bit illustration of " + turn.roomTitle + " based on your adventure"}/>
+        ) : turn.art.status === "pending" ? (
+          <div className="room-artwork__loading" role="status"><Sparkles size={26}/><span>Painting your legend…</span><small>The royal portrait artist is working on it.</small></div>
+        ) : (
+          <div className="room-artwork__loading"><span>Portrait unavailable</span><small>Your adventure continues regardless.</small></div>
+        )}
+      </div>
+      <figcaption><Sparkles size={15}/><span>{turn.roomTitle}</span><span className="room-artwork__chip">16-BIT CHRONICLES</span></figcaption>
+    </figure>
+  );
+}
+
 function Inventory({ items }: { items: string[] }) {
   return (
     <div className="inventory">
       <div className="eyebrow inventory__title"><Shield size={14} /> YOUR INVENTORY</div>
+      <p className="inventory__hint">One use each. Used items disappear, even if your plan fails.</p>
       <div className="inventory__items">
         {items.length ? items.map((item, index) => (
           <span className="inventory__item" key={item + index}>{item}</span>
@@ -111,12 +172,41 @@ function Inventory({ items }: { items: string[] }) {
 }
 
 function RollBadge({ outcome }: { outcome: ActionOutcome }) {
+  const roll = rollBreakdown(outcome);
   return (
-    <div className={"roll-badge " + (outcome.success ? "roll-badge--win" : "roll-badge--loss")}>
-      <Dice5 size={18}/>
-      <span>Rolled <strong>{outcome.roll}{outcome.bonus ? " +" + outcome.bonus : ""}</strong></span>
-      <span className="roll-badge__divider" />
-      <span>Needed {outcome.difficulty}</span>
+    <div className={"roll-badge " + (outcome.success ? "roll-badge--win" : "roll-badge--loss")}
+      aria-label={`D20 rolled ${roll.die}, plus ${roll.creativity} creativity and ${roll.itemBonus} item bonus, total ${roll.total}, difficulty ${roll.target}. ${outcome.success ? "Success" : "Failure"}.`}>
+      <div className="roll-badge__die" aria-hidden="true">
+        <span>D20</span><strong>{roll.die}</strong>
+      </div>
+      <div className="roll-badge__details">
+        <span className="roll-badge__label">YOUR DICE ROLL</span>
+        <div className="roll-badge__formula">
+          <strong>{roll.die}</strong>
+          <span>+ {roll.creativity} creativity</span>
+          {roll.itemBonus > 0 && <span>+ {roll.itemBonus} item</span>}
+          <span>= <strong>{roll.total}</strong></span>
+        </div>
+        <div className="roll-badge__verdict">
+          <span>Total <strong>{roll.total}</strong> vs DC <strong>{roll.target}</strong></span>
+          <b>{roll.automaticSuccess ? "MASTERSTROKE! Automatic success" : outcome.success ? "SUCCESS" : "FAILED ROLL"}</b>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function JourneyRoll({ outcome }: { outcome: ActionOutcome }) {
+  const roll = rollBreakdown(outcome);
+  return (
+    <div className="ending__entry-roll">
+      <Dice5 size={15}/>
+      <span>D20 <strong>{roll.die}</strong> + {roll.creativity} creativity{roll.itemBonus > 0 ? ` + ${roll.itemBonus} item` : ""}
+        {" = "}<strong>{roll.total}</strong> vs DC <strong>{roll.target}</strong>
+      </span>
+      <b className={outcome.success ? "ending__entry-roll--success" : "ending__entry-roll--failed"}>
+        {roll.automaticSuccess ? "MASTERSTROKE" : outcome.success ? "PASS" : "FAIL"}
+      </b>
     </div>
   );
 }
@@ -124,17 +214,93 @@ function RollBadge({ outcome }: { outcome: ActionOutcome }) {
 export default function App() {
   const { daily, run, setRun } = useDailyRun();
   const [action, setAction] = useState("");
+  const actionField = useRef<HTMLTextAreaElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-
+  const [certificateNotice, setCertificateNotice] = useState("");
+  const [canPreviewTomorrow, setCanPreviewTomorrow] = useState(false);
+  const [artService, setArtService] = useState<{ status: "ready" | "disabled" | "setup-required"; missing?: string[] } | null>(null);
+  useEffect(() => {
+    void fetch("/api/health")
+      .then(response => response.json())
+      .then((data: { previewTomorrowEnabled?: boolean; art?: { status: "ready" | "disabled" | "setup-required"; missing?: string[] } }) => {
+        setCanPreviewTomorrow(data.previewTomorrowEnabled === true);
+        setArtService(data.art ?? null);
+      })
+      .catch(() => setCanPreviewTomorrow(false));
+  }, []);
+  const artInflight = useRef(new Set<string>());
   const room = daily.dungeon.rooms[Math.min(run.roomIndex, 2)];
   const last = run.history.at(-1);
   const wins = run.history.filter(t => t.outcome.success).length;
+  const achievements = run.history
+    .map(turn => turn.outcome.achievement)
+    .filter((value): value is Achievement => isAchievement(value));
   const won = run.finished && run.hearts > 0;
   const title = won
     ? (wins === 3 ? "A Legend Is Born" : "The Unlikely Survivor")
     : "The Dramatic Demise";
+
+  // Keep one art job per trusted resolution ticket; resumed jobs never double-charge.
+  useEffect(() => {
+    for (const entry of run.history) {
+      const ticket = entry.outcome.artTicket;
+      if (!ticket || entry.art?.status === "ready" || entry.art?.status === "failed" ||
+          artInflight.current.has(ticket)) continue;
+      artInflight.current.add(ticket);
+      void (async () => {
+        const updateArt = (art: Turn["art"]) => setRun(current => {
+          if (current.day !== run.day || !current.history.some(item => item.outcome.artTicket === ticket)) return current;
+          return {
+            ...current,
+            history: current.history.map(item => item.outcome.artTicket === ticket ? { ...item, art } : item)
+          };
+        });
+        try {
+          const response = await fetch("/api/generate-room-art", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ token: ticket })
+          });
+          const job = await response.json() as { id?: string; status?: string; url?: string };
+          if (!response.ok || !job.id) { updateArt({ status: "failed" }); return; }
+          if (job.status === "ready" && job.url) {
+            updateArt({ status: "ready", id: job.id, url: job.url });
+            return;
+          }
+          updateArt({ status: "pending", id: job.id });
+          // Image generation continues on the Worker; do not hold up the next room.
+          for (let attempt = 0; attempt < 45; attempt++) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            const statusResponse = await fetch("/api/art-status/" + job.id);
+            if (!statusResponse.ok) continue;
+            const status = await statusResponse.json() as { status?: string; url?: string };
+            if (status.status === "ready" && status.url) {
+              updateArt({ status: "ready", id: job.id, url: status.url });
+              return;
+            }
+            if (status.status === "failed") {
+              updateArt({ status: "failed", id: job.id });
+              return;
+            }
+          }
+          // Leave pending in localStorage: another visit can resume polling, not re-generate.
+        } catch {
+          // A network failure is temporary. Preserve pending and retry on a future page load.
+        } finally { artInflight.current.delete(ticket); }
+      })();
+    }
+  }, [run.history, run.day, setRun]);
+
+  // Starting the game and every resolved turn should display the new scene, not
+  // leave a mobile player stranded beside the old action box / keyboard.
+  useEffect(() => {
+    if (!run.started) return;
+    window.scrollTo(0, 0);
+    const frame = window.requestAnimationFrame(() => window.scrollTo(0, 0));
+    return () => window.cancelAnimationFrame(frame);
+  }, [run.started, run.history.length]);
 
   async function submitAction() {
     const attempt = action.trim();
@@ -151,7 +317,14 @@ export default function App() {
             day: daily.day,
             roomIndex: run.roomIndex,
             action: attempt,
-            inventory: run.inventory
+            inventory: run.inventory,
+            priorTurns: run.history.map((turn, i) => ({
+              roomIndex: i,
+              action: turn.action,
+              narration: turn.outcome.narration,
+              success: turn.outcome.success
+            })),
+            previewTomorrow
           })
         });
         if (!response.ok) {
@@ -166,13 +339,14 @@ export default function App() {
         if (!import.meta.env.DEV || (problem instanceof Error && problem.message.includes("new dungeon"))) throw problem;
         outcome = resolveAction(room, attempt, run.inventory, Math.floor(Math.random() * 20) + 1);
       }
+      actionField.current?.blur();
       const remaining = Math.max(0, run.hearts - outcome.heartsLost);
       const nextIndex = run.roomIndex + 1;
       setRun(current => ({
         ...current,
         hearts: remaining,
-        inventory: outcome.reward ? [...current.inventory, outcome.reward] : current.inventory,
-        history: [...current.history, { roomTitle: room.title, action: attempt, outcome }],
+        inventory: inventoryAfterTurn(current.inventory, outcome.usedItems ?? [], outcome.reward),
+        history: [...current.history, { roomTitle: room.title, action: attempt, outcome, ...(outcome.artTicket ? { art: { status: "pending" as const } } : {}) }],
         roomIndex: nextIndex,
         finished: nextIndex >= daily.dungeon.rooms.length || remaining === 0
       }));
@@ -187,6 +361,7 @@ export default function App() {
   function start() {
     setRun(current => ({ ...current, started: true }));
     setError("");
+    window.scrollTo(0, 0);
   }
 
   function reset() {
@@ -195,6 +370,8 @@ export default function App() {
     setAction("");
     setError("");
     setCopied(false);
+    setCertificateNotice("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function shareText() {
@@ -205,7 +382,9 @@ export default function App() {
       rooms + " · " + wins + "/3 rooms cleared",
       won ? "🏆 " + title : "💀 " + title,
       "Hearts: " + run.hearts + "/3",
-      "How did YOUR story end?"
+      ...(achievements.length ? ["🏅 Honours: " + achievements.map(a => a.title).join(" · ")] : []),
+      "How did YOUR story end?",
+      "Play: https://dailydungeon.titkok.co/"
     ].join("\n");
   }
 
@@ -223,6 +402,42 @@ export default function App() {
     }
   }
 
+  async function shareCertificate() {
+    setCertificateNotice("");
+    try {
+      const file = await createCertificateImage({
+        dungeon: daily.dungeon.title,
+        day: daily.day,
+        number: daily.number,
+        resultTitle: title,
+        roomsPassed: wins,
+        heartsLeft: run.hearts,
+        achievements
+      });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], text: shareText() });
+          setCertificateNotice("Certificate shared.");
+          return;
+        } catch (problem) {
+          // Cancelling a native share is not a request to download anything.
+          if (problem instanceof Error && problem.name === "AbortError") return;
+        }
+      }
+      const url = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.name;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+      setCertificateNotice("Certificate saved as a PNG, ready to share.");
+    } catch (problem) {
+      setCertificateNotice(problem instanceof Error ? problem.message : "Unable to prepare the certificate.");
+    }
+  }
+
   return (
     <div className="shell">
       <header className="site-header">
@@ -234,20 +449,31 @@ export default function App() {
           </div>
         </div>
         <div className="site-header__right">
-          <span className="daily-pill"><Sparkles size={14}/> DAILY #{String(daily.number).padStart(3, "0")}</span>
+          <span className="daily-pill"><Sparkles size={14}/> {previewTomorrow ? "TOMORROW · TEST" : "DAILY"} #{String(daily.number).padStart(3, "0")}</span>
           <span className="site-header__date">{new Date(daily.day + "T12:00:00Z").toLocaleDateString("en-GB", { day:"numeric", month:"short", timeZone:"UTC" })}</span>
         </div>
       </header>
 
       <main className="main">
+        {previewTomorrow && <div className="preview-ribbon">
+          <strong>⏭ Tomorrow’s dungeon · Test mode</strong>
+          <span>Real date and shared AI/art budgets are unchanged.</span>
+          {artService && <span className={"preview-ribbon__art " + (artService.status === "ready" ? "preview-ribbon__art--ready" : "preview-ribbon__art--warning")}>
+            <Sparkles size={14}/>
+            {artService.status === "ready" ? "AI portraits ready" : artService.status === "disabled"
+              ? "AI portraits are disabled in the deployed Worker"
+              : "AI portraits need setup: " + (artService.missing?.join(", ") ?? "check Worker bindings")}
+          </span>}
+          <a href={window.location.pathname}>Return to today</a>
+        </div>}
         {!run.started && (
           <section className="intro">
             <div className="intro__visual">
-              <div className="intro__badge"><Flame size={14}/> A NEW ADVENTURE AWAITS</div>
-              <DungeonDoor/>
+              <div className="intro__badge"><Flame size={14}/> THE GATES ARE OPEN</div>
+              <DungeonDoor slug={daily.dungeon.slug} title={daily.dungeon.title}/>
             </div>
             <div className="intro__copy">
-              <p className="eyebrow">DUNGEON #{String(daily.number).padStart(3, "0")} · TODAY'S QUEST</p>
+              <p className="eyebrow">DUNGEON #{String(daily.number).padStart(3, "0")} · {previewTomorrow ? "TOMORROW'S QUEST · PREVIEW" : "TODAY'S QUEST"}</p>
               <h1>{daily.dungeon.title}</h1>
               <p className="intro__subtitle">{daily.dungeon.subtitle}</p>
               <p className="intro__description">{daily.dungeon.intro}</p>
@@ -259,7 +485,8 @@ export default function App() {
               <button className="button button--primary button--large" onClick={start}>
                 Enter the dungeon <ArrowRight size={19}/>
               </button>
-              <p className="intro__small">No account. No downloads. Just your imagination.</p>
+              <p className="intro__small">No account. No downloads. Just your imagination. Your three starting items are single-use.</p>
+              {!previewTomorrow && canPreviewTomorrow && <a className="preview-link" href="?preview=tomorrow">⏭ Pretend it’s tomorrow · Playtest next dungeon</a>}
             </div>
           </section>
         )}
@@ -288,27 +515,35 @@ export default function App() {
                 <div className={"last-turn " + (last.outcome.success ? "last-turn--win" : "last-turn--loss")} aria-live="polite">
                   <div className="last-turn__heading">
                     <span>{last.outcome.success ? "✦ YOUR PLAN WORKED" : "✦ AN UNFORTUNATE SETBACK"}</span>
-                    <RollBadge outcome={last.outcome}/>
                   </div>
+                  <RollBadge outcome={last.outcome}/>
                   <p>{last.outcome.narration}</p>
-                  {last.outcome.creativity > 0 && <span className="last-turn__reward"><Sparkles size={14}/> Creativity bonus: +{last.outcome.creativity}</span>}
+                  {last.outcome.masterstroke && <span className="last-turn__reward"><Crown size={14}/> MASTERSTROKE! Your idea beats the dice.</span>}
+                  {(last.outcome.usedItems?.length ?? 0) > 0 && <span className="last-turn__spent"><Shield size={14}/> Used up: {last.outcome.usedItems.join(", ")}</span>}
                   {last.outcome.reward && <span className="last-turn__reward"><Sparkles size={14}/> Acquired: {last.outcome.reward}</span>}
                   <small>{last.outcome.mode === "ai" ? "Narrated by the AI Dungeon Master" : "Scripted narrator (AI not enabled)"}</small>
                 </div>
               )}
+              {last?.outcome.achievement && <AchievementUnlock achievement={last.outcome.achievement}/>}
+              {previewTomorrow && artService && !last?.outcome.artTicket && last && <p className="art-debug-note">
+                <Sparkles size={16}/> No personalised image was requested for this turn.
+                {artService.status === "ready" ? " Please check the deployed /api/resolve artwork ticket." : " " + (artService.status === "disabled"
+                  ? "AI portraits are disabled on the server." : "Missing: " + (artService.missing?.join(", ") ?? "Worker setup"))}
+              </p>}
+              {last && <RoomArtwork turn={last}/> }
 
               <section className="encounter">
                 <div className="encounter__top">
                   <span className="encounter__tag"><Flame size={14}/> {room.subtitle.toUpperCase()}</span>
                   <span className="encounter__danger"><Dice5 size={15}/> Difficulty {room.difficulty}</span>
                 </div>
-                <div className="encounter__art" aria-hidden="true">
-                  <div className="encounter__rune">✧</div>
-                  <div className="encounter__symbol">{room.icon === "dragon" ? "🐉" : room.icon === "book" ? "📚" : room.icon === "bridge" ? "🧌" : room.icon === "sphinx" ? "🦁" : room.icon === "king" ? "👑" : room.icon === "onion" ? "🧅" : room.icon === "cheese" ? "🧀" : room.icon === "wizard" ? "🧙" : "🍺"}</div>
-                  <div className="encounter__rune">✧</div>
+                <div className="encounter__art encounter__art--pixel">
+                  <PixelScene dungeonSlug={daily.dungeon.slug} roomIndex={run.roomIndex} className="encounter__pixel-scene"/>
+                  <span className="encounter__scene-label">{room.subtitle}</span>
                 </div>
                 <div className="encounter__body">
                   <h2>{room.title}</h2>
+                  {room.arrival && <p className="encounter__arrival"><Sparkles size={14}/>{room.arrival}</p>}
                   <p>{room.scene}</p>
                   <div className="dm-quote">
                     <span className="dm-quote__avatar"><Crown size={18}/></span>
@@ -323,17 +558,15 @@ export default function App() {
               <section className="action-panel">
                 <div className="action-panel__heading">
                   <h3>What do you do, adventurer?</h3>
-                  <span>BE CREATIVE</span>
                 </div>
-                <p>Talk, bargain, improvise, use an item, or try something gloriously unexpected.</p>
                 <label className="sr-only" htmlFor="player-action">Your next action</label>
-                <textarea id="player-action" value={action} onChange={e => setAction(e.target.value)}
-                  placeholder="I take out my potato and..." maxLength={280} rows={3}
+                <textarea ref={actionField} id="player-action" value={action} onChange={e => setAction(e.target.value)}
+                  placeholder="Tell the Dungeon Master what you would like to do…" maxLength={280} rows={3}
                   disabled={loading} onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); void submitAction(); } }} />
                 <div className="action-panel__footer">
                   <span className="action-panel__count">{action.length}/280</span>
                   <button className="button button--primary" onClick={() => void submitAction()} disabled={loading || action.trim().length < 4}>
-                    {loading ? "The dice are rolling…" : "Take your chance"} <Dice5 size={18}/>
+                    {loading ? "Rolling the dice…" : "Roll the dice"} <Dice5 size={18}/>
                   </button>
                 </div>
                 {error && <p className="error" role="alert">{error}</p>}
@@ -359,10 +592,13 @@ export default function App() {
                     <summary><span>{entry.outcome.success ? "✦" : "✕"} {entry.roomTitle}</span><span>{entry.outcome.success ? "Passed" : "Lost a heart"}</span></summary>
                     <p><strong>You tried:</strong> {entry.action}</p>
                     <p>{entry.outcome.narration}</p>
+                    {(entry.outcome.usedItems?.length ?? 0) > 0 && <p><strong>Used up:</strong> {entry.outcome.usedItems?.join(", ")}</p>}
+                    {entry.outcome.achievement && <p className="journal-entry__award"><Crown size={14}/> {entry.outcome.achievement.title}</p>}
                   </details>
                 ))}
               </div>
               <button className="reset-link" onClick={reset}>↺ Restart playtest</button>
+              {!previewTomorrow && canPreviewTomorrow && <a className="preview-link" href="?preview=tomorrow">⏭ Test tomorrow’s dungeon</a>}
             </aside>
           </div>
         )}
@@ -381,24 +617,83 @@ export default function App() {
               <div><strong>{wins}/3</strong><span>TRIALS PASSED</span></div>
               <div><strong>{run.hearts}/3</strong><span>HEARTS LEFT</span></div>
             </div>
-            <div className="ending__journal">
-              <h2><ScrollText size={19}/> Your Hero's Journal</h2>
-              {run.history.map((entry, i) => (
-                <div className="ending__entry" key={i}>
-                  <div className="ending__entry-title">{entry.outcome.success ? "✦" : "✕"} {entry.roomTitle}</div>
-                  <p><em>"{entry.action}"</em></p>
-                  <p>{entry.outcome.narration}</p>
+            {previewTomorrow && artService && !run.history.some(turn => turn.art) && <p className="art-debug-note">
+              <Sparkles size={16}/> No AI portraits were requested during this playtest.
+              {artService.status === "ready" ? " The portrait service reports ready, so check /api/resolve." : " " + (artService.status === "disabled"
+                ? "The deployed ART_ENABLED flag is off." : "Server setup needed: " + (artService.missing?.join(", ") ?? "check bindings"))}
+            </p>}
+            <section className="hero-certificate hero-chronicle" aria-label="Your certificate and illustrated adventure">
+              <div className="hero-certificate__ornament">✦</div>
+              <p className="hero-certificate__eyebrow">THE DAILY DUNGEON PRESENTS</p>
+              <h2>Certificate of Questionable Heroism</h2>
+              <p className="hero-certificate__intro">Officially bestowed upon a most improbable adventurer</p>
+              <strong className="hero-certificate__name">{title}</strong>
+              <p className="hero-certificate__dungeon">{daily.dungeon.title} · Dungeon #{String(daily.number).padStart(3, "0")}</p>
+              <div className="hero-certificate__awards">
+                <span className="eyebrow">{achievements.length ? "HONOURS BESTOWED" : "OFFICIAL VERDICT"}</span>
+                {achievements.length ? achievements.map((award, i) => (
+                  <div className="hero-certificate__award" key={i}>
+                    <Crown size={20}/>
+                    <div><strong>{award.title}</strong><p>{award.description}</p></div>
+                  </div>
+                )) : <p>The Dungeon Master remains undecided about your greatness.</p>}
+              </div>
+              <p className="hero-certificate__seal">✦ ONE DUNGEON. ENDLESS POSSIBILITIES. ✦</p>
+
+              <div className="hero-chronicle__actions">
+                <button className="button button--primary" onClick={() => void share()}>
+                  {copied ? <Check size={18}/> : <Share2 size={18}/>}
+                  {copied ? "Result ready to share" : "Share your legend"}
+                </button>
+                <button className="button button--secondary" onClick={() => void shareCertificate()}>
+                  <Download size={17}/> Save certificate
+                </button>
+              </div>
+              {certificateNotice && <p className="hero-chronicle__notice" role="status">{certificateNotice}</p>}
+
+              <section className="hero-chronicle__journal" aria-label="Hero's Journey">
+                <h3 className="hero-chronicle__journal-title"><ScrollText size={21}/> Hero's Journey</h3>
+                <div className="hero-chronicle__journal-body">
+                  {run.history.map((entry, i) => (
+                    <article className="ending__entry" key={i}>
+                      <div className="ending__entry-title">
+                        <span className="ending__entry-number">{String(i + 1).padStart(2, "0")}</span>
+                        <span>{entry.outcome.success ? "✦" : "✕"} {entry.roomTitle}</span>
+                      </div>
+                      <div className="ending__entry-action">
+                        <span className="ending__entry-label">YOU TRIED</span>
+                        <p><em>"{entry.action}"</em></p>
+                      </div>
+                      <JourneyRoll outcome={entry.outcome}/>
+                      {(entry.outcome.usedItems?.length ?? 0) > 0 && <p className="ending__entry-spent">Used up: {entry.outcome.usedItems?.join(", ")}</p>}
+                      <RoomArtwork turn={entry} compact/>
+                      <div className="ending__entry-response">
+                        <span className="ending__entry-label">THE DUNGEON MASTER</span>
+                        <p>{entry.outcome.narration}</p>
+                      </div>
+                    </article>
+                  ))}
+
                 </div>
-              ))}
-            </div>
+                <div className="hero-chronicle__epilogue" aria-label="The Dungeon Master's farewell">
+                  <p className="hero-chronicle__epilogue-story">{chooseEpilogue(last?.outcome.epilogue, {
+                    dungeon: daily.dungeon.title,
+                    room: last?.roomTitle ?? "the final chamber",
+                    cleared: wins,
+                    visited: run.history.length,
+                    hearts: run.hearts,
+                    lastHonour: achievements.at(-1)?.title,
+                    moments: run.history.map(entry => ({ room: entry.roomTitle, success: entry.outcome.success, action: entry.action }))
+                  })}</p>
+                  <p className="hero-chronicle__return"><Sparkles size={18}/> Come back tomorrow. I've already warned the next dungeon about you. <span>New adventure at midnight UTC.</span></p>
+                </div>
+              </section>
+            </section>
             <div className="ending__actions">
-              <button className="button button--primary button--large" onClick={() => void share()}>
-                {copied ? <Check size={19}/> : <Share2 size={19}/>} {copied ? "Result ready to share" : "Share your legend"}
-              </button>
               <button className="button button--secondary" onClick={reset}>Replay playtest</button>
+              {!previewTomorrow && canPreviewTomorrow && <a className="button button--secondary" href="?preview=tomorrow">⏭ Test tomorrow’s dungeon</a>}
             </div>
             {error && <p className="error" role="alert">{error}</p>}
-            <div className="ending__tomorrow"><Sparkles size={17}/> A new dungeon opens tomorrow at midnight UTC.</div>
           </div>
         )}
       </main>

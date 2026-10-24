@@ -74,37 +74,135 @@ p { line-height: 1.7; }
 .intro__facts svg { color: #ccaa70; }
 .intro__small { font-size: 11px; margin: 14px 0 0; color: #87858b; }
 
-.dungeon-art { position: relative; height: 480px; width: 100%; display: flex; justify-content: center; align-items: end; overflow: hidden; }
-.dungeon-art__halo { position: absolute; width: 340px; height: 370px; border-radius: 50%; background: radial-gradient(ellipse, rgba(191,110,73,.23), transparent 68%); top: 50px; filter: blur(14px); }
-.dungeon-art__arch {
-  position: relative; width: 260px; height: 380px; border-radius: 145px 145px 6px 6px;
-  padding: 29px 28px 0; background: linear-gradient(110deg, #27252c, #494044 38%, #27232d 80%);
-  border: 10px solid #57505a; border-bottom: 0; box-shadow: 0 0 0 10px #25232a, 0 5px 0 13px #3b363e, 0 25px 65px #0009, inset 0 0 15px #05060a;
+/* Every day has its own hand-authored retro title illustration. These assets cost $0 to render. */
+.dungeon-art {
+  position: relative;
+  width: 100%;
+  max-width: 620px;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  background: #111020;
+  border: 3px solid #a88755;
+  border-radius: 3px;
+  overflow: visible;
+  box-shadow: 0 0 0 5px #27222d, 0 0 0 7px #594b48, 0 20px 55px #0008;
 }
-.dungeon-art__arch::before {
-  content: ''; position: absolute; inset: -11px; border: 1px solid #81716d; border-bottom: 0;
-  border-radius: 145px 145px 5px 5px; opacity: .5; pointer-events: none;
+.pixel-scene__topbar, .pixel-scene__bottombar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 9px;
+  color: #efd5a4;
+  font: 700 10px/1.6 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: .055em;
+  background: #201c2a;
+  padding: 10px 13px;
 }
-.dungeon-art__keystone { position: absolute; z-index: 3; top: -12px; left: 50%; transform: translateX(-50%); width: 46px; height: 50px; display: grid; place-items: center; background: #6b5b58; color: #e5bc70; border: 3px solid #37313b; border-radius: 7px; }
-.dungeon-art__door {
-  position: absolute; inset: 27px 19px 0;
-  border-radius: 115px 115px 0 0; background: repeating-linear-gradient(90deg, transparent 0 39px, #111018 39px 42px), linear-gradient(#463530, #1c1720);
-  box-shadow: inset 0 0 0 5px #17131a, inset 0 0 0 8px #6e5141, inset 0 0 60px #08070b;
-  display: flex; align-items: center; flex-direction: column;
+.pixel-scene__topbar {
+  border-bottom: 4px solid #6a4f4e;
+  color: #ffd38c;
 }
-.dungeon-art__door::before, .dungeon-art__door::after {
-  content: ''; position: absolute; top: 120px; left: 12px; right: 12px; height: 5px; background: #1b161d; border: 1px solid #674a3b;
+.pixel-scene__bottombar {
+  padding: 12px;
+  border-top: 4px solid #5a4750;
 }
-.dungeon-art__door::after { top: 220px; }
-.dungeon-art__star { color: #d0a56b; font-size: 48px; margin-top: 72px; text-shadow: 0 0 25px #bd8458a6; }
-.dungeon-art__knocker { position: absolute; top: 220px; right: 32px; border: 4px solid #b98a4f; border-radius: 50%; width: 26px; height: 32px; }
-.dungeon-art__torch { position: absolute; z-index: 4; bottom: 145px; color: #f7a84f; filter: drop-shadow(0 0 12px #ed783c); animation: flutter 2.2s ease-in-out infinite alternate; }
-.dungeon-art__torch--left { left: 10%; }
-.dungeon-art__torch--right { right: 10%; animation-delay: .7s; }
-.dungeon-art__torch::after { content: ''; position: absolute; top: 26px; left: 9px; height: 54px; width: 5px; background: #736159; }
-.dungeon-art__mist { position: absolute; z-index: 4; bottom: -44px; height: 110px; width: 100%; background: radial-gradient(ellipse, #68565b55, transparent 68%); filter: blur(10px); }
-.dungeon-art__mist--two { bottom: -68px; transform: scale(1.3); opacity: .6; }
-@keyframes flutter { from { opacity: .7; transform: scale(.9) rotate(-5deg); } to { opacity: 1; transform: scale(1.1) rotate(5deg); } }
+.pixel-scene__quest-name {
+  max-width: 55%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  text-align: right;
+}
+.pixel-scene__life { color: #ed8f86; letter-spacing: .07em; }
+.pixel-scene__viewport {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 320 / 220;
+  background: #141627;
+}
+.pixel-scene__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  filter: saturate(1.07) contrast(1.08);
+}
+.pixel-scene__scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, transparent 0 3px, #0c0c1870 4px 5px);
+  opacity: .24;
+}
+.pixel-scene__glimmer {
+  position: absolute;
+  z-index: 2;
+  color: #f9da9f;
+  font-size: 24px;
+  text-shadow: 0 0 16px #e6ae5c;
+  animation: pixel-spark 2.8s steps(3) infinite;
+  pointer-events: none;
+}
+.pixel-scene__glimmer--one { top: 17%; left: 7%; }
+.pixel-scene__glimmer--two { top: 44%; right: 9%; animation-delay: 1.1s; }
+@keyframes pixel-spark { 0%,100% { opacity: .2; transform: scale(.75); } 55% { opacity: .9; transform: scale(1.1); } }
+
+.intro__visual { height: auto; min-height: 465px; display: flex; flex-direction: column; align-items: stretch; justify-content: center; padding-top: 28px; }
+.intro__badge {
+  top: 3px;
+  z-index: 2;
+  background: #2b2630;
+  border: 1px solid #735b48;
+  padding: 4px 13px;
+  border-radius: 2px;
+  font-family: 'Courier New', monospace;
+}
+.intro__copy h1 { text-shadow: 0 3px 26px #dfa85e1b; }
+.intro .button--primary {
+  border-radius: 3px;
+  border: 2px solid #fae1b2;
+  box-shadow: 4px 4px 0 #645038, 0 12px 26px #0004;
+  text-transform: uppercase;
+  font-family: 'Courier New', monospace;
+  letter-spacing: .07em;
+  font-size: 14px;
+}
+.intro .button--primary:not(:disabled):hover { box-shadow: 5px 5px 0 #856b44, 0 16px 28px #0004; }
+.encounter__art--pixel {
+  height: auto;
+  max-height: 350px;
+  aspect-ratio: 320 / 180;
+  display: block;
+  overflow: hidden;
+  position: relative;
+  background: #151625;
+}
+.encounter__art--pixel::before { display: none; }
+.encounter__pixel-scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  object-fit: cover;
+  filter: saturate(1.05) contrast(1.08);
+}
+.encounter__scene-label {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  padding: 5px 9px;
+  background: #191825df;
+  color: #f0cc8d;
+  font: 700 10px/1.4 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  border: 1px solid #98764c;
+}
 
 .game-layout { display: grid; grid-template-columns: minmax(0, 1fr) 295px; gap: 31px; align-items: start; }
 .game-main { min-width: 0; }
@@ -135,16 +233,36 @@ p { line-height: 1.7; }
 .encounter__body { padding: 25px 26px 27px; }
 .encounter__body h2 { font-size: 23px; color: #eed5ac; margin: 0 0 12px; }
 .encounter__body > p { color: #c0b8b8; font-size: 14px; line-height: 1.8; }
+.encounter__body > p.encounter__arrival {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 13px;
+  padding: 10px 12px;
+  background: #27232b;
+  border-left: 2px solid #947148;
+  color: #d7b995;
+  border-radius: 0 4px 4px 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.encounter__arrival svg { flex: none; margin-top: 2px; }
 .dm-quote { display: flex; align-items: flex-start; gap: 14px; margin-top: 22px; background: #25222a; border-left: 3px solid #b79051; padding: 19px 19px 15px; border-radius: 0 5px 5px 0; }
 .dm-quote__avatar { border: 1px solid #715937; width: 36px; height: 36px; display: grid; place-items: center; color: #e5b975; background: #3f312b; border-radius: 50%; flex: none; }
 .dm-quote__name { color: #d9b87c; font-size: 11px; font-weight: 800; letter-spacing: .04em; margin-bottom: 7px; }
 .dm-quote p { color: #e2d7ce; font: italic 17px/1.6 Georgia, serif; margin-bottom: 0; }
 
 .action-panel { margin-top: 20px; background: #1b1b24; border: 1px solid #36323d; padding: 24px; border-radius: 8px; }
-.action-panel__heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.action-panel__heading { margin-bottom: 13px; }
 .action-panel__heading h3 { font: 600 18px/1.4 Georgia, serif; color: #f1e0c2; margin: 0; }
-.action-panel__heading span { font-size: 10px; font-weight: 800; letter-spacing: .1em; color: #cda76d; }
 .action-panel > p { font-size: 12px; color: #a6a0a4; margin: 6px 0 17px; }
+.room-artwork__pixel-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
 .action-panel textarea { width: 100%; display: block; resize: vertical; min-height: 108px; background: #12131a; color: #f5eee5; border: 1px solid #4d454d; border-radius: 5px; padding: 15px; font-size: 14px; line-height: 1.7; }
 .action-panel textarea::placeholder { color: #7e7882; }
 .action-panel__footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; }
@@ -157,8 +275,75 @@ p { line-height: 1.7; }
 .last-turn p { color: #e7ded1; font: 15px/1.7 Georgia, serif; margin: 14px 0 10px; }
 .last-turn small { display: block; color: #a5a2a1; font-size: 10px; margin-top: 9px; }
 .last-turn__reward { color: #deb779; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; }
-.roll-badge { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 10px; color: #d3c9b5; font-weight: 500; letter-spacing: 0; }
-.roll-badge__divider { width: 1px; height: 13px; margin: 0 4px; background: #6a645e; }
+/* Compact, readable tabletop D20 breakdown. The die and modifiers come from
+   the actual rules engine, not a decorative random animation. */
+.roll-badge {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 5px;
+  background: #18231f;
+  border: 1px solid #4d6454;
+  color: #e4dacf;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.roll-badge--loss { background: #342729; border-color: #785552; }
+.roll-badge__die {
+  width: 62px;
+  height: 69px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.05;
+  color: #fff0cb;
+  background: #4a413a;
+  clip-path: polygon(50% 0, 90% 15%, 100% 67%, 50% 100%, 0 67%, 10% 15%);
+  filter: drop-shadow(0 2px 1px #0003);
+}
+.roll-badge--loss .roll-badge__die { background: #6b4544; }
+.roll-badge__die span { font: 700 10px/1.2 'Courier New', monospace; letter-spacing: .07em; }
+.roll-badge__die strong { font: 700 28px/1.15 Georgia, serif; }
+.roll-badge__details { min-width: 0; flex: 1; }
+.roll-badge__label {
+  color: #ddc399;
+  font: 700 10px/1.3 'Courier New', monospace;
+  letter-spacing: .08em;
+}
+.roll-badge__formula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 8px;
+  margin: 5px 0 7px;
+  color: #f3e6d4;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.roll-badge__formula strong { color: #ffe3a3; font-weight: 800; }
+.roll-badge__verdict {
+  display: flex;
+  align-items: baseline;
+  gap: 5px 14px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #c3b8b0;
+}
+.roll-badge__verdict strong { color: #f9e8c5; }
+.roll-badge__verdict b { color: #a9dab7; letter-spacing: .05em; }
+.roll-badge--loss .roll-badge__verdict b { color: #efa5a3; }
+@media (max-width: 540px) {
+  .roll-badge { gap: 10px; padding: 10px; }
+  .roll-badge__die { width: 55px; height: 62px; }
+  .roll-badge__die strong { font-size: 25px; }
+  .roll-badge__formula { font-size: 12px; gap: 3px 6px; }
+}
 
 .sidebar { position: sticky; top: 24px; background: #1a1b23; border: 1px solid #34333b; border-radius: 8px; padding: 0 22px; }
 .sidebar__section { padding: 24px 0; border-bottom: 1px solid #36333a; }
@@ -200,11 +385,409 @@ p { line-height: 1.7; }
 .ending__entry-title { color: #e0c28e; font-size: 12px; font-weight: 800; }
 .ending__entry p { color: #b9b1ba; font-size: 13px; line-height: 1.7; margin: 8px 0 0; }
 .ending__entry p em { color: #e1d6cb; }
+/* A single illustrated journal ties action, artwork and consequence together. */
+.ending__journal-intro {
+  margin: 0 0 13px;
+  color: #a9a0a5;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.ending__entry { padding: 21px 0 24px; }
+.ending__entry-title { display: flex; align-items: center; gap: 10px; line-height: 1.5; }
+.ending__entry-number {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 29px;
+  height: 29px;
+  background: #393039;
+  border: 1px solid #836943;
+  border-radius: 3px;
+  color: #e0bf8b;
+  font: 700 11px/1 'Courier New', monospace;
+}
+.ending__entry-label {
+  display: block;
+  color: #bba17a;
+  font: 700 10px/1.3 'Courier New', monospace;
+  letter-spacing: .11em;
+}
+.ending__entry-action { margin: 16px 0 12px; }
+.ending__entry-action p {
+  margin: 7px 0 0;
+  color: #e3d4c4;
+  overflow-wrap: anywhere;
+}
+.ending__entry-roll {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 9px;
+  margin: 12px 0;
+  padding: 8px 10px;
+  border: 1px solid #4b473f;
+  border-radius: 4px;
+  background: #25232c;
+  color: #cfc1ad;
+  font: 11px/1.5 Arial, sans-serif;
+}
+.ending__entry-roll svg { flex: none; color: #d9b578; }
+.ending__entry-roll strong { color: #efdbb9; }
+.ending__entry-roll b { margin-left: auto; font-size: 10px; letter-spacing: .06em; }
+.ending__entry-roll--success { color: #a5d4a9; }
+.ending__entry-roll--failed { color: #e7a8a1; }
+.ending__entry .room-artwork {
+  width: min(100%, 370px);
+  max-width: 100%;
+  margin: 15px auto;
+  border-color: #655243;
+}
+.ending__entry .room-artwork__frame { max-height: none; aspect-ratio: 1 / 1; }
+.ending__entry .room-artwork figcaption { font-size: 11px; }
+.ending__entry-response {
+  background: #24222b;
+  border-left: 3px solid #ac885c;
+  padding: 12px 15px 14px;
+  border-radius: 0 5px 5px 0;
+  margin-top: 16px;
+}
+.ending__entry-response p { margin: 8px 0 0; color: #cdc3bd; overflow-wrap: anywhere; }
+.ending__entry .ending__award { margin-top: 14px; }
+
 .ending__actions { display: flex; justify-content: center; gap: 12px; margin: 28px 0; flex-wrap: wrap; }
 .ending__tomorrow { display: flex; justify-content: center; align-items: center; gap: 9px; color: #c2a777; font-size: 12px; margin-top: 34px; }
 .footer { max-width: 1420px; padding: 22px 48px; border-top: 1px solid #282830; display: flex; justify-content: space-between; gap: 20px; align-items: center; margin: auto; color: #767780; font-size: 10px; }
 .footer > span:first-child { display: flex; align-items: center; gap: 8px; font: 700 12px 'Cinzel', serif; letter-spacing: .05em; color: #d1b080; }
 .footer__playtest { letter-spacing: .09em; }
+
+
+
+/* A little ceremony for especially inventive adventurers. */
+.achievement-unlocked {
+  margin: -4px 0 24px;
+  padding: 17px 19px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  border: 1px solid #b5935b;
+  border-radius: 7px;
+  background: linear-gradient(120deg, #3b3028, #2a252d 58%, #25222b);
+  box-shadow: 0 4px 35px #d1ab6430;
+  animation: achievement-appear .5s ease-out;
+}
+@keyframes achievement-appear {
+  from { transform: translateY(8px) scale(.98); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+.achievement-unlocked__medal {
+  flex: none;
+  width: 53px;
+  height: 53px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 40% 35%, #715536, #3e332c);
+  border: 2px solid #c7a36c;
+  color: #f4d49d;
+  box-shadow: inset 0 0 0 4px #32292a;
+}
+.achievement-unlocked__copy { min-width: 0; }
+.achievement-unlocked__copy .eyebrow { margin: 0 0 5px; color: #eac98d; }
+.achievement-unlocked__copy strong {
+  display: block;
+  color: #f7e4bb;
+  font: bold 20px/1.3 'Cinzel', Georgia, serif;
+  overflow-wrap: anywhere;
+}
+.achievement-unlocked__copy p { margin: 4px 0 0; color: #d9c9bb; font-size: 12px; line-height: 1.55; }
+.journal-entry__award, .ending__award {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #e6c185 !important;
+  font-weight: 700;
+}
+.journal-entry__award svg, .ending__award svg { flex: none; }
+
+/* A proper keepsake, not just a line of results. */
+.hero-certificate {
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  margin: 0 0 27px;
+  padding: 36px 25px 26px;
+  border: 2px solid #b9945c;
+  border-radius: 6px;
+  background: radial-gradient(ellipse at 50% 15%, #463642 0, #28232d 44%, #201e28 100%);
+  box-shadow: inset 0 0 0 7px #26232c, inset 0 0 0 8px #6b5745, 0 20px 48px #0004;
+}
+.hero-certificate::before, .hero-certificate::after {
+  position: absolute; top: 20px; font-size: 20px; color: #c7a16a; content: '✦'; opacity: .7;
+}
+.hero-certificate::before { left: 22px; }
+.hero-certificate::after { right: 22px; }
+.hero-certificate__ornament { font-size: 35px; color: #e7c586; line-height: 1.2; }
+.hero-certificate__eyebrow { margin: 13px 0 5px; color: #d7b27a; font-size: 10px; letter-spacing: .19em; font-weight: 800; }
+.hero-certificate h2 { font-size: clamp(22px, 3.1vw, 31px); margin-bottom: 14px; color: #f6e1b6; }
+.hero-certificate__intro { color: #c9bdb8; font: italic 15px/1.55 Georgia, serif; margin: 0; }
+.hero-certificate__name { display: block; margin: 14px auto 6px; color: #f3e3c7; font: bold clamp(23px, 3vw, 32px)/1.35 'Cinzel', Georgia, serif; }
+.hero-certificate__dungeon { font-size: 12px; color: #d9b987; margin-bottom: 22px; }
+.hero-certificate__awards {
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 16px 0 2px;
+  border-top: 1px solid #745c4e;
+}
+.hero-certificate__awards > .eyebrow { display: block; margin-bottom: 13px; }
+.hero-certificate__awards > p { font: italic 13px/1.6 Georgia, serif; color: #aaa4aa; }
+.hero-certificate__award { display: flex; align-items: flex-start; gap: 12px; text-align: left; padding: 10px 0; }
+.hero-certificate__award + .hero-certificate__award { border-top: 1px solid #534752; }
+.hero-certificate__award > svg { flex: none; margin-top: 1px; color: #e6be7b; }
+.hero-certificate__award strong { display: block; color: #f0d49e; font: bold 16px/1.4 'Cinzel', Georgia, serif; overflow-wrap: anywhere; }
+.hero-certificate__award p { margin: 4px 0 0; color: #bdb1b7; font-size: 12px; }
+.hero-certificate__seal { margin: 17px 0 0; color: #bda072; font-size: 10px; letter-spacing: .13em; font-weight: 800; }
+.ending__notice { color: #ead1a0; font-size: 12px; margin: -10px 0 24px; }
+
+
+
+.inventory__hint { color: #b4a8a7; font-size: 11px; line-height: 1.5; margin: 9px 0 12px; }
+.last-turn__spent { display: flex; align-items: center; gap: 7px; color: #eeb29a; font-size: 12px; font-weight: 700; margin-top: 5px; }
+.last-turn__spent svg { flex: none; }
+.ending__entry-spent { color: #e8ba9e !important; font-size: 12px; font-weight: 700; margin: 4px 0 0 !important; }
+
+/* The certificate flows directly into an always-visible Hero's Journey.
+   No duplicated image gallery, no disclosure click, no additional AI inference. */
+.hero-chronicle { margin-bottom: 0; }
+.hero-chronicle__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 20px auto;
+}
+.hero-chronicle__actions .button { font-size: 12px; padding: 12px 15px; }
+.hero-chronicle__notice { color: #ead1a0; font-size: 12px; margin: 0 0 14px; }
+.hero-chronicle__journal {
+  margin: 21px auto 0;
+  padding-top: 20px;
+  border-top: 1px solid #745c4e;
+  text-align: left;
+}
+.hero-chronicle__journal-title {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 0 0 6px;
+  color: #f1d09c;
+  font: bold clamp(18px, 3vw, 23px)/1.4 'Cinzel', Georgia, serif;
+}
+.hero-chronicle__journal-title svg { flex: none; }
+.hero-chronicle__journal-body { padding: 0 4px 2px; }
+.hero-chronicle__journal-body .ending__entry { padding: 20px 0; }
+.hero-chronicle__journal-body .ending__entry:last-child { padding-bottom: 0; border-bottom: 0; }
+.hero-chronicle__journal-body .ending__entry .room-artwork { margin: 14px auto; }
+.room-artwork__unavailable {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 13px auto 18px;
+  padding: 11px 13px;
+  max-width: 370px;
+  background: #29252f;
+  border: 1px solid #5b4950;
+  border-radius: 5px;
+  color: #bdb1b7;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: left;
+}
+.room-artwork__unavailable svg { flex: none; color: #d5b17c; }
+/* A Dungeon Master monologue, not another scoreboard or named award. */
+.hero-chronicle__epilogue {
+  margin: 25px auto 0;
+  padding: 24px 21px 22px;
+  border: 1px solid #7a6144;
+  border-radius: 5px;
+  background: radial-gradient(ellipse at 50% 0%, #3c3039, #24212c 90%);
+}
+.hero-chronicle__epilogue .hero-chronicle__epilogue-story {
+  max-width: 560px;
+  margin: 0 auto;
+  color: #f2e2cc;
+  font: 16px/1.8 Georgia, serif;
+  text-align: left;
+  white-space: pre-line;
+}
+.hero-chronicle__epilogue .hero-chronicle__return {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px 9px;
+  margin: 19px auto 0;
+  padding-top: 17px;
+  border-top: 1px solid #705643;
+  max-width: 560px;
+  text-align: center;
+  color: #edc68d;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.hero-chronicle__return svg { flex: none; }
+.hero-chronicle__return span {
+  color: #aa9b91;
+  font-size: 11px;
+  font-weight: 500;
+}
+@media (max-width: 540px) {
+  .hero-chronicle { padding: 28px 14px 16px; }
+  .hero-chronicle .hero-certificate__ornament { font-size: 29px; }
+  .hero-chronicle .hero-certificate__eyebrow { margin-top: 6px; }
+  .hero-chronicle .hero-certificate__name { margin-top: 8px; }
+  .hero-chronicle .hero-certificate__dungeon { margin-bottom: 12px; }
+  .hero-chronicle .hero-certificate__awards { padding-top: 11px; }
+  .hero-chronicle .hero-certificate__award { padding: 8px 0; }
+  .hero-chronicle .hero-certificate__award strong { font-size: 14px; }
+  .hero-chronicle .hero-certificate__award p { font-size: 11px; line-height: 1.45; }
+  .hero-chronicle__actions { margin: 15px 0; gap: 8px; }
+  .hero-chronicle__actions .button { width: 100%; }
+  .hero-chronicle__journal { margin-top: 16px; padding-top: 16px; }
+  .hero-chronicle__journal-title { font-size: 18px; }
+  .hero-chronicle__journal-body .ending__entry .room-artwork { width: 100%; }
+  .hero-chronicle__epilogue { margin-top: 17px; padding: 21px 13px; }
+  .hero-chronicle__epilogue > p { font-size: 14px; }
+  .hero-chronicle__epilogue .hero-chronicle__return { font-size: 12px; }
+}
+
+/* Retro room illustrations, rendered by the Cloudflare portrait studio. */
+.room-artwork {
+  margin: 0 0 24px;
+  overflow: hidden;
+  border: 1px solid #67553f;
+  border-radius: 8px;
+  background: #1a1b25;
+  box-shadow: 0 12px 36px #0005;
+}
+.room-artwork__frame {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 1;
+  max-height: 480px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, #343142, #151722 72%);
+}
+.room-artwork__frame > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  image-rendering: pixelated;
+  animation: art-reveal .6s ease-out both;
+}
+@keyframes art-reveal {
+  from { opacity: 0; filter: brightness(.35); transform: scale(1.035); }
+  to { opacity: 1; filter: brightness(1); transform: scale(1); }
+}
+.room-artwork__loading {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  padding: 25px;
+  text-align: center;
+  color: #e6c18a;
+}
+.room-artwork__loading > svg { animation: art-twinkle 2s ease-in-out infinite; }
+@keyframes art-twinkle { 50% { opacity: .4; transform: rotate(20deg) scale(.8); } }
+.room-artwork__loading span { font: 600 18px Georgia, serif; }
+.room-artwork__loading small { font-size: 12px; color: #a79da6; line-height: 1.6; }
+.room-artwork figcaption {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 12px 17px;
+  font-size: 12px;
+  color: #efd1a2;
+  border-top: 1px solid #4b403c;
+}
+.room-artwork__chip {
+  margin-left: auto;
+  white-space: nowrap;
+  font-size: 9px;
+  letter-spacing: .12em;
+  color: #af9f94;
+  font-weight: 800;
+}
+.room-artwork--compact { margin: 0; min-width: 0; }
+.room-artwork--compact .room-artwork__frame { height: auto; max-height: none; }
+.room-artwork--compact figcaption { justify-content: center; text-align: center; padding: 11px 8px; }
+.room-artwork--compact figcaption svg, .room-artwork--compact .room-artwork__chip { display: none; }
+.room-artwork--compact .room-artwork__loading { padding: 12px; gap: 7px; }
+.room-artwork--compact .room-artwork__loading span { font-size: 13px; }
+.room-artwork--compact .room-artwork__loading small { display: none; }
+@media (max-width: 540px) {
+  .room-artwork--compact figcaption { font-size: 10px; line-height: 1.4; }
+  .room-artwork--compact .room-artwork__loading span { font-size: 11px; }
+}
+
+
+/* Temporary next-day QA experience. Never presented as the real daily challenge. */
+.preview-ribbon {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 15px;
+  margin: 0 0 22px;
+  padding: 12px 17px;
+  background: #2c293f;
+  border: 1px solid #aa8b62;
+  color: #e9d4ad;
+  font-size: 12px;
+  border-radius: 5px;
+}
+.preview-ribbon strong { font: 700 12px 'Courier New', monospace; }
+.preview-ribbon span { color: #c2b7b1; }
+.preview-ribbon a { margin-left: auto; color: #f4dca7; font-weight: 700; text-decoration: underline; }
+.preview-ribbon__art {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 700;
+}
+.preview-ribbon__art--ready { color: #a4dcae !important; }
+.preview-ribbon__art--warning { color: #f4bb91 !important; }
+.art-debug-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 25px;
+  border: 1px solid #886b53;
+  background: #32282d;
+  color: #e8c4a1;
+  border-radius: 5px;
+  padding: 14px 16px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.art-debug-note > svg { flex: none; margin-top: 2px; }
+
+.preview-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 0;
+  margin: 10px 0 0;
+  color: #e9c18a;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.preview-link:hover, .preview-ribbon a:hover { color: #fff0c8; }
 
 @media (max-width: 1000px) {
   .site-header { padding: 0 25px; }
@@ -212,7 +795,7 @@ p { line-height: 1.7; }
   .game-layout { grid-template-columns: minmax(0, 1fr) 245px; gap: 20px; }
   .sidebar { padding: 0 15px; }
   .intro { gap: 2%; }
-  .intro__visual { transform: scale(.87); }
+  .intro__visual { transform: none; }
   .footer { padding: 20px 26px; }
 }
 @media (max-width: 760px) {
@@ -224,7 +807,7 @@ p { line-height: 1.7; }
   .daily-pill { padding: 8px; font-size: 9px; }
   .main { padding: 24px 17px 65px; }
   .intro { display: flex; flex-direction: column; gap: 0; min-height: unset; }
-  .intro__visual { height: 310px; width: 100%; transform: scale(.72); margin: -40px 0 -50px; }
+  .intro__visual { height: auto; min-height: 0; padding: 25px 6px 0; width: 100%; transform: none; margin: 0 0 28px; }
   .intro__copy { width: 100%; text-align: center; }
   .intro__copy h1 { font-size: 35px; }
   .intro__description { margin: 18px auto 22px; }
