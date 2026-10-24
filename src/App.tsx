@@ -10,8 +10,9 @@ import { resolveAction, type ActionOutcome } from "./engine";
 import { fallbackAchievement, isAchievement, type Achievement } from "./achievements";
 import { createCertificateImage } from "./certificate";
 import PixelScene from "./PixelScene";
+import SharedIllustration from "./SharedIllustration";
+import ClueSketch from "./ClueSketch";
 import { rollBreakdown } from "./roll-math";
-import PixelPortrait from "./PixelPortrait";
 import { chooseEpilogue } from "./epilogue";
 
 // Date preview is opt-in and never overwrites genuine daily progress.
@@ -97,12 +98,18 @@ function useDailyRun() {
   return { daily, run, setRun };
 }
 
-function DungeonDoor({ slug, title }: { slug: string; title: string }) {
+function DungeonDoor({ slug, title, day, enabled, preview }: {
+  slug: string; title: string; day: string; enabled: boolean;
+  preview: "today" | "tomorrow" | "hollowmere";
+}) {
   return (
     <div className="dungeon-art dungeon-art--pixel">
       <div className="pixel-scene__topbar"><span>✦ QUEST PREVIEW</span><span>16 BIT / 3 ROOMS</span></div>
       <div className="pixel-scene__viewport">
-        <PixelScene dungeonSlug={slug} className="pixel-scene__canvas"/>
+        <SharedIllustration day={day} roomIndex={0} kind="room" preview={preview}
+          enabled={enabled} alt={"Illustration of " + title}
+          className="shared-illustration--hero"
+          fallback={<PixelScene dungeonSlug={slug} className="pixel-scene__canvas"/>}/>
         <div className="pixel-scene__scanlines" aria-hidden="true"/>
       </div>
       <div className="pixel-scene__bottombar">
@@ -150,14 +157,14 @@ function RoomArtwork({ turn, compact = false }: { turn: Turn; compact?: boolean 
     <figure className={"room-artwork " + (compact ? "room-artwork--compact" : "")}>
       <div className="room-artwork__frame">
         {turn.art.status === "ready" && turn.art.url ? (
-          <PixelPortrait src={turn.art.url} alt={"16-bit illustration of " + turn.roomTitle + " based on your adventure"}/>
+          <img src={turn.art.url} loading="lazy" decoding="async" alt={"Illustration of your actions in " + turn.roomTitle}/>
         ) : turn.art.status === "pending" ? (
           <div className="room-artwork__loading" role="status"><Sparkles size={26}/><span>Painting your legend…</span><small>The royal portrait artist is working on it.</small></div>
         ) : (
           <div className="room-artwork__loading"><span>Portrait unavailable</span><small>Your adventure continues regardless.</small></div>
         )}
       </div>
-      <figcaption><Sparkles size={15}/><span>{turn.roomTitle}</span><span className="room-artwork__chip">16-BIT CHRONICLES</span></figcaption>
+      <figcaption><Sparkles size={15}/><span>{turn.roomTitle}</span><span className="room-artwork__chip">YOUR MOMENT, ILLUSTRATED</span></figcaption>
     </figure>
   );
 }
@@ -238,6 +245,8 @@ export default function App() {
       .catch(() => setCanPreviewTomorrow(false));
   }, []);
   const artInflight = useRef(new Set<string>());
+  const artEnabled = artService?.status === "ready";
+  const artPreview = previewHollowmere ? "hollowmere" : previewTomorrow ? "tomorrow" : "today";
   const storyBeats = run.history.map(turn => ({ action: turn.action, success: turn.outcome.success }));
   const room = storyRoom(daily.dungeon, run.roomIndex, storyBeats);
   const clues = storyClues(daily.dungeon.slug, storyBeats);
@@ -473,9 +482,9 @@ export default function App() {
           <span>Real date and shared AI/art budgets are unchanged.</span>
           {artService && <span className={"preview-ribbon__art " + (artService.status === "ready" ? "preview-ribbon__art--ready" : "preview-ribbon__art--warning")}>
             <Sparkles size={14}/>
-            {artService.status === "ready" ? "AI portraits ready" : artService.status === "disabled"
-              ? "AI portraits are disabled in the deployed Worker"
-              : "AI portraits need setup: " + (artService.missing?.join(", ") ?? "check Worker bindings")}
+            {artService.status === "ready" ? "Illustrations ready" : artService.status === "disabled"
+              ? "Illustrations disabled on this deployment"
+              : "Illustrations need setup: " + (artService.missing?.join(", ") ?? "check Worker bindings")}
           </span>}
           <a href={window.location.pathname}>Return to today</a>
         </div>}
@@ -483,7 +492,7 @@ export default function App() {
           <section className="intro">
             <div className="intro__visual">
               <div className="intro__badge"><Flame size={14}/> THE GATES ARE OPEN</div>
-              <DungeonDoor slug={daily.dungeon.slug} title={daily.dungeon.title}/>
+              <DungeonDoor slug={daily.dungeon.slug} title={daily.dungeon.title} day={daily.day} enabled={artEnabled} preview={artPreview}/>
             </div>
             <div className="intro__copy">
               <p className="eyebrow">DUNGEON #{String(daily.number).padStart(3, "0")} · {previewHollowmere ? "HOLLOWMERE · STORY PLAYTEST" : previewTomorrow ? "TOMORROW'S QUEST · PREVIEW" : "TODAY'S QUEST"}</p>
@@ -540,22 +549,33 @@ export default function App() {
                   <small>{last.outcome.mode === "ai" ? "Narrated by the AI Dungeon Master" : "Scripted narrator (AI not enabled)"}</small>
                 </div>
               )}
+              {last && <RoomArtwork turn={last}/>}
               {last?.outcome.achievement && <AchievementUnlock achievement={last.outcome.achievement}/>}
-              {previewMode && artService && !last?.outcome.artTicket && last && <p className="art-debug-note">
-                <Sparkles size={16}/> No personalised image was requested for this turn.
-                {artService.status === "ready" ? " Please check the deployed /api/resolve artwork ticket." : " " + (artService.status === "disabled"
-                  ? "AI portraits are disabled on the server." : "Missing: " + (artService.missing?.join(", ") ?? "Worker setup"))}
-              </p>}
-              {last && <RoomArtwork turn={last}/> }
 
-              {clues.length > 0 && <section className="story-clues" aria-label="Clues discovered"><h2><BookOpen size={18}/> What you’ve discovered</h2>{clues.map(clue => <div className="story-clues__entry" key={clue.id}><strong>{clue.title}</strong><p>{clue.text}</p></div>)}</section>}
+
+              {clues.length > 0 && <section className="story-clues" aria-label="Clues discovered">
+                <h2><BookOpen size={18}/> What you’ve discovered</h2>
+                {clues.map((clue, i) => <div className="story-clues__entry" key={clue.id}>
+                  <SharedIllustration day={daily.day} roomIndex={i} kind="clue"
+                    variant={clue.id} preview={artPreview} enabled={artEnabled}
+                    alt={"Illustration of " + clue.title}
+                    className="shared-illustration--clue"
+                    loadingLabel="Sketching your discovery…"
+                    fallback={<ClueSketch variant={clue.id}/>}/>
+                  <div className="story-clues__copy"><strong>{clue.title}</strong><p>{clue.text}</p></div>
+                </div>)}
+              </section>}
                <section className="encounter">
                 <div className="encounter__top">
                   <span className="encounter__tag"><Flame size={14}/> {room.subtitle.toUpperCase()}</span>
                   <span className="encounter__danger"><Dice5 size={15}/> Difficulty {room.difficulty}</span>
                 </div>
-                <div className="encounter__art encounter__art--pixel">
-                  <PixelScene dungeonSlug={daily.dungeon.slug} roomIndex={run.roomIndex} className="encounter__pixel-scene"/>
+                <div className="encounter__art encounter__art--illustrated">
+                  <SharedIllustration day={daily.day} roomIndex={run.roomIndex} kind="room"
+                    preview={artPreview} enabled={artEnabled} alt={"Fantasy illustration of " + room.title}
+                    className="shared-illustration--room"
+                    fallback={<PixelScene dungeonSlug={daily.dungeon.slug} roomIndex={run.roomIndex}
+                      className="encounter__pixel-scene"/>}/>
                   <span className="encounter__scene-label">{room.subtitle}</span>
                 </div>
                 <div className="encounter__body">
@@ -629,17 +649,17 @@ export default function App() {
               {won ? "Through a combination of wit, audacity and highly suspicious luck, you've made it out alive." :
                 "Your courage was unquestionable. Your decision-making, less so. The Dungeon Master will remember this."}
             </p>
+            <SharedIllustration day={daily.day} roomIndex={2} kind="ending"
+              variant={finalFate?.id ?? (won ? "victory" : "defeat")}
+              preview={artPreview} enabled={artEnabled} alt={"Illustration of the ending: " + title}
+              className="shared-illustration--ending" loadingLabel="Painting your ending…"
+              fallback={<PixelScene dungeonSlug={daily.dungeon.slug} roomIndex={2}/>}/>
             {finalFate && <section className="story-fate" aria-label="Your story ending"><strong>THE FATE OF HOLLOWMERE</strong><p>{finalFate.consequence}</p></section>}
              <div className="ending__stats">
               <div><strong>{run.history.length}/3</strong><span>ROOMS VISITED</span></div>
               <div><strong>{wins}/3</strong><span>TRIALS PASSED</span></div>
               <div><strong>{run.hearts}/3</strong><span>HEARTS LEFT</span></div>
             </div>
-            {previewMode && artService && !run.history.some(turn => turn.art) && <p className="art-debug-note">
-              <Sparkles size={16}/> No AI portraits were requested during this playtest.
-              {artService.status === "ready" ? " The portrait service reports ready, so check /api/resolve." : " " + (artService.status === "disabled"
-                ? "The deployed ART_ENABLED flag is off." : "Server setup needed: " + (artService.missing?.join(", ") ?? "check bindings"))}
-            </p>}
             <section className="hero-certificate hero-chronicle" aria-label="Your certificate and illustrated adventure">
               <div className="hero-certificate__ornament">✦</div>
               <p className="hero-certificate__eyebrow">THE DAILY DUNGEON PRESENTS</p>
