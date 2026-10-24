@@ -874,43 +874,44 @@ p { line-height: 1.7; }
 }
 
 
-/* v0.3 illustration system. Generated assets are shared/cached; SVG is the instant fallback. */
-.shared-illustration {
-  display: block;
+/* Illustration studio: every visual is composed live from local SVG and CSS. */
+.procedural-art {
   position: relative;
-  width: 100%;
-  min-width: 0;
-  overflow: hidden;
-  background: radial-gradient(ellipse at 50% 35%, #45384e, #171826 85%);
-}
-.shared-illustration > img,
-.shared-illustration > svg {
+  display: block;
   width: 100%;
   height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+  background: radial-gradient(ellipse at 50% 35%, #44394f, #131626 85%);
+}
+.procedural-art > svg {
   display: block;
-  object-fit: cover;
-  image-rendering: auto;
+  width: 100%;
+  height: 100%;
 }
-.shared-illustration > img { animation: art-reveal .55s ease-out both; }
-.shared-illustration__painting {
+.procedural-art__background {
   position: absolute;
-  bottom: 12px;
-  left: 12px;
-  max-width: calc(100% - 24px);
-  padding: 7px 11px;
-  border: 1px solid rgba(232,195,139,.48);
-  border-radius: 100px;
-  background: rgba(24,21,31,.82);
-  color: #f6deb3;
-  backdrop-filter: blur(6px);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .03em;
-  pointer-events: none;
+  inset: 0;
+  object-fit: cover;
+  image-rendering: pixelated;
+  filter: saturate(1.18) contrast(1.08);
 }
-.shared-illustration--hero { height: 100%; }
-.pixel-scene__viewport .shared-illustration--hero > img { object-fit: cover; }
-.pixel-scene__viewport .shared-illustration--hero > svg { image-rendering: pixelated; }
+.procedural-art__foreground {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+.procedural-art__spark { animation: procedural-twinkle 3.2s ease-in-out infinite alternate; }
+.procedural-art__item { animation: procedural-hover 3.2s ease-in-out infinite; transform-box: fill-box; }
+.procedural-art__dancer { animation: procedural-dance 1.3s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center bottom; }
+.procedural-art__ghost { animation: procedural-ghost 3s ease-in-out infinite alternate; }
+@keyframes procedural-twinkle { 0% { opacity: .3 } 100% { opacity: 1 } }
+@keyframes procedural-hover { 0%,100% { translate: 0 0 } 50% { translate: 0 -6px } }
+@keyframes procedural-dance { 0% { transform: rotate(-8deg) } 100% { transform: rotate(8deg) } }
+@keyframes procedural-ghost { 0% { opacity: .7 } 100% { opacity: 1 } }
+
+.pixel-scene__viewport > .procedural-art--welcome { height: 100%; }
 .encounter__art--illustrated {
   height: auto !important;
   display: block;
@@ -919,54 +920,47 @@ p { line-height: 1.7; }
   gap: 0;
 }
 .encounter__art--illustrated::before { display: none; }
-.encounter__art--illustrated .shared-illustration--room { height: 100%; }
-.encounter__art--illustrated .shared-illustration--room > svg { object-fit: cover; }
-.encounter__art--illustrated .encounter__scene-label {
-  z-index: 2;
-  pointer-events: none;
-}
+.encounter__art--illustrated .procedural-art--room { height: 100%; }
+.encounter__art--illustrated .encounter__scene-label { z-index: 3; pointer-events: none; }
+.room-artwork__frame { aspect-ratio: 3 / 2; max-height: none; }
+.room-artwork__frame .procedural-art { min-height: 0; }
+.room-artwork__frame > .procedural-art > svg { width: 100%; height: 100%; }
+.hero-chronicle__journal-body .ending__entry .room-artwork__frame { aspect-ratio: 3 / 2; }
+
 .story-clues__entry {
   display: flex;
   align-items: center;
   gap: 14px;
 }
-.story-clues__copy { flex: 1 1 auto; min-width: 0; }
-.story-clues__entry .shared-illustration--clue {
+.story-clues__copy { flex: 1; min-width: 0; }
+.story-clues__entry .procedural-art--clue {
   flex: 0 0 34%;
+  width: 34%;
+  height: auto;
   max-width: 210px;
-  min-width: 100px;
   aspect-ratio: 3 / 2;
-  border-radius: 8px;
   border: 1px solid #8a765c;
-  box-shadow: 0 5px 16px rgba(0,0,0,.25);
+  border-radius: 8px;
+  box-shadow: 0 5px 16px #0004;
 }
-.story-clues__entry .shared-illustration__painting {
-  bottom: 4px; left: 4px;
-  padding: 4px 6px;
-  font-size: 9px;
-  line-height: 1.25;
-}
-.ending .shared-illustration--ending {
+.ending .procedural-art--ending {
   width: min(100%, 720px);
+  height: auto;
   margin: 14px auto 24px;
   aspect-ratio: 3 / 2;
   border: 2px solid #ac8960;
   border-radius: 12px;
-  box-shadow: 0 16px 45px rgba(0,0,0,.4);
+  box-shadow: 0 16px 45px #0006;
 }
-.room-artwork__frame {
-  aspect-ratio: 3 / 2;
-  max-height: none;
-}
-.room-artwork__frame > img {
-  object-fit: cover;
-  image-rendering: auto;
-}
-.hero-chronicle__journal-body .ending__entry .room-artwork__frame { aspect-ratio: 3 / 2; }
 @media (max-width: 540px) {
   .encounter__art--illustrated { height: auto !important; aspect-ratio: 3 / 2; }
   .story-clues__entry { align-items: flex-start; gap: 10px; }
-  .story-clues__entry .shared-illustration--clue { min-width: 85px; flex-basis: 35%; }
+  .story-clues__entry .procedural-art--clue { min-width: 86px; flex-basis: 35%; }
   .story-clues__entry .story-clues__copy p { line-height: 1.5; }
-  .shared-illustration__painting { font-size: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .procedural-art__spark,
+  .procedural-art__item,
+  .procedural-art__dancer,
+  .procedural-art__ghost { animation: none !important; }
 }
