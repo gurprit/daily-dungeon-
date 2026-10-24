@@ -97,20 +97,21 @@ export default function IllustratedScene(props: Props) {
   const showGenerated = enabled && !!result.url && !broken;
   const visualClass = "hybrid-art " + className;
   return <div className={visualClass}>
-    {showGenerated ? <>
+    {(!showGenerated || !ready) && <ProceduralIllustration {...props} label={alt}/>}
+    {showGenerated && <>
       <img className={"hybrid-art__image " + (ready ? "hybrid-art__image--ready" : "")}
         src={result.url} alt={alt}
         loading={kind === "room" ? "eager" : "lazy"}
         decoding="async" onLoad={() => setReady(true)} onError={() => setBroken(true)}/>
-      <svg className="hybrid-art__svgfx" viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
-        aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-        <ProceduralEffects input={props} recipe={recipe}/>
-      </svg>
-      <ParticleCanvas input={props} recipe={recipe}/>
-    </> : <>
-      <ProceduralIllustration {...props} label={alt}/>
-      {enabled && !!key && result.status === "pending" &&
-        <span className="hybrid-art__painting" role="status">Painting this moment…</span>}
+      {ready && <>
+        <svg className="hybrid-art__svgfx" viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
+          aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+          <ProceduralEffects input={props} recipe={recipe}/>
+        </svg>
+        <ParticleCanvas input={props} recipe={recipe}/>
+      </>}
     </>}
+    {!showGenerated && enabled && !!key && result.status === "pending" &&
+      <span className="hybrid-art__painting" role="status">Painting this moment…</span>}
   </div>;
 }
