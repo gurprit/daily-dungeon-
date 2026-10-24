@@ -136,12 +136,17 @@ export default {
           console.error("AI budget unavailable", error instanceof Error ? error.message : "unknown");
           return json({ error: "The AI budget gate is unavailable. No model call was made." }, 503);
         }
-        const judgment = await judgeWithAI(env.AI, room.scene, room.character, room.challenge, body.action, earlierMoments, inventory);
+        const isFinalRoom = Number(body.roomIndex) === daily.dungeon.rooms.length - 1;
+        const judgment = await judgeWithAI(env.AI, room.scene, room.character, room.challenge, body.action, earlierMoments, inventory, isFinalRoom);
         if (judgment) {
           outcome = resolveAction(room, body.action, inventory, die, judgment.creativity);
           outcome.narration = outcome.success ? judgment.success : judgment.failure;
           outcome.mode = "ai";
           outcome.achievement = achievementFromJudgment(room, body.action, outcome.success, judgment.creativity, judgment.achievement);
+          if (isFinalRoom) {
+            const closing = outcome.success ? judgment.epilogueSuccess : judgment.epilogueFailure;
+            if (closing) outcome.epilogue = closing;
+          }
         }
       }
       const artTicket = await makeArtTicket(env, Number(body.roomIndex), body.action, outcome.narration, outcome.success, daily.day);
