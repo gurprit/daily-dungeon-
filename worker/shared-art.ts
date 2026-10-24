@@ -1,5 +1,6 @@
 import { getDailyGame, getPreviewDailyGame, type Dungeon } from "../src/game.ts";
 import { ILLUSTRATION_STYLE, artEnabled, inferIllustration, type ArtEnv } from "./art.ts";
+import { generatedFxLayout } from "../src/image-fx-layout.ts";
 
 /** Fixed pictures shared by every player. User actions remain separately illustrated. */
 export type SharedArtKind = "room" | "clue" | "ending";
@@ -66,24 +67,25 @@ export function validateSharedArt(value: unknown, env: SharedEnv, now: Date = ne
 
 export function createSharedArtPrompt(dungeon: Dungeon, data: SharedArtRequest): string {
   const room = dungeon.rooms[data.roomIndex];
-  const setting = ILLUSTRATION_STYLE + " Setting: " + dungeon.title + ". " + dungeon.intro + ". ";
+  const setting = ILLUSTRATION_STYLE + " Setting: " + dungeon.title + ". " + dungeon.intro + ". " +
+    generatedFxLayout({ kind: data.kind, dungeonSlug: dungeon.slug, roomIndex: data.roomIndex, endingId: data.variant, clueId: data.variant }).caption + " ";
   if (data.kind === "room") return (
-    setting + " Wide atmospheric establishing scene BEFORE the player acts. Rich environment, clear visual storytelling. No spoilers. " +
+    setting + " Establishing scene BEFORE the player acts. Simple 8-bit tile background, one memorable focal sprite, no spoilers. " +
     "Room: " + room.title + ". " + room.scene + " Character: " + room.character
   ).slice(0, 3100);
   if (data.kind === "clue") return (
-    setting + " Illustrated discovery vignette, one treasured object or memorable character moment, tight composition. " +
+    setting + " Pixel sprite discovery close-up, ONE large readable object or face, plain background. " +
     clueVisuals[data.variant!].prompt
   ).slice(0, 3000);
   return (
-    setting + " Epic ending illustration, fate and consequence must be visually clear. " +
+    setting + " 8-bit game ending scene, simple distinct silhouette, clearly show the consequence. " +
     endingVisuals[data.variant!]
   ).slice(0, 3100);
 }
 
 /* First 128 bits of SHA256, with UUIDv4 version bits, form a stable job ID. */
 export async function sharedArtId(data: SharedArtRequest): Promise<string> {
-  const key = "v3/" + data.day + "/" + data.kind + "/" + data.roomIndex + "/" + (data.variant ?? "");
+  const key = "v4-nes8/" + data.day + "/" + data.kind + "/" + data.roomIndex + "/" + (data.variant ?? "");
   const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key)));
   const bytes = hash.slice(0, 16);
   bytes[6] = (bytes[6] & 15) | 64;
