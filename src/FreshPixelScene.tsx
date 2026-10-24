@@ -10,7 +10,7 @@ function Layer({ depth, children, name }: LayerProps) {
 }
 
 function Hero() {
-  return <g transform="translate(50 115)" className="fresh-scene__hero">
+  return <g transform="translate(50 115)"><g className="fresh-scene__hero">
     <ellipse cx="29" cy="68" rx="32" ry="7" fill="#1b2137"/>
     <path d="M17 18 L6 61L29 71L53 61L43 18Z" fill="#544172" stroke="#a18cba" strokeWidth="3"/>
     <rect x="15" y="15" width="28" height="26" fill="#e5b88f"/>
@@ -19,7 +19,7 @@ function Hero() {
     <rect x="35" y="22" width="4" height="4" fill="#302f42"/>
     <path d="M24 33Q30 38 36 33" fill="none" stroke="#77545d" strokeWidth="2"/>
     <rect x="22" y="47" width="17" height="7" fill="#edc981"/>
-  </g>;
+  </g></g>;
 }
 
 function Lighthouse({ roomIndex }: { roomIndex: number }) {
@@ -101,21 +101,21 @@ function Orchard({ roomIndex }: { roomIndex: number }) {
         <path d="M17 -2v-11" stroke="#d4bf9a" strokeWidth="4"/>
       </g>}
       {roomIndex === 1 && <g>
-        <g className="fresh-scene__gear" transform="translate(225 139)">
+        <g transform="translate(225 139)"><g className="fresh-scene__gear">
           <circle r="38" fill="#b18a63" stroke="#e6b96c" strokeWidth="7" strokeDasharray="13 6"/>
           <circle r="18" fill="#5b4651"/>
-        </g>
+        </g></g>
         <circle cx="225" cy="139" r="32" fill="#c5645b" stroke="#e8a66a" strokeWidth="6"/>
         <path d="M218 105l5-15 12 0" fill="none" stroke="#5c8953" strokeWidth="6"/>
         <rect x="211" y="134" width="5" height="5" fill="#3c3148"/>
         <rect x="231" y="134" width="5" height="5" fill="#3c3148"/>
       </g>}
       {roomIndex === 2 && <g>
-        <g className="fresh-scene__gear" transform="translate(222 113)">
+        <g transform="translate(222 113)"><g className="fresh-scene__gear">
           <circle r="36" fill="#d1a85e" stroke="#f0ca79" strokeWidth="9" strokeDasharray="13 7"/>
           <circle r="16" fill="#594359"/>
           <path d="M-13 0H13 M0-13V13" stroke="#e7c77f" strokeWidth="3"/>
-        </g>
+        </g></g>
         <rect x="210" y="154" width="24" height="31" fill="#b7a17d"/>
       </g>}
       {roomIndex !== 2 && <g className="fresh-scene__bees" fill="#e6bd67">
