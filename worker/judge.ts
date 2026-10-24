@@ -59,7 +59,8 @@ export async function judgeWithAI(
   character: string,
   challenge: string,
   action: string,
-  previousEncounters: readonly PreviousBeat[] = []
+  previousEncounters: readonly PreviousBeat[] = [],
+  inventory: readonly string[] = []
 ): Promise<Judgment | null> {
   const instruction = [
     "You are The Dungeon Master: dramatic, witty, theatrical and surprisingly fair.",
@@ -77,6 +78,8 @@ export async function judgeWithAI(
     "Write two alternatives: success and failure. One or two vivid, comical sentences each,",
     "20-45 words each, reacting SPECIFICALLY to the action and character.",
     "On failure, the hero loses a heart but escapes to the next room unless dead.",
+    "The rules engine will consume any item from the CURRENT INVENTORY mentioned in the action, even on failure. Narrate that prop as spent, handed over, eaten, destroyed or left behind, not kept.",
+    "Do NOT resurrect spent gear from an earlier room. The currentInventory list is the only set of objects the player carries.",
     "Never add or take inventory, change health or rolls, or invent later encounters.",
     "If creativity is 4 or 5, invent a funny, highly specific achievement celebrating the player\u0027s method.",
     "Use a title of 2-6 words (max 60 characters), and a playful description of 8-18 words (max 180 characters).",
@@ -90,7 +93,7 @@ export async function judgeWithAI(
         { role: "system", content: instruction },
         {
           role: "user",
-          content: JSON.stringify({ scene, character, challenge, playerAction: action, previousEncounters }) + "\n/no_think"
+          content: JSON.stringify({ scene, character, challenge, playerAction: action, previousEncounters, currentInventory: inventory }) + "\n/no_think"
         }
       ],
       max_tokens: 520,
