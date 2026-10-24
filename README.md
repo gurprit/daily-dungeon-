@@ -84,6 +84,12 @@ Each AI request prompts Qwen3 for two possible short outcomes, a creativity scor
 
 **Action-specific images are different:** If you enable the optional Cloudflare art feature below, the game also illustrates each resolved player action and places each portrait directly between its action and narration in the final Hero’s Journal. This requires the R2 bucket, the D1 migration, the signing secret and ART_ENABLED=true. If disabled, the built-in homepage and room scenes still appear.
 
+## Compact end-of-game chronicle and mobile navigation
+
+The ending uses **one** certificate-and-journal keepsake. Honours and a small three-image illustrated gallery are followed immediately by **Share your legend** and **Save certificate**. The full illustrated room-by-room journal is preserved behind an accessible **Read your hero's journal** disclosure (closed by default). No older progress, certificates or generated images are discarded, and viewing these cached illustrations does not trigger another AI call.
+
+Entering the dungeon and completing any room dismisses the mobile action textbox and scrolls to the top so the player sees the next scene/result. Shared results include the new public URL supplied by the developer: `https://dailydungeon.titkok.co/`. Confirm this custom domain remains current before broader promotion.
+
 ## First-time player hints and pixel-art style
 
 The first encounter now includes a one-sentence explanation of free-form play and three **editable** sentence starters: Use an item, Talk it out, Be ridiculous. Clicking a starter only fills and focuses the action textbox; the player finishes the thought and presses the same button as before. This is zero-cost browser UI and does not grant an automatic pass. Later encounters tuck the same optional help into a small Need inspiration? disclosure. The upside-down tavern copy now spells out the goal of righting the building without breaking glasses.
