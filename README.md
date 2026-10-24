@@ -30,6 +30,35 @@ The app uses a Cloudflare Workers AI image model (`@cf/black-forest-labs/flux-2-
 - `worker/shared-art.ts`: validated shared scenes, clues and ending illustrations
 - `worker/index.ts`: API routes, story rules, dice, daily AI budgets
 
+## Three clean NES art playtests (24 October 2026)
+
+The previous museum, skywhale and Hollowmere previews accumulated imagery from
+different experimental art styles. For a controlled **fresh-start** visual test,
+there are three brand-new original mini-campaigns, each with its own three linked
+rooms, distinct palette, NPCs, inventory and final objective:
+
+1. **The Lighthouse of Lost Dawn**: a sleepy otter, a moon-moth and a pocket sunrise.
+   Test URL: `/?preview=fresh-1`
+2. **The Clockwork Orchard**: a robot beekeeper, brass apples and a sunflower clock.
+   Test URL: `/?preview=fresh-2`
+3. **The Dragon's Last Bakery**: a baby dragon chef, runaway living dough and a giant.
+   Test URL: `/?preview=fresh-3`
+
+These are also the scheduled public adventures for 27, 28 and 29 October 2026,
+but previewing them now **does not change the real daily date**. The preview
+routes are enabled with `PREVIEW_FRESH_ENABLED=true`, gated server-side for
+text action resolution and shared image generation. The preview banner includes
+links to switch freely between all three dungeons.
+
+**Reset scope:** all three use fresh dates, distinct dungeon slugs, separate
+`daily-dungeon:nes-clean-v1:` localStorage keys and unique shared-art D1 job
+IDs. Previous saved achievements and stories are not deleted. This is a new
+isolated playtest, not a destructive wipe of the live game or Cloudflare R2.
+Fresh rooms/ending art is generated lazily on first request; that spends from
+the same existing *global* daily image budget. Action pictures have their own
+signed tokens. New SVG loading fallbacks are specific to each quest, too, so
+old goblin/ghost art should not appear while these dungeons generate.
+
 ## Hollowmere (v0.2)
 
 The Bell of Hollowmere is an authored three-room story featuring Spoon the goblin, the memory-stealing mechanism and Elowen the ghost. Actions have connected consequences and discoverable secrets; the finale can change based on the information and alliances earned earlier. Playtest mode: `?preview=hollowmere`, if enabled.
