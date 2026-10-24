@@ -130,7 +130,12 @@ function ActionFx({ kind, recipe }: { kind: FxTag; recipe: VisualRecipe }) {
 }
 function ResultFx({ kind }: { kind: FxTag }) {
   if (kind==="triumph") return <g>
-    <circle cx="159" cy="105" r="72" fill="#eecb86" className="fx-win-glow" opacity=".08"/>
+    {/* Outlined halo rather than an animated filled disc; CSS must never overwrite
+        a filled circle's SVG opacity and cover the characters. */}
+    <g className="fx-win-halo" fill="none" stroke="#f5d79d">
+      <circle cx="159" cy="105" r="54" strokeWidth="2" opacity=".16"/>
+      <circle cx="159" cy="105" r="73" strokeWidth="1.5" opacity=".09"/>
+    </g>
     <g fill="none" stroke="#f5d79d" strokeWidth="3" className="fx-win-sparkles">
       <path d="M55 48V29M46 39H64 M270 71V54M261 63H279 M205 167V148M196 157H214"/>
     </g>

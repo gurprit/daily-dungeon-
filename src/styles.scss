@@ -1050,7 +1050,8 @@ p { line-height: 1.7; }
   transform-origin: center;
   animation: fx-sound-pulse 2.2s ease-out infinite;
 }
-.procedural-fx .fx-win-glow { animation: fx-moonlight 3.8s ease-in-out infinite alternate; }
+.procedural-fx .fx-win-halo { animation: fx-safe-halo 3.8s ease-in-out infinite alternate; }
+@keyframes fx-safe-halo { from { opacity: .32; } to { opacity: .7; } }
 .procedural-fx .fx-win-sparkles {
   animation: fx-spark-pulse 2.1s ease-in-out infinite alternate;
 }
@@ -1137,4 +1138,23 @@ p { line-height: 1.7; }
   }
   .procedural-fx .fx-paint { stroke-dashoffset: 0; }
   .procedural-fx .fx-sound-wave, .procedural-fx .fx-bell-ring { opacity: .5; }
+}
+
+
+/* Canvas particle overlay: actual JS-simulated embers, flame sparks and magic.
+   Positioned above the SVG illustrations without stealing pointer events. */
+.procedural-art__foreground { z-index: 2; }
+.procedural-art__particles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  display: block;
+  pointer-events: none;
+  image-rendering: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .procedural-art__particles { display: none; }
+  .procedural-fx .fx-win-halo { animation: none !important; opacity: .4; }
 }

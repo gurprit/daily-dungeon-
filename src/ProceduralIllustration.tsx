@@ -2,6 +2,7 @@ import { useId } from "react";
 import PixelScene from "./PixelScene";
 import ClueSketch from "./ClueSketch";
 import ProceduralEffects from "./ProceduralEffects";
+import ParticleCanvas from "./ParticleCanvas";
 import { makeVisualRecipe, visualSeedPoints, type VisualInput, type VisualProp, type VisualRecipe } from "./illustration-recipe";
 
 type Props = VisualInput & {
@@ -259,5 +260,6 @@ export default function ProceduralIllustration(input: Props) {
       </g>}
       <ProceduralEffects input={input} recipe={recipe}/>
     </svg>
+    <ParticleCanvas input={input} recipe={recipe}/>
   </div>;
 }
