@@ -9,7 +9,7 @@ import { startingItems, inventoryAfterTurn } from "./inventory";
 import { resolveAction, type ActionOutcome } from "./engine";
 import { fallbackAchievement, isAchievement, type Achievement } from "./achievements";
 import { createCertificateImage } from "./certificate";
-import ProceduralIllustration from "./ProceduralIllustration";
+import IllustratedScene, { type ArtPreview } from "./IllustratedScene";
 import { rollBreakdown } from "./roll-math";
 import { chooseEpilogue } from "./epilogue";
 
@@ -95,13 +95,16 @@ function useDailyRun() {
   return { daily, run, setRun };
 }
 
-function DungeonDoor({ slug, title }: { slug: string; title: string }) {
+function DungeonDoor({ slug, title, day, preview, enabled }: {
+  slug: string; title: string; day: string; preview: ArtPreview; enabled: boolean
+}) {
   return (
     <div className="dungeon-art dungeon-art--pixel">
-      <div className="pixel-scene__topbar"><span>✦ QUEST PREVIEW</span><span>SVG / 3 ROOMS</span></div>
+      <div className="pixel-scene__topbar"><span>✦ QUEST PREVIEW</span><span>3-ROOM ADVENTURE</span></div>
       <div className="pixel-scene__viewport">
-        <ProceduralIllustration dungeonSlug={slug} roomIndex={0} kind="room"
-          label={"Illustration of " + title} className="procedural-art--welcome"/>
+        <IllustratedScene dungeonSlug={slug} roomIndex={0} kind="room" day={day}
+          preview={preview} enabled={enabled} alt={"Illustration of " + title}
+          className="procedural-art--welcome"/>
         <div className="pixel-scene__scanlines" aria-hidden="true"/>
       </div>
       <div className="pixel-scene__bottombar">
@@ -139,19 +142,21 @@ function AchievementUnlock({ achievement }: { achievement: Achievement }) {
   );
 }
 
-function RoomArtwork({ turn, dungeonSlug, roomIndex, compact = false }: {
-  turn: Turn; dungeonSlug: string; roomIndex: number; compact?: boolean;
+function RoomArtwork({ turn, dungeonSlug, roomIndex, day, preview, enabled, compact = false }: {
+  turn: Turn; dungeonSlug: string; roomIndex: number; day: string;
+  preview: ArtPreview; enabled: boolean; compact?: boolean;
 }) {
   return (
     <figure className={"room-artwork " + (compact ? "room-artwork--compact" : "")}>
       <div className="room-artwork__frame">
-        <ProceduralIllustration kind="action" dungeonSlug={dungeonSlug} roomIndex={roomIndex}
+        <IllustratedScene kind="action" dungeonSlug={dungeonSlug} roomIndex={roomIndex}
+          day={day} preview={preview} enabled={enabled} ticket={turn.outcome.artTicket}
           action={turn.action} narration={turn.outcome.narration}
           success={turn.outcome.success}
-          label={"Illustrated result of " + turn.action}/>
+          alt={"Illustration of " + turn.action}/>
       </div>
       <figcaption><Sparkles size={15}/><span>{turn.roomTitle}</span>
-        <span className="room-artwork__chip">DRAWN FROM YOUR ACTION</span></figcaption>
+        <span className="room-artwork__chip">YOUR MOMENT, ILLUSTRATED</span></figcaption>
     </figure>
   );
 }
@@ -220,12 +225,16 @@ export default function App() {
   const [certificateNotice, setCertificateNotice] = useState("");
   const [canPreviewTomorrow, setCanPreviewTomorrow] = useState(false);
   const [canPreviewStory, setCanPreviewStory] = useState(false);
+  const [artService, setArtService] = useState<"ready" | "disabled" | "setup-required">("disabled");
+  const artEnabled = artService === "ready";
+  const artPreview: ArtPreview = previewHollowmere ? "hollowmere" : previewTomorrow ? "tomorrow" : "today";
   useEffect(() => {
     void fetch("/api/health")
       .then(response => response.json())
-      .then((data: { previewTomorrowEnabled?: boolean; previewStoryEnabled?: boolean }) => {
+      .then((data: { previewTomorrowEnabled?: boolean; previewStoryEnabled?: boolean; art?: { status?: "ready" | "disabled" | "setup-required" } }) => {
         setCanPreviewTomorrow(data.previewTomorrowEnabled === true);
         setCanPreviewStory(data.previewStoryEnabled === true);
+        setArtService(data.art?.status ?? "disabled");
       })
       .catch(() => setCanPreviewTomorrow(false));
   }, []);
@@ -410,14 +419,14 @@ export default function App() {
       <main className="main">
         {previewMode && <div className="preview-ribbon">
           <strong>⏭ {previewHollowmere ? "Hollowmere story adventure" : "Tomorrow’s dungeon"} · Test mode</strong>
-          <span>Real date and shared text AI budget are unchanged. All illustrations are instant local SVG.</span>
+          <span>Real date and shared AI/art budgets are unchanged. Generated art is enhanced with live particles.</span>
           <a href={window.location.pathname}>Return to today</a>
         </div>}
         {!run.started && (
           <section className="intro">
             <div className="intro__visual">
               <div className="intro__badge"><Flame size={14}/> THE GATES ARE OPEN</div>
-              <DungeonDoor slug={daily.dungeon.slug} title={daily.dungeon.title}/>
+              <DungeonDoor slug={daily.dungeon.slug} title={daily.dungeon.title} day={daily.day} preview={artPreview} enabled={artEnabled}/>
             </div>
             <div className="intro__copy">
               <p className="eyebrow">DUNGEON #{String(daily.number).padStart(3, "0")} · {previewHollowmere ? "HOLLOWMERE · STORY PLAYTEST" : previewTomorrow ? "TOMORROW'S QUEST · PREVIEW" : "TODAY'S QUEST"}</p>
@@ -474,15 +483,16 @@ export default function App() {
                   <small>{last.outcome.mode === "ai" ? "Narrated by the AI Dungeon Master" : "Scripted narrator (AI not enabled)"}</small>
                 </div>
               )}
-              {last && <RoomArtwork turn={last} dungeonSlug={daily.dungeon.slug} roomIndex={run.history.length-1}/>}
+              {last && <RoomArtwork turn={last} dungeonSlug={daily.dungeon.slug} roomIndex={run.history.length-1} day={daily.day} preview={artPreview} enabled={artEnabled}/>}
               {last?.outcome.achievement && <AchievementUnlock achievement={last.outcome.achievement}/>}
 
 
               {clues.length > 0 && <section className="story-clues" aria-label="Clues discovered">
                 <h2><BookOpen size={18}/> What you’ve discovered</h2>
                 {clues.map((clue, i) => <div className="story-clues__entry" key={clue.id}>
-                  <ProceduralIllustration dungeonSlug={daily.dungeon.slug} roomIndex={i}
-                    kind="clue" clueId={clue.id} label={"Visual discovery: " + clue.title}
+                  <IllustratedScene dungeonSlug={daily.dungeon.slug} roomIndex={i}
+                    kind="clue" clueId={clue.id} variant={clue.id} day={daily.day}
+                    preview={artPreview} enabled={artEnabled} alt={"Discovery: " + clue.title}
                     className="procedural-art--clue"/>
                   <div className="story-clues__copy"><strong>{clue.title}</strong><p>{clue.text}</p></div>
                 </div>)}
@@ -493,8 +503,9 @@ export default function App() {
                   <span className="encounter__danger"><Dice5 size={15}/> Difficulty {room.difficulty}</span>
                 </div>
                 <div className="encounter__art encounter__art--illustrated">
-                  <ProceduralIllustration dungeonSlug={daily.dungeon.slug} roomIndex={run.roomIndex}
-                    kind="room" label={"Room illustration: " + room.title}
+                  <IllustratedScene dungeonSlug={daily.dungeon.slug} roomIndex={run.roomIndex}
+                    kind="room" day={daily.day} preview={artPreview} enabled={artEnabled}
+                    alt={"Room illustration: " + room.title}
                     className="procedural-art--room"/>
                   <span className="encounter__scene-label">{room.subtitle}</span>
                 </div>
@@ -569,9 +580,11 @@ export default function App() {
               {won ? "Through a combination of wit, audacity and highly suspicious luck, you've made it out alive." :
                 "Your courage was unquestionable. Your decision-making, less so. The Dungeon Master will remember this."}
             </p>
-            <ProceduralIllustration dungeonSlug={daily.dungeon.slug} roomIndex={2}
-              kind="ending" endingId={finalFate?.id ?? (won ? "victory" : "defeat")}
-              label={"Illustrated ending: " + title} className="procedural-art--ending"/>
+            <IllustratedScene dungeonSlug={daily.dungeon.slug} roomIndex={2}
+              kind="ending" day={daily.day} preview={artPreview} enabled={artEnabled}
+              variant={finalFate?.id ?? (won ? "victory" : "defeat")}
+              endingId={finalFate?.id ?? (won ? "victory" : "defeat")}
+              alt={"Illustrated ending: " + title} className="procedural-art--ending"/>
             {finalFate && <section className="story-fate" aria-label="Your story ending"><strong>THE FATE OF HOLLOWMERE</strong><p>{finalFate.consequence}</p></section>}
              <div className="ending__stats">
               <div><strong>{run.history.length}/3</strong><span>ROOMS VISITED</span></div>
@@ -622,7 +635,7 @@ export default function App() {
                       </div>
                       <JourneyRoll outcome={entry.outcome}/>
                       {(entry.outcome.usedItems?.length ?? 0) > 0 && <p className="ending__entry-spent">Used up: {entry.outcome.usedItems?.join(", ")}</p>}
-                      <RoomArtwork turn={entry} dungeonSlug={daily.dungeon.slug} roomIndex={i} compact/>
+                      <RoomArtwork turn={entry} dungeonSlug={daily.dungeon.slug} roomIndex={i} day={daily.day} preview={artPreview} enabled={artEnabled} compact/>
                       <div className="ending__entry-response">
                         <span className="ending__entry-label">THE DUNGEON MASTER</span>
                         <p>{entry.outcome.narration}</p>
