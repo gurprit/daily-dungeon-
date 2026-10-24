@@ -144,7 +144,7 @@ export function achievementFromJudgment(
 ): Achievement | null {
   if (!success || creativity < 4) return null;
   // Retire repetitive stock titles outside their original encounter.
-  if (generated?.title === "Lord of the Dance" && room.title !== "The Old Stone Bridge") {
+  if (generated?.title === "Lord of the Dance" && room.title !== "The Old Stone Bridge" && /\b(danc(?:e|es|ed|ing)|disco|waltz|boogie)\b/i.test(action)) {
     return fallbackAchievement(action, room.title, success, creativity);
   }
   return generated ?? fallbackAchievement(action, room.title, success, creativity);
