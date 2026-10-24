@@ -3,26 +3,35 @@ import {
   ArrowRight, BookOpen, Check, Crown, Dice5, Download, Flame,
   Heart, ScrollText, Share2, Shield, Skull, Sparkles, Swords
 } from "lucide-react";
-import { getDailyGame, getPreviewDailyGame } from "./game";
+import { getDailyGame, getPreviewDailyGame, getFreshPreviewGame } from "./game";
+import { FRESH_DUNGEONS, FRESH_PREVIEW_MODES, freshPreviewIndex } from "./fresh-dungeons";
+import { storyRoom, storyClues, storyEnding } from "./story";
 import { startingItems, inventoryAfterTurn } from "./inventory";
 import { resolveAction, type ActionOutcome } from "./engine";
 import { fallbackAchievement, isAchievement, type Achievement } from "./achievements";
 import { createCertificateImage } from "./certificate";
-import PixelScene from "./PixelScene";
+import IllustratedScene, { type ArtPreview } from "./IllustratedScene";
 import { rollBreakdown } from "./roll-math";
-import PixelPortrait from "./PixelPortrait";
 import { chooseEpilogue } from "./epilogue";
 
 // Date preview is opt-in and never overwrites genuine daily progress.
 const previewTomorrow = new URLSearchParams(window.location.search).get("preview") === "tomorrow";
-const gameForPage = () => previewTomorrow ? getPreviewDailyGame() : getDailyGame();
-const runStorageKey = (day: string) => "daily-dungeon:" + (previewTomorrow ? "test-tomorrow:" : "") + day;
+const previewHollowmere = new URLSearchParams(window.location.search).get("preview") === "hollowmere";
+const freshIndex = freshPreviewIndex(new URLSearchParams(window.location.search).get("preview"));
+const previewFresh = freshIndex !== null;
+const previewMode = previewTomorrow || previewHollowmere || previewFresh;
+const gameForPage = () => freshIndex !== null ? getFreshPreviewGame(freshIndex)
+  : previewHollowmere ? getDailyGame(new Date("2026-10-26T12:00:00Z"))
+  : previewTomorrow ? getPreviewDailyGame() : getDailyGame();
+// New namespace & edition. Never delete, rewrite or combine previous playtest saves.
+const runStorageKey = (day: string) => "daily-dungeon:" +
+  (previewFresh ? "nes-clean-v1:" + FRESH_PREVIEW_MODES[freshIndex!] + ":" :
+   previewHollowmere ? "test-hollowmere:" : previewTomorrow ? "test-tomorrow:" : "") + day;
 
 type Turn = {
   roomTitle: string;
   action: string;
   outcome: ActionOutcome;
-  art?: { status: "pending" | "ready" | "failed"; id?: string; url?: string };
 };
 
 type Run = {
@@ -92,12 +101,16 @@ function useDailyRun() {
   return { daily, run, setRun };
 }
 
-function DungeonDoor({ slug, title }: { slug: string; title: string }) {
+function DungeonDoor({ slug, title, day, preview, enabled }: {
+  slug: string; title: string; day: string; preview: ArtPreview; enabled: boolean
+}) {
   return (
     <div className="dungeon-art dungeon-art--pixel">
-      <div className="pixel-scene__topbar"><span>✦ QUEST PREVIEW</span><span>16 BIT / 3 ROOMS</span></div>
+      <div className="pixel-scene__topbar"><span>✦ QUEST PREVIEW</span><span>3-ROOM ADVENTURE</span></div>
       <div className="pixel-scene__viewport">
-        <PixelScene dungeonSlug={slug} className="pixel-scene__canvas"/>
+        <IllustratedScene dungeonSlug={slug} roomIndex={0} kind="room" day={day}
+          preview={preview} enabled={enabled} alt={"Illustration of " + title}
+          className="procedural-art--welcome"/>
         <div className="pixel-scene__scanlines" aria-hidden="true"/>
       </div>
       <div className="pixel-scene__bottombar">
@@ -135,24 +148,21 @@ function AchievementUnlock({ achievement }: { achievement: Achievement }) {
   );
 }
 
-function RoomArtwork({ turn, compact = false }: { turn: Turn; compact?: boolean }) {
-  if (!turn.art) return null;
-  // A failed art job must never occupy a whole screen of empty portrait space.
-  if (turn.art.status === "failed") {
-    return <p className="room-artwork__unavailable"><Sparkles size={15}/> The portrait artist missed this scene. The story is safe.</p>;
-  }
+function RoomArtwork({ turn, dungeonSlug, roomIndex, day, preview, enabled, compact = false }: {
+  turn: Turn; dungeonSlug: string; roomIndex: number; day: string;
+  preview: ArtPreview; enabled: boolean; compact?: boolean;
+}) {
   return (
     <figure className={"room-artwork " + (compact ? "room-artwork--compact" : "")}>
       <div className="room-artwork__frame">
-        {turn.art.status === "ready" && turn.art.url ? (
-          <PixelPortrait src={turn.art.url} alt={"16-bit illustration of " + turn.roomTitle + " based on your adventure"}/>
-        ) : turn.art.status === "pending" ? (
-          <div className="room-artwork__loading" role="status"><Sparkles size={26}/><span>Painting your legend…</span><small>The royal portrait artist is working on it.</small></div>
-        ) : (
-          <div className="room-artwork__loading"><span>Portrait unavailable</span><small>Your adventure continues regardless.</small></div>
-        )}
+        <IllustratedScene kind="action" dungeonSlug={dungeonSlug} roomIndex={roomIndex}
+          day={day} preview={preview} enabled={enabled} ticket={turn.outcome.artTicket}
+          action={turn.action} narration={turn.outcome.narration}
+          success={turn.outcome.success}
+          alt={"Illustration of " + turn.action}/>
       </div>
-      <figcaption><Sparkles size={15}/><span>{turn.roomTitle}</span><span className="room-artwork__chip">16-BIT CHRONICLES</span></figcaption>
+      <figcaption><Sparkles size={15}/><span>{turn.roomTitle}</span>
+        <span className="room-artwork__chip">YOUR MOMENT, ILLUSTRATED</span></figcaption>
     </figure>
   );
 }
@@ -220,78 +230,37 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [certificateNotice, setCertificateNotice] = useState("");
   const [canPreviewTomorrow, setCanPreviewTomorrow] = useState(false);
-  const [artService, setArtService] = useState<{ status: "ready" | "disabled" | "setup-required"; missing?: string[] } | null>(null);
+  const [canPreviewStory, setCanPreviewStory] = useState(false);
+  const [canPreviewFresh, setCanPreviewFresh] = useState(false);
+  const [artService, setArtService] = useState<"ready" | "disabled" | "setup-required">("disabled");
+  const artEnabled = artService === "ready";
+  const artPreview: ArtPreview = freshIndex !== null ? FRESH_PREVIEW_MODES[freshIndex] : previewHollowmere ? "hollowmere" : previewTomorrow ? "tomorrow" : "today";
   useEffect(() => {
     void fetch("/api/health")
       .then(response => response.json())
-      .then((data: { previewTomorrowEnabled?: boolean; art?: { status: "ready" | "disabled" | "setup-required"; missing?: string[] } }) => {
+      .then((data: { previewTomorrowEnabled?: boolean; previewStoryEnabled?: boolean; previewFreshEnabled?: boolean; art?: { status?: "ready" | "disabled" | "setup-required" } }) => {
         setCanPreviewTomorrow(data.previewTomorrowEnabled === true);
-        setArtService(data.art ?? null);
+        setCanPreviewStory(data.previewStoryEnabled === true);
+        setCanPreviewFresh(data.previewFreshEnabled === true);
+        setArtService(data.art?.status ?? "disabled");
       })
       .catch(() => setCanPreviewTomorrow(false));
   }, []);
-  const artInflight = useRef(new Set<string>());
-  const room = daily.dungeon.rooms[Math.min(run.roomIndex, 2)];
+  const storyBeats = run.history.map(turn => ({ action: turn.action, success: turn.outcome.success }));
+  const room = storyRoom(daily.dungeon, run.roomIndex, storyBeats);
+  const clues = storyClues(daily.dungeon.slug, storyBeats);
   const last = run.history.at(-1);
+  const finalFate = last?.outcome.storyEnding ?? (run.finished && run.hearts === 0
+    ? storyEnding(daily.dungeon.slug, last?.action ?? "", false, 0, storyBeats)
+    : null);
   const wins = run.history.filter(t => t.outcome.success).length;
   const achievements = run.history
     .map(turn => turn.outcome.achievement)
     .filter((value): value is Achievement => isAchievement(value));
   const won = run.finished && run.hearts > 0;
-  const title = won
+  const title = finalFate?.title ?? (won
     ? (wins === 3 ? "A Legend Is Born" : "The Unlikely Survivor")
-    : "The Dramatic Demise";
-
-  // Keep one art job per trusted resolution ticket; resumed jobs never double-charge.
-  useEffect(() => {
-    for (const entry of run.history) {
-      const ticket = entry.outcome.artTicket;
-      if (!ticket || entry.art?.status === "ready" || entry.art?.status === "failed" ||
-          artInflight.current.has(ticket)) continue;
-      artInflight.current.add(ticket);
-      void (async () => {
-        const updateArt = (art: Turn["art"]) => setRun(current => {
-          if (current.day !== run.day || !current.history.some(item => item.outcome.artTicket === ticket)) return current;
-          return {
-            ...current,
-            history: current.history.map(item => item.outcome.artTicket === ticket ? { ...item, art } : item)
-          };
-        });
-        try {
-          const response = await fetch("/api/generate-room-art", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ token: ticket })
-          });
-          const job = await response.json() as { id?: string; status?: string; url?: string };
-          if (!response.ok || !job.id) { updateArt({ status: "failed" }); return; }
-          if (job.status === "ready" && job.url) {
-            updateArt({ status: "ready", id: job.id, url: job.url });
-            return;
-          }
-          updateArt({ status: "pending", id: job.id });
-          // Image generation continues on the Worker; do not hold up the next room.
-          for (let attempt = 0; attempt < 45; attempt++) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            const statusResponse = await fetch("/api/art-status/" + job.id);
-            if (!statusResponse.ok) continue;
-            const status = await statusResponse.json() as { status?: string; url?: string };
-            if (status.status === "ready" && status.url) {
-              updateArt({ status: "ready", id: job.id, url: status.url });
-              return;
-            }
-            if (status.status === "failed") {
-              updateArt({ status: "failed", id: job.id });
-              return;
-            }
-          }
-          // Leave pending in localStorage: another visit can resume polling, not re-generate.
-        } catch {
-          // A network failure is temporary. Preserve pending and retry on a future page load.
-        } finally { artInflight.current.delete(ticket); }
-      })();
-    }
-  }, [run.history, run.day, setRun]);
+    : "The Dramatic Demise");
 
   // Starting the game and every resolved turn should display the new scene, not
   // leave a mobile player stranded beside the old action box / keyboard.
@@ -324,7 +293,9 @@ export default function App() {
               narration: turn.outcome.narration,
               success: turn.outcome.success
             })),
-            previewTomorrow
+            previewTomorrow,
+            previewHollowmere,
+            ...(freshIndex !== null ? { previewFresh: freshIndex + 1 } : {})
           })
         });
         if (!response.ok) {
@@ -346,7 +317,7 @@ export default function App() {
         ...current,
         hearts: remaining,
         inventory: inventoryAfterTurn(current.inventory, outcome.usedItems ?? [], outcome.reward),
-        history: [...current.history, { roomTitle: room.title, action: attempt, outcome, ...(outcome.artTicket ? { art: { status: "pending" as const } } : {}) }],
+        history: [...current.history, { roomTitle: room.title, action: attempt, outcome }],
         roomIndex: nextIndex,
         finished: nextIndex >= daily.dungeon.rooms.length || remaining === 0
       }));
@@ -449,34 +420,33 @@ export default function App() {
           </div>
         </div>
         <div className="site-header__right">
-          <span className="daily-pill"><Sparkles size={14}/> {previewTomorrow ? "TOMORROW · TEST" : "DAILY"} #{String(daily.number).padStart(3, "0")}</span>
+          <span className="daily-pill"><Sparkles size={14}/> {previewFresh ? "FRESH NES · TEST" : previewHollowmere ? "HOLLOWMERE · TEST" : previewTomorrow ? "TOMORROW · TEST" : "DAILY"} #{String(daily.number).padStart(3, "0")}</span>
           <span className="site-header__date">{new Date(daily.day + "T12:00:00Z").toLocaleDateString("en-GB", { day:"numeric", month:"short", timeZone:"UTC" })}</span>
         </div>
       </header>
 
       <main className="main">
-        {previewTomorrow && <div className="preview-ribbon">
-          <strong>⏭ Tomorrow’s dungeon · Test mode</strong>
-          <span>Real date and shared AI/art budgets are unchanged.</span>
-          {artService && <span className={"preview-ribbon__art " + (artService.status === "ready" ? "preview-ribbon__art--ready" : "preview-ribbon__art--warning")}>
-            <Sparkles size={14}/>
-            {artService.status === "ready" ? "AI portraits ready" : artService.status === "disabled"
-              ? "AI portraits are disabled in the deployed Worker"
-              : "AI portraits need setup: " + (artService.missing?.join(", ") ?? "check Worker bindings")}
-          </span>}
+        {previewMode && <div className="preview-ribbon">
+          <strong>⏭ {previewFresh ? "Fresh NES adventure" : previewHollowmere ? "Hollowmere story adventure" : "Tomorrow’s dungeon"} · Test mode</strong>
+          <span>New dungeon, fresh images and separate saves. Shared daily AI/art budgets still apply.</span>
+          {previewFresh && <nav className="preview-fresh-nav" aria-label="Choose a fresh dungeon">
+            {FRESH_PREVIEW_MODES.map((mode, i) => <a key={mode} href={"?preview=" + mode}
+              aria-current={i === freshIndex ? "page" : undefined}>{i + 1}. {FRESH_DUNGEONS[i].title}</a>)}
+          </nav>}
           <a href={window.location.pathname}>Return to today</a>
         </div>}
         {!run.started && (
           <section className="intro">
             <div className="intro__visual">
               <div className="intro__badge"><Flame size={14}/> THE GATES ARE OPEN</div>
-              <DungeonDoor slug={daily.dungeon.slug} title={daily.dungeon.title}/>
+              <DungeonDoor slug={daily.dungeon.slug} title={daily.dungeon.title} day={daily.day} preview={artPreview} enabled={artEnabled}/>
             </div>
             <div className="intro__copy">
-              <p className="eyebrow">DUNGEON #{String(daily.number).padStart(3, "0")} · {previewTomorrow ? "TOMORROW'S QUEST · PREVIEW" : "TODAY'S QUEST"}</p>
+              <p className="eyebrow">DUNGEON #{String(daily.number).padStart(3, "0")} · {previewFresh ? "FRESH NES · CLEAN PLAYTEST" : previewHollowmere ? "HOLLOWMERE · STORY PLAYTEST" : previewTomorrow ? "TOMORROW'S QUEST · PREVIEW" : "TODAY'S QUEST"}</p>
               <h1>{daily.dungeon.title}</h1>
               <p className="intro__subtitle">{daily.dungeon.subtitle}</p>
               <p className="intro__description">{daily.dungeon.intro}</p>
+               {daily.dungeon.objective && <div className="story-objective"><ScrollText size={19}/><div><strong>YOUR MISSION</strong><p>{daily.dungeon.objective}</p></div></div>}
               <div className="intro__facts">
                 <span><BookOpen size={17}/> 3 rooms</span>
                 <span><Heart size={17}/> 3 hearts</span>
@@ -486,7 +456,9 @@ export default function App() {
                 Enter the dungeon <ArrowRight size={19}/>
               </button>
               <p className="intro__small">No account. No downloads. Just your imagination. Your three starting items are single-use.</p>
-              {!previewTomorrow && canPreviewTomorrow && <a className="preview-link" href="?preview=tomorrow">⏭ Pretend it’s tomorrow · Playtest next dungeon</a>}
+              {!previewMode && canPreviewTomorrow && <a className="preview-link" href="?preview=tomorrow">⏭ Pretend it’s tomorrow · Playtest next dungeon</a>}
+               {!previewMode && canPreviewStory && <a className="preview-link" href="?preview=hollowmere">✦ Playtest v0.2 · The Bell of Hollowmere</a>}
+               {!previewMode && canPreviewFresh && <a className="preview-link" href="?preview=fresh-1">🎮 Test three fresh NES adventures</a>}
             </div>
           </section>
         )}
@@ -502,7 +474,8 @@ export default function App() {
                 <Hearts count={run.hearts}/>
               </div>
 
-              <div className="progress" aria-label={"Room " + (run.roomIndex + 1) + " of 3"}>
+              {daily.dungeon.objective && <div className="story-objective story-objective--active"><ScrollText size={18}/><div><strong>YOUR MISSION</strong><p>{daily.dungeon.objective}</p></div></div>}
+               <div className="progress" aria-label={"Room " + (run.roomIndex + 1) + " of 3"}>
                 {daily.dungeon.rooms.map((r, i) => (
                   <div className={"progress__step " + (i < run.roomIndex ? "progress__step--done" : i === run.roomIndex ? "progress__step--active" : "")} key={r.title}>
                     <span className="progress__circle">{i < run.roomIndex ? <Check size={15}/> : i+1}</span>
@@ -524,21 +497,30 @@ export default function App() {
                   <small>{last.outcome.mode === "ai" ? "Narrated by the AI Dungeon Master" : "Scripted narrator (AI not enabled)"}</small>
                 </div>
               )}
+              {last && <RoomArtwork turn={last} dungeonSlug={daily.dungeon.slug} roomIndex={run.history.length-1} day={daily.day} preview={artPreview} enabled={artEnabled}/>}
               {last?.outcome.achievement && <AchievementUnlock achievement={last.outcome.achievement}/>}
-              {previewTomorrow && artService && !last?.outcome.artTicket && last && <p className="art-debug-note">
-                <Sparkles size={16}/> No personalised image was requested for this turn.
-                {artService.status === "ready" ? " Please check the deployed /api/resolve artwork ticket." : " " + (artService.status === "disabled"
-                  ? "AI portraits are disabled on the server." : "Missing: " + (artService.missing?.join(", ") ?? "Worker setup"))}
-              </p>}
-              {last && <RoomArtwork turn={last}/> }
 
-              <section className="encounter">
+
+              {clues.length > 0 && <section className="story-clues" aria-label="Clues discovered">
+                <h2><BookOpen size={18}/> What you’ve discovered</h2>
+                {clues.map((clue, i) => <div className="story-clues__entry" key={clue.id}>
+                  <IllustratedScene dungeonSlug={daily.dungeon.slug} roomIndex={i}
+                    kind="clue" clueId={clue.id} variant={clue.id} day={daily.day}
+                    preview={artPreview} enabled={artEnabled} alt={"Discovery: " + clue.title}
+                    className="procedural-art--clue"/>
+                  <div className="story-clues__copy"><strong>{clue.title}</strong><p>{clue.text}</p></div>
+                </div>)}
+              </section>}
+               <section className="encounter">
                 <div className="encounter__top">
                   <span className="encounter__tag"><Flame size={14}/> {room.subtitle.toUpperCase()}</span>
                   <span className="encounter__danger"><Dice5 size={15}/> Difficulty {room.difficulty}</span>
                 </div>
-                <div className="encounter__art encounter__art--pixel">
-                  <PixelScene dungeonSlug={daily.dungeon.slug} roomIndex={run.roomIndex} className="encounter__pixel-scene"/>
+                <div className="encounter__art encounter__art--illustrated">
+                  <IllustratedScene dungeonSlug={daily.dungeon.slug} roomIndex={run.roomIndex}
+                    kind="room" day={daily.day} preview={artPreview} enabled={artEnabled}
+                    alt={"Room illustration: " + room.title}
+                    className="procedural-art--room"/>
                   <span className="encounter__scene-label">{room.subtitle}</span>
                 </div>
                 <div className="encounter__body">
@@ -598,7 +580,7 @@ export default function App() {
                 ))}
               </div>
               <button className="reset-link" onClick={reset}>↺ Restart playtest</button>
-              {!previewTomorrow && canPreviewTomorrow && <a className="preview-link" href="?preview=tomorrow">⏭ Test tomorrow’s dungeon</a>}
+              {!previewMode && canPreviewTomorrow && <a className="preview-link" href="?preview=tomorrow">⏭ Test tomorrow’s dungeon</a>}
             </aside>
           </div>
         )}
@@ -612,16 +594,17 @@ export default function App() {
               {won ? "Through a combination of wit, audacity and highly suspicious luck, you've made it out alive." :
                 "Your courage was unquestionable. Your decision-making, less so. The Dungeon Master will remember this."}
             </p>
-            <div className="ending__stats">
+            <IllustratedScene dungeonSlug={daily.dungeon.slug} roomIndex={2}
+              kind="ending" day={daily.day} preview={artPreview} enabled={artEnabled}
+              variant={finalFate?.id ?? (won ? "victory" : "defeat")}
+              endingId={finalFate?.id ?? (won ? "victory" : "defeat")}
+              alt={"Illustrated ending: " + title} className="procedural-art--ending"/>
+            {finalFate && <section className="story-fate" aria-label="Your story ending"><strong>THE FATE OF HOLLOWMERE</strong><p>{finalFate.consequence}</p></section>}
+             <div className="ending__stats">
               <div><strong>{run.history.length}/3</strong><span>ROOMS VISITED</span></div>
               <div><strong>{wins}/3</strong><span>TRIALS PASSED</span></div>
               <div><strong>{run.hearts}/3</strong><span>HEARTS LEFT</span></div>
             </div>
-            {previewTomorrow && artService && !run.history.some(turn => turn.art) && <p className="art-debug-note">
-              <Sparkles size={16}/> No AI portraits were requested during this playtest.
-              {artService.status === "ready" ? " The portrait service reports ready, so check /api/resolve." : " " + (artService.status === "disabled"
-                ? "The deployed ART_ENABLED flag is off." : "Server setup needed: " + (artService.missing?.join(", ") ?? "check bindings"))}
-            </p>}
             <section className="hero-certificate hero-chronicle" aria-label="Your certificate and illustrated adventure">
               <div className="hero-certificate__ornament">✦</div>
               <p className="hero-certificate__eyebrow">THE DAILY DUNGEON PRESENTS</p>
@@ -666,7 +649,7 @@ export default function App() {
                       </div>
                       <JourneyRoll outcome={entry.outcome}/>
                       {(entry.outcome.usedItems?.length ?? 0) > 0 && <p className="ending__entry-spent">Used up: {entry.outcome.usedItems?.join(", ")}</p>}
-                      <RoomArtwork turn={entry} compact/>
+                      <RoomArtwork turn={entry} dungeonSlug={daily.dungeon.slug} roomIndex={i} day={daily.day} preview={artPreview} enabled={artEnabled} compact/>
                       <div className="ending__entry-response">
                         <span className="ending__entry-label">THE DUNGEON MASTER</span>
                         <p>{entry.outcome.narration}</p>
@@ -676,7 +659,7 @@ export default function App() {
 
                 </div>
                 <div className="hero-chronicle__epilogue" aria-label="The Dungeon Master's farewell">
-                  <p className="hero-chronicle__epilogue-story">{chooseEpilogue(last?.outcome.epilogue, {
+                  <p className="hero-chronicle__epilogue-story">{chooseEpilogue(finalFate?.epilogue ?? last?.outcome.epilogue, {
                     dungeon: daily.dungeon.title,
                     room: last?.roomTitle ?? "the final chamber",
                     cleared: wins,
@@ -691,7 +674,9 @@ export default function App() {
             </section>
             <div className="ending__actions">
               <button className="button button--secondary" onClick={reset}>Replay playtest</button>
-              {!previewTomorrow && canPreviewTomorrow && <a className="button button--secondary" href="?preview=tomorrow">⏭ Test tomorrow’s dungeon</a>}
+              {!previewMode && canPreviewTomorrow && <a className="button button--secondary" href="?preview=tomorrow">⏭ Test tomorrow’s dungeon</a>}
+               {!previewMode && canPreviewStory && <a className="button button--secondary" href="?preview=hollowmere">✦ Test Hollowmere v0.2</a>}
+               {!previewMode && canPreviewFresh && <a className="button button--secondary" href="?preview=fresh-1">🎮 Test fresh NES dungeons</a>}
             </div>
             {error && <p className="error" role="alert">{error}</p>}
           </div>

@@ -68,15 +68,10 @@ function mockArt() {
         const fields = await new Response(input.multipart.body, {
           headers: { "content-type": input.multipart.contentType }
         }).formData();
-        const style = fields.get("input_image_0");
-        assert.ok(style, "model receives a real reference image");
-        assert.equal(style.type, "image/png");
-        assert.ok(style.size > 500, "reference image is not empty");
-        const signature = new Uint8Array(await style.arrayBuffer()).slice(0, 8);
-        assert.deepEqual([...signature], [137, 80, 78, 71, 13, 10, 26, 10]);
-        assert.match(fields.get("prompt"), /PIXEL ART/);
+        assert.equal(fields.get("input_image_0"), null, "NES mode is prompt-only");
+        assert.match(fields.get("prompt"), /8-bit NES/);
         assert.match(fields.get("prompt"), /speech bubbles/);
-        assert.equal(fields.get("width"), "512");
+        assert.equal(fields.get("width"), "768");
         assert.equal(fields.get("height"), "512");
         stats.imageCalls++;
         return { image: tinyImage };
@@ -115,7 +110,7 @@ test("trusted result ticket is signed; arbitrary and altered inputs are rejected
   assert.ok(ticket);
   const valid = await verifyArtTicket(mock.env, ticket);
   assert.equal(valid.roomIndex, 0);
-  assert.match(createPixelArtPrompt(valid), /1990s 16-bit console RPG PIXEL ART/);
+  assert.match(createPixelArtPrompt(valid), /8-bit NES/i);
   assert.equal(await verifyArtTicket(mock.env, ticket.slice(0, -5) + "hello"), null);
   const rejection = await handleArtRoute(makeRequest("unsigned-invented-ticket"), mock.env);
   assert.equal(rejection.status, 403);

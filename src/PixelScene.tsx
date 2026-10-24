@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
+import FreshPixelScene from "./FreshPixelScene";
 
 /**
  * Always-on, hand-authored 16-bit scenes: zero inference charges, no remote image
- * dependency. Custom images generated from actions arrive separately in the journal.
+ * dependency. Action illustrations are assembled from these SVG components.
  */
 type PixelSceneProps = {
   dungeonSlug: string;
@@ -35,6 +36,10 @@ const palettes: Record<string, Palette> = {
   "midnight-museum": {
     sky: "#181530", deep: "#101024", stone: "#39354f",
     mid: "#645774", light: "#c1a1a4", accent: "#f4c780", accent2: "#8cdbcb"
+  },
+  "bell-of-hollowmere": {
+    sky: "#151b33", deep: "#0b1023", stone: "#37344f",
+    mid: "#66516c", light: "#b69ba4", accent: "#f3bd6c", accent2: "#93b8b3"
   },
   "skywhale-express": {
     sky: "#153252", deep: "#132741", stone: "#354c73",
@@ -420,8 +425,71 @@ function SkywhaleDeck({ p }: { p: Palette }) {
   </g>;
 }
 
+
+/** Reusable SVG tilemap: no image generation, remote assets or inference. */
+function HollowmereTower({ p }: { p: Palette }) {
+  return <g>
+    <rect x="0" y="63" width="320" height="115" fill="#1c1d39"/>
+    <circle cx="253" cy="40" r="21" fill="#e5d0b5"/>
+    <circle cx="263" cy="33" r="21" fill={p.sky}/>
+    {Array.from({length:7},(_,i)=><g key={i}>
+      <rect x={i*53-13} y={129+(i%3)*7} width="50" height="46" fill="#2b2b46"/>
+      <path d={"M"+(i*53-13)+" 129 l25 -19 l25 19"} fill="#4b3e57"/>
+      <rect x={i*53+4} y={145+(i%3)*7} width="7" height="10" fill="#d19d67"/>
+    </g>)}
+    <rect x="87" y="52" width="148" height="132" fill="#4b405c"/>
+    <rect x="98" y="61" width="126" height="116" fill="#66516f"/>
+    {Array.from({length:5},(_,row)=>Array.from({length:4},(_,col)=>
+      <rect key={row+"-"+col} x={99+col*30} y={67+row*22} width="27" height="2" fill="#81718b" opacity=".8"/>))}
+    <rect x="111" y="17" width="100" height="76" fill="#342c4f"/>
+    <rect x="118" y="23" width="86" height="66" fill="#211d3e"/>
+    <rect x="126" y="33" width="70" height="54" fill="#655171"/>
+    <rect x="137" y="42" width="48" height="45" fill="#221d36"/>
+    <rect x="150" y="62" width="24" height="19" fill="#bd9967"/>
+    <rect x="143" y="59" width="39" height="6" fill="#e1bd87"/>
+    <rect x="156" y="52" width="12" height="10" fill="#deb675"/>
+    <rect x="158" y="43" width="3" height="10" fill="#ba8f6a"/>
+    <rect x="165" y="43" width="3" height="10" fill="#ba8f6a"/>
+    <path d="M107 17 l8 -15 h92 l9 15" fill="#75617b"/>
+    <rect x="139" y="127" width="45" height="58" fill="#27243c"/>
+    <rect x="146" y="135" width="31" height="49" fill="#1a182b"/>
+    <rect x="154" y="160" width="5" height="6" fill="#edc17c"/>
+    <StoneFloor p={p} from={175}/>
+    <Torch x={48} y={127} p={p}/>
+    <Hero x={229} y={144}/>
+    <Goblin x={58} y={144}/>
+  </g>;
+}
+
 function RoomOverlay({ slug, roomIndex }: { slug: string; roomIndex: number }) {
   if (roomIndex === 0) return null;
+  if (slug === "bell-of-hollowmere") return roomIndex === 1 ? <g>
+    <rect x="70" y="35" width="175" height="131" fill="#29243e"/>
+    <rect x="80" y="45" width="155" height="112" fill="#51415f"/>
+    {Array.from({length:7},(_,i)=><g key={i} transform={"translate("+(95+i*19)+" "+(88+(i%2)*13)+")"}>
+      <rect x="0" y="0" width="15" height="18" fill="#c09b72"/>
+      <rect x="3" y="4" width="9" height="2" fill="#614b5f"/>
+      <rect x="3" y="10" width="7" height="2" fill="#614b5f"/>
+    </g>)}
+    <circle cx="167" cy="83" r="29" fill="#a88b71"/>
+    <circle cx="167" cy="83" r="20" fill="#34273f"/>
+    <rect x="163" y="55" width="7" height="55" fill="#ddbc79"/>
+    <rect x="139" y="79" width="56" height="7" fill="#ddbc79"/>
+  </g> : <g>
+    <rect x="72" y="30" width="176" height="132" fill="#24203d"/>
+    <rect x="82" y="39" width="156" height="113" fill="#3f3155"/>
+    <rect x="125" y="50" width="85" height="7" fill="#bb966a"/>
+    <rect x="137" y="58" width="62" height="13" fill="#ddbd83"/>
+    <rect x="145" y="69" width="46" height="35" fill="#9f795f"/>
+    <rect x="152" y="73" width="33" height="24" fill="#c7a475"/>
+    <path d="M168 100 v38" stroke="#8dced0" strokeWidth="3" strokeDasharray="4 4"/>
+    <rect x="152" y="118" width="34" height="32" fill="#88c1c9" opacity=".8"/>
+    <rect x="157" y="107" width="25" height="17" fill="#c6e1d3"/>
+    <rect x="151" y="127" width="9" height="20" fill="#9ccad2"/>
+    <rect x="181" y="127" width="9" height="20" fill="#9ccad2"/>
+    <rect x="161" y="114" width="4" height="4" fill="#28283f"/>
+    <rect x="176" y="114" width="4" height="4" fill="#28283f"/>
+  </g>;
   if (slug === "midnight-museum") return roomIndex === 1 ? <g>
     <rect x="125" y="121" width="15" height="40" fill="#ddd6c2"/>
     <rect x="148" y="129" width="15" height="32" fill="#ddd6c2"/>
@@ -474,6 +542,9 @@ function RoomOverlay({ slug, roomIndex }: { slug: string; roomIndex: number }) {
 }
 
 export default function PixelScene({ dungeonSlug, roomIndex = 0, className }: PixelSceneProps) {
+  if (dungeonSlug === "lighthouse-lost-dawn" || dungeonSlug === "clockwork-orchard" || dungeonSlug === "dragon-bakery") {
+    return <FreshPixelScene dungeonSlug={dungeonSlug} roomIndex={roomIndex} className={className}/>;
+  }
   const slug = palettes[dungeonSlug] ? dungeonSlug : "goblins-toll";
   const p = palettes[slug];
   const base: Record<string, ReactNode> = {
@@ -481,7 +552,8 @@ export default function PixelScene({ dungeonSlug, roomIndex = 0, className }: Pi
     "wizard-complaint": <WizardTavern p={p}/>,
     "royal-pantry": <RoyalKitchen p={p}/>,
     "midnight-museum": <MidnightMuseum p={p}/>,
-    "skywhale-express": <SkywhaleDeck p={p}/>
+    "skywhale-express": <SkywhaleDeck p={p}/>,
+    "bell-of-hollowmere": <HollowmereTower p={p}/>
   };
   return <svg className={className} viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
     xmlns="http://www.w3.org/2000/svg" role="img" aria-label={"16-bit fantasy pixel art from today's dungeon"}

@@ -1,3 +1,6 @@
+import { HOLLOWMERE_DUNGEON } from "./story.ts";
+import { FRESH_DUNGEONS, FRESH_DUNGEON_DATES } from "./fresh-dungeons.ts";
+
 export type Room = {
   title: string;
   subtitle: string;
@@ -15,6 +18,7 @@ export type Dungeon = {
   title: string;
   subtitle: string;
   intro: string;
+  objective?: string;
   startingInventory?: readonly string[];
   edition?: number;
   rooms: readonly [Room, Room, Room];
@@ -222,7 +226,11 @@ export const NEW_DAILY_DUNGEONS: readonly Dungeon[] = [
 /** Date-scoped replacement: keeps earlier achievements intact but refreshes 24/25 Oct. */
 const DAILY_OVERRIDE: Record<string, Dungeon> = {
   "2026-10-24": NEW_DAILY_DUNGEONS[0],
-  "2026-10-25": NEW_DAILY_DUNGEONS[1]
+  "2026-10-25": NEW_DAILY_DUNGEONS[1],
+  "2026-10-26": HOLLOWMERE_DUNGEON,
+  [FRESH_DUNGEON_DATES[0]]: FRESH_DUNGEONS[0],
+  [FRESH_DUNGEON_DATES[1]]: FRESH_DUNGEONS[1],
+  [FRESH_DUNGEON_DATES[2]]: FRESH_DUNGEONS[2]
 };
 
 const EPOCH_UTC = Date.UTC(2026, 9, 23);
@@ -233,6 +241,11 @@ export function getDailyGame(now: Date = new Date()) {
   const day = now.toISOString().slice(0, 10);
   const dungeon = DAILY_OVERRIDE[day] ?? DUNGEONS[dayIndex % DUNGEONS.length];
   return { day, number: dayIndex + 1, dungeon };
+}
+
+/** Dedicated fresh playtest dates. Old live/daily entries remain untouched. */
+export function getFreshPreviewGame(index: 0 | 1 | 2) {
+  return getDailyGame(new Date(FRESH_DUNGEON_DATES[index] + "T12:00:00Z"));
 }
 
 /** Developer-only date preview: use the next UTC dungeon without advancing real clocks. */

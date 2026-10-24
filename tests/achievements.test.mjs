@@ -46,3 +46,25 @@ test("reject broken or hostile achievement markup without discarding the game", 
   const okay = cleanGeneratedAchievement({ title: "  Dancing Legend  ", description: "  Goblins will remember the performance forever.  " });
   assert.deepEqual(okay, { title: "Dancing Legend", description: "Goblins will remember the performance forever." });
 });
+
+
+test("Hollowmere badges use specific brief copy instead of repeated stock achievements", () => {
+  const thimble = fallbackAchievement("I offer a kiss and the silver thimble", "The Frightened Guard", true, 4);
+  const key = fallbackAchievement("I unlock the plate with Spoon's brass key", "The Whispering Stair", true, 4);
+  const dance = fallbackAchievement("I dance the dance of promises", "The Bell and the Keeper", true, 4);
+  assert.equal(thimble?.title, "Thimble Diplomacy");
+  assert.equal(key?.title, "Namekeeper's Key");
+  assert.notEqual(dance?.title, "Lord of the Dance");
+  assert.ok(dance.description.split(/\s+/).length < 16);
+  const generated = achievementFromJudgment({ ...bridge, title: "The Bell and the Keeper" },
+    "I dance", true, 4, { title: "Lord of the Dance", description: "Dancing was somehow enough." });
+  assert.notEqual(generated?.title, "Lord of the Dance");
+});
+
+test("AI achievement copy is trimmed to one brief line", () => {
+  const award = cleanGeneratedAchievement({
+    title: "Unexpected Heroics",
+    description: "The goblin signed your ridiculous permit. He then went home and ate three pies as a reward."
+  });
+  assert.equal(award?.description, "The goblin signed your ridiculous permit.");
+});
