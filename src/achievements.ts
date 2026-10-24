@@ -9,6 +9,13 @@ export type Achievement = {
  * Cheap, predictable awards for the scripted playtest and for saved runs created
  * before the AI started returning achievements. Live AI can invent better titles.
  */
+/** Deterministic variation: refreshing a saved run never rerolls award copy. */
+function stableChoice(value: string, length: number): number {
+  let hash = 2166136261;
+  for (const char of value) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  return (hash >>> 0) % length;
+}
+
 export function fallbackAchievement(
   action: string,
   roomTitle: string,
@@ -55,7 +62,50 @@ export function fallbackAchievement(
     }
   ];
   const matching = matches.find(award => award.pattern.test(text));
-  if (matching) return { title: matching.title, description: matching.description };
+  if (matching) {
+    // A few light, room-sensitive quips give familiar actions distinct payoffs.
+    // The initial bridge badge stays unchanged for compatibility with old saves.
+    const dance = matches[0].pattern.test(text);
+    if (dance && roomTitle !== "The Old Stone Bridge") {
+      const variants: Achievement[] = roomTitle === "The Bell and the Keeper"
+        ? [
+            { title: "The Ward Waltz", description: "The bell survived your choreography. Your dignity is still missing." },
+            { title: "Promise in Motion", description: "An ancient ward accepted a dance as legally binding." },
+            { title: "Rhythm of the Realm", description: "You danced at destiny. Destiny blinked first." }
+          ]
+        : [
+            { title: "Unexpected Choreography", description: "An unusual obstacle met a spectacularly unusual shuffle." },
+            { title: "The Diplomatic Two-Step", description: "Apparently diplomacy has a rhythm. Yours was alarming." },
+            { title: "Dancefloor Diplomacy", description: "You danced through trouble without a single sensible step." }
+          ];
+      return variants[stableChoice(action + roomTitle, variants.length)];
+    }
+    if (/\b(key|unlock|plate|inscription)\b/i.test(text) && roomTitle === "The Whispering Stair") {
+      return { title: "Namekeeper's Key", description: "One turn of a key, and oblivion lost its footing." };
+    }
+    if (/\b(thimble|kiss|promise)\b/i.test(text) && roomTitle === "The Frightened Guard") {
+      return { title: "Thimble Diplomacy", description: "A kiss, a promise, and one deeply confused goblin." };
+    }
+    const alternate: Record<string, Achievement[]> = {
+      "The Spud Diplomat": [
+        { title: "Spud Negotiator", description: "The potato now has diplomatic immunity. Don't ask." },
+        { title: "Tater Tactics", description: "Your vegetable strategy was somehow the least dangerous option." }
+      ],
+      "The Ballad of Bad Decisions": [
+        { title: "The Unlikely Bard", description: "Nobody requested an encore. The door opened anyway." },
+        { title: "Singing for Survival", description: "A performance best remembered from a safe distance." }
+      ],
+      "Spoon of Destiny": [
+        { title: "Cutlery of Courage", description: "The humble spoon has asked for its own legend." },
+        { title: "Utensil Genius", description: "History will remember the spoon. Possibly not you." }
+      ]
+    };
+    const variants = alternate[matching.title];
+    if (variants && roomTitle !== "The Old Stone Bridge") {
+      return variants[stableChoice(action + roomTitle, variants.length)];
+    }
+    return { title: matching.title, description: matching.description };
+  }
   if (creativity < 4) return null;
   const roomTitles: Record<string, string> = {
     "The Old Stone Bridge": "Bridge of Questionable Genius",
@@ -82,6 +132,10 @@ export function achievementFromJudgment(
   generated: Achievement | null | undefined
 ): Achievement | null {
   if (!success || creativity < 4) return null;
+  // Retire repetitive stock titles outside their original encounter.
+  if (generated?.title === "Lord of the Dance" && room.title !== "The Old Stone Bridge") {
+    return fallbackAchievement(action, room.title, success, creativity);
+  }
   return generated ?? fallbackAchievement(action, room.title, success, creativity);
 }
 
@@ -99,5 +153,10 @@ export function cleanGeneratedAchievement(value: unknown): Achievement | null {
   // Keep AI-generated titles short, single-line and free of markup/URLs.
   if (/[<>{}\r\n]/.test(raw.title + raw.description) ||
       /https?:\/\/|www\./i.test(raw.title + raw.description)) return null;
-  return { title: raw.title.trim(), description: raw.description.trim() };
+  // Award descriptions should feel like a quick Dungeon Master aside, not an
+  // additional paragraph. Keep the whole first sentence or cap long prose.
+  const description = raw.description.trim();
+  const sentence = description.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? description;
+  const brief = sentence.split(/\s+/).slice(0, 18).join(" ");
+  return { title: raw.title.trim(), description: brief };
 }
