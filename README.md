@@ -99,3 +99,35 @@ Run `npm test` and `npm run build` before deployment. Test the mobile visuals, e
 `worker/art.ts` and `worker/shared-art.ts` now share a strict NES art direction: simple sprite silhouettes, block pixels, tile backgrounds, 2D side-view, no gradients, painterly shading, SNES detail or modern 3D. `src/nes-palette.ts` forces the result into an intentionally tiny palette, and `src/NesSceneImage.tsx` renders nearest-neighbour pixels.
 
 `src/image-fx-layout.ts` provides a layout contract to both the prompt and animation layer: the purple hero stays to the left, the challenge on the right, and interactive effects originate from the relevant prop or character. Flame emitters are allowed only in torch-bearing rooms; dance/voice/charm particles come from the hero and magical object effects stay toward the object's lower-right side. `src/GeneratedEffects.tsx` contains small overlays for generated art; the richer procedural effects remain in SVG fallback mode. The JavaScript particle engine keeps its existing mobile limits and reduced-motion behaviour.
+
+
+## Scroll parallax for the three fresh NES adventures
+
+The **Lighthouse**, **Clockwork Orchard** and **Dragon Bakery** fallback scenes
+now contain real individually movable SVG layers. Their backgrounds, distant
+scenery, architecture, NPCs, hero and foreground details respond to page scroll
+at different speeds (a maximum of 12 viewBox pixels). The movement is bounded,
+does not require a React render every frame, and the backdrop extends past the
+viewport edges to prevent gaps.
+
+Every room also has unique idle animation: lighthouse beam/sea/mist; orchard
+clockwork/gears/bees/pollen; and bakery oven/fire/flour/dough. These animate
+independently of scroll.
+
+Once a generated NES picture loads, its single flattened image receives just
+a tiny scroll offset, with the existing SVG magic and Canvas particles moving
+a little more. The genuine layered depth remains in our local SVG fallback;
+a single AI painting cannot provide physically separate scenery layers.
+
+Implementation:
+- \`src/parallax-math.ts\`: deterministic, clamped position and depth formulas
+- \`src/useScrollParallax.ts\`: one requestAnimationFrame per visible scene;
+  passive scroll listener, IntersectionObserver, hidden-tab pause and
+  prefers-reduced-motion support
+- \`src/FreshPixelScene.tsx\`: named, independently animated SVG planes
+- \`src/IllustratedScene.tsx\`: gentler parallax for flattened model art and FX
+- \`tests/parallax.test.mjs\`: scroll bounds, layer coverage and accessibility
+
+The artwork remains clickable only where the existing game UI is clickable;
+parallax layers do not intercept player inputs. No new libraries, paid effects,
+image inference calls or Worker endpoints are required for parallax.
