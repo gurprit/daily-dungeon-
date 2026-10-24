@@ -1360,3 +1360,27 @@ p { line-height: 1.7; }
   width: 104%;
   height: 104%;
 }
+
+
+/* Explicitly distinguish a slow painting from a finished SVG fallback. */
+.story-echo {
+  margin: .8rem 0 1rem;
+  padding: .85rem 1rem;
+  background: rgba(121, 167, 143, .08);
+  border: 1px solid rgba(161, 196, 156, .24);
+  border-left: 3px solid #a9bd92;
+  border-radius: 0 8px 8px 0;
+}
+.story-echo > span {
+  display: block;
+  font-size: .65rem;
+  font-weight: 800;
+  letter-spacing: .09em;
+  color: #b0ceac;
+}
+.story-echo > p { margin: .45rem 0 0; color: #dcd8cc; font-size: .89rem; line-height: 1.5; }
+.hybrid-art__painting--fallback {
+  background: rgba(22,23,34,.82);
+  color: #c3c7d1;
+  border-color: rgba(167,170,185,.3);
+}

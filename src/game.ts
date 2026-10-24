@@ -6,6 +6,8 @@ export type Room = {
   subtitle: string;
   scene: string;
   arrival?: string;
+  /** Deterministic echo of an earlier player choice, visible in the next room. */
+  echo?: string;
   character: string;
   challenge: string;
   difficulty: number;

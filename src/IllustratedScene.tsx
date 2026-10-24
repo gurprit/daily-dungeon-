@@ -7,7 +7,7 @@ import ParticleCanvas from "./ParticleCanvas";
 import { makeVisualRecipe, type VisualInput } from "./illustration-recipe";
 
 export type ArtPreview = "today" | "tomorrow" | "hollowmere" | "fresh-1" | "fresh-2" | "fresh-3";
-type ArtJob = { id?: string; status?: "pending" | "ready" | "failed"; url?: string };
+type ArtJob = { id?: string; status?: "pending" | "ready" | "failed" | "timed-out"; url?: string };
 type Props = VisualInput & {
   day: string;
   preview: ArtPreview;
@@ -87,7 +87,7 @@ export default function IllustratedScene(props: Props) {
           }
           if (job.status === "failed") throw new Error("Artwork unavailable");
         }
-        if (alive) setResult({ status: "failed" });
+        if (alive) setResult({ status: "timed-out" });
       } catch {
         if (alive) setResult({ status: "failed" });
       }
@@ -117,7 +117,17 @@ export default function IllustratedScene(props: Props) {
         <ParticleCanvas input={props} recipe={recipe} imageMode/>
       </>}
     </>}
-    {!showGenerated && enabled && !!key && result.status === "pending" &&
-      <span className="hybrid-art__painting" role="status">Painting this moment…</span>}
+    {!showGenerated && enabled && !!key && (
+      result.status === "pending" || result.status === "failed" ||
+      result.status === "timed-out" || broken
+    ) && <span className={"hybrid-art__painting " +
+      (result.status === "pending" && !broken ? "" : "hybrid-art__painting--fallback")}
+      role="status" aria-live="polite">
+      {broken || result.status === "failed"
+        ? "Artist unavailable · pixel sketch shown"
+        : result.status === "timed-out"
+          ? "Taking too long · keeping the sketch"
+          : "Painting this moment…"}
+    </span>}
   </div>;
 }
