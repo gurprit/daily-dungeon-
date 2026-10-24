@@ -10,17 +10,12 @@ export function itemCatalog(dungeon: Dungeon): string[] {
 }
 
 function mentionsItem(action: string, item: string): boolean {
-  // Allow everyday references ("mirror", "kazoo", "umbrella") as well as
-  // the item's complete inventory label ("Pocket mirror", "Copper kazoo").
+  // Natural shorthand ("mirror", "kazoo") also consumes "Pocket mirror"
+  // and "Copper kazoo" so players need not type the complete label.
   const finalWord = item.trim().split(/\s+/).at(-1) ?? item;
-  const variants = [item, ...(item.includes(" ") && finalWord.length >= 4 ? [finalWord] : [])];
-  return variants.some(name => {
-    const quote = name.replace(/[.*+?^${}()|[\]\\]/g, "\\function mentionsItem(action: string, item: string): boolean {
-  const quote = item.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
-  return new RegExp("(^|[^a-z0-9])" + quote + "(?=$|[^a-z0-9])", "i").test(action);
-}
-
-").replace(/\s+/g, "\\s+");
+  const names = [item, ...(item.includes(" ") && finalWord.length >= 4 ? [finalWord] : [])];
+  return names.some(name => {
+    const quote = name.replace(/[^\w\s]/g, "\\$&").replace(/\s+/g, "\\s+");
     return new RegExp("(^|[^a-z0-9])" + quote + "(?=$|[^a-z0-9])", "i").test(action);
   });
 }
