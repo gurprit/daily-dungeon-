@@ -34,8 +34,8 @@ export default function GeneratedEffects({ input, recipe }: { input: VisualInput
     </g>}
     {notes && <g stroke="#fce1a0" fill="none" opacity=".84" strokeWidth="2">
       <path d={"M"+(hx-13)+" "+(hy-25)+"v-15 l10 -3 v15 M"+(hx+22)+" "+(hy-35)+"v-18 l9 -3 v18"}/>
-      <circle cx={x-13} cy={y-25} r="4" fill="#fce1a0"/>
-      <circle cx={x+22} cy={y-35} r="4" fill="#fce1a0"/>
+      <circle cx={hx-13} cy={hy-25} r="4" fill="#fce1a0"/>
+      <circle cx={hx+22} cy={hy-35} r="4" fill="#fce1a0"/>
     </g>}
     {hearts && <g transform={"translate("+(hx+17)+" "+(hy-29)+")"}
       className="generated-fx__float" opacity=".86">
