@@ -11,7 +11,7 @@ import { createCertificateImage } from "./certificate";
 import PixelScene from "./PixelScene";
 import { rollBreakdown } from "./roll-math";
 import PixelPortrait from "./PixelPortrait";
-import { writeEpilogue } from "./epilogue";
+import { chooseEpilogue } from "./epilogue";
 
 // Date preview is opt-in and never overwrites genuine daily progress.
 const previewTomorrow = new URLSearchParams(window.location.search).get("preview") === "tomorrow";
@@ -675,17 +675,17 @@ export default function App() {
                   ))}
 
                 </div>
-                <div className="hero-chronicle__epilogue">
-                  <span className="eyebrow">✦ THE FINAL WORD ✦</span>
-                  <p>{writeEpilogue({
+                <div className="hero-chronicle__epilogue" aria-label="The Dungeon Master's farewell">
+                  <p className="hero-chronicle__epilogue-story">{chooseEpilogue(last?.outcome.epilogue, {
                     dungeon: daily.dungeon.title,
                     room: last?.roomTitle ?? "the final chamber",
                     cleared: wins,
                     visited: run.history.length,
                     hearts: run.hearts,
-                    lastHonour: achievements.at(-1)?.title
+                    lastHonour: achievements.at(-1)?.title,
+                    moments: run.history.map(entry => ({ room: entry.roomTitle, success: entry.outcome.success }))
                   })}</p>
-                  <p className="hero-chronicle__return"><Sparkles size={18}/> Come back tomorrow for more adventuring. A new dungeon opens at midnight UTC!</p>
+                  <p className="hero-chronicle__return"><Sparkles size={18}/> Come back tomorrow. I've already warned the next dungeon about you. <span>New adventure at midnight UTC.</span></p>
                 </div>
               </section>
             </section>
