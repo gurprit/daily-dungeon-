@@ -22,7 +22,7 @@ export function writeEpilogue(options: {
   // actually tried, not a generic score summary. Curated so arbitrary player
   // input is never echoed unfiltered into the Dungeon Master's voice.
   const rememberedActions = moments.map(beat => beat.action ?? "").join(" ");
-  const callback = [
+  const callbacks: Array<[RegExp, string]> = [
     [/\\bkazoo\\b/i, "That kazoo recital has been classified as a weather event. The whale insists it was not informed it would be your backing orchestra."],
     [/\\bumbrella\\b/i, "Your umbrella has been nominated for a medal. It wisely declined, citing professional embarrassment."],
     [/\\bpotato\\b/i, "The potato has lodged a formal complaint against you. I have filed it under 'Evidence', next to your common sense."],
@@ -32,7 +32,8 @@ export function writeEpilogue(options: {
     [/\\bdanc(?:e|ing)\\b/i, "Your dancing has been reported to the authorities as an arcane disturbance. I cannot say the witnesses are wrong."],
     [/\\bwhistle\\b/i, "The whistle is now on the museum's prohibited objects list, alongside cursed crowns and unattended adventurers."],
     [/\\bdragon\\b/i, "The dragon is claiming credit for your finest moment. I have filed an appeal, purely for entertainment."],
-  ].find(([pattern]) => (pattern as RegExp).test(rememberedActions))?.[1] as string | undefined;
+  ];
+  const callback = callbacks.find(([pattern]) => pattern.test(rememberedActions))?.[1];
 
   const flavour: Record<string, string> = {
     "The Goblin's Toll": "Between a goblin with a clipboard, a library that files criminal charges against the moon, and a dragon running a tax office, this kingdom desperately needs new management.",
