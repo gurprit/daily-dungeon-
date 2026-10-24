@@ -110,7 +110,7 @@ export function storyRoom(dungeon: Dungeon, roomIndex: number, beats: readonly S
 export function storyGuidance(dungeonSlug: string, roomIndex: number): string | undefined {
   if (dungeonSlug !== HOLLOWMERE_DUNGEON.slug) return undefined;
   const rules = [
-    "Spoon is frightened of the bell, not evil. His goal is to keep the ancient sleeper quiet. Do not reveal the ghost or full mystery yet. A failed action must still let the hero enter, at a cost.",
+    "Spoon is frightened of the bell, not evil. His goal is to keep the ancient sleeper quiet. On nonviolent success he trusts the hero; on violent success he flees but the hero enters. On failure he also flees and the hero enters at a cost. Do not reveal the ghost or full mystery yet.",
     "The machinery consumes villagers' names to sustain a sleeping ward. This clue must remain true whatever the player's method. A successful investigation reveals a willing promise could replace the stolen names.",
     "Elowen is trapped inside the bell; the ward protects the village by stealing memories. There are three morally different solutions: renew the ward while Elowen stays, free her and jeopardise the ward, or replace its fuel with willing promises. Do not declare the village's fate yourself: the authored ending decides it."
   ];
@@ -120,7 +120,9 @@ export function storyGuidance(dungeonSlug: string, roomIndex: number): string | 
 export function inferFinaleChoice(action: string): FinaleChoice {
   if (/\b(free|release|unbind|unshackle|destroy|break|shatter|smash|cut.*chain)\b/i.test(action)) return "release";
   if (/\b(repair|restore|renew|reseal|strengthen|keep|mend|protect|rebuild)\b/i.test(action)) return "renew";
-  return "reconcile";
+  if (/\b(bargain|promise|volunteer|trade|offer|persuade|negotiate|convince|talk|share|transfer|replace|third way|other way)\b/i.test(action)) return "reconcile";
+  // Without an intelligible attempt at a new bargain, never invent the best ending.
+  return "renew";
 }
 
 export function storyEnding(

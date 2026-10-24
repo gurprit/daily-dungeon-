@@ -42,7 +42,10 @@ export function resolveAction(room: Room, action: string, inventory: readonly st
     heartsLost: success ? 0 : 1,
     reward: success ? room.reward : null,
     usedItems: itemsUsed(action, inventory),
-    narration: fallbackNarration(room, success),
+    narration: room.title === "The Frightened Guard" && success &&
+      /\b(attack|stab|slash|kill|hit|punch|fight|shoot|strike|smash)\b/i.test(action)
+      ? "Spoon drops his sword and flees. The bell tower stands open, but you have lost a potential friend."
+      : fallbackNarration(room, success),
     mode: "scripted",
     achievement: fallbackAchievement(action, room.title, success, 0)
   };

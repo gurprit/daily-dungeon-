@@ -57,6 +57,7 @@ test("failed rolls, death, and unconnected dungeons cannot claim a perfect endin
   assert.equal(inferFinaleChoice("I shatter the bell"), "release");
   assert.equal(inferFinaleChoice("I repair the bell"), "renew");
   assert.equal(inferFinaleChoice("I bargain with the ghost"), "reconcile");
+  assert.equal(inferFinaleChoice("I eat an apple"), "renew", "an unrelated action must not default to the best ending");
 });
 
 test("the story preview is gated and returns a canonical outcome without an image-AI dependency", async () => {
