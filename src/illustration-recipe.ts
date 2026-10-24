@@ -41,7 +41,7 @@ export function makeVisualRecipe(input: VisualInput): VisualRecipe {
     /\b(unlock\w*|open\w*|turn.*key|use.*key|insert\w*)\b/.test(action) ? "unlock" :
     /\b(offer\w*|give|gift\w*|brib\w*|hand\w*|trade\w*)\b/.test(action) ? "offer" :
     /\b(spell\w*|magic\w*|cast\w*|enchant\w*|summon\w*|ward\w*)\b/.test(action) ? "spell" :
-    /\b(attack\w*|stab\w*|fight\w*|punch\w*|hit|slash\w*|kick\w*)\b/.test(action) ? "fight" :
+    /\b(attack\w*|threaten\w*|stab\w*|fight\w*|punch\w*|hit|slash\w*|kick\w*)\b/.test(action) ? "fight" :
     /\b(sneak\w*|hide|creep\w*|tiptoe|invisible)\b/.test(action) ? "sneak" :
     /\b(talk\w*|persuad\w*|ask|tell|promise\w*|convinc\w*|negotia\w*)\b/.test(action) ? "talk" :
     /\b(read\w*|inspect\w*|study|look|investigat\w*|search\w*|deciph\w*)\b/.test(action) ? "inspect" : "misc";
