@@ -1,6 +1,7 @@
 import { useId } from "react";
 import PixelScene from "./PixelScene";
 import ClueSketch from "./ClueSketch";
+import ProceduralEffects from "./ProceduralEffects";
 import { makeVisualRecipe, visualSeedPoints, type VisualInput, type VisualProp, type VisualRecipe } from "./illustration-recipe";
 
 type Props = VisualInput & {
@@ -87,7 +88,7 @@ function IconProp({ prop, color }: { prop: VisualProp; color: string }) {
 }
 
 function RoomShimmers({ recipe }: { recipe: VisualRecipe }) {
-  const motes = visualSeedPoints(recipe.seed, 22);
+  const motes = visualSeedPoints(recipe.seed, 8);
   return <g>
     {motes.map((p, i) => <g key={i} className="procedural-art__spark" style={{ animationDelay: p.delay + "s" }}>
       <circle cx={p.x} cy={p.y} r={p.size} fill={recipe.accent} opacity={i%3===0?".72":".38"}/>
@@ -96,18 +97,70 @@ function RoomShimmers({ recipe }: { recipe: VisualRecipe }) {
   </g>;
 }
 
+/** Animated portrait freed from its frame: museum room one. */
+function PaintingSprite() {
+  return <g>
+    <rect x="7" y="1" width="87" height="117" rx="3" fill="#9f7d62" stroke="#e5c58b" strokeWidth="6"/>
+    <rect x="19" y="13" width="62" height="88" fill="#383253" stroke="#796589" strokeWidth="4"/>
+    <g className="fx-living-painting">
+      <path d="M26 78Q49 63 76 78L77 104H23Z" fill="#8b6aab"/>
+      <ellipse cx="51" cy="57" rx="22" ry="26" fill="#e8b99b"/>
+      <path d="M29 54Q34 22 52 29Q75 26 75 55L63 43L37 46Z" fill="#4a394d"/>
+      <rect x="40" y="58" width="5" height="4" fill="#413444"/>
+      <rect x="60" y="58" width="5" height="4" fill="#413444"/>
+      <path d="M43 72Q53 79 63 71" fill="none" stroke="#965e6d" strokeWidth="3"/>
+      <path d="M24 92Q14 104 16 118 M78 94Q91 105 88 116" stroke="#b99bd0" strokeWidth="6" fill="none"/>
+    </g>
+    <g className="fx-paint-drop" fill="#cda0c5">
+      <path d="M14 16v14q-6 10 0 19q7-11 0-19" /><circle cx="94" cy="91" r="4"/>
+    </g>
+  </g>;
+}
+/** Clattering clockwork dinosaur skeleton, clearly not a generic goblin. */
+function ClockworkSkeletonSprite() {
+  return <g className="fx-bones">
+    <ellipse cx="51" cy="127" rx="53" ry="9" fill="#151526" opacity=".56"/>
+    <path d="M22 49L60 31L85 49L70 86L42 87Z" fill="#51475e" stroke="#c7ad8b" strokeWidth="5"/>
+    <circle cx="51" cy="25" r="22" fill="#d7c3a2" stroke="#f4e4c7" strokeWidth="3"/>
+    <rect x="39" y="18" width="9" height="12" fill="#3c3341"/>
+    <rect x="58" y="18" width="9" height="12" fill="#3c3341"/>
+    <path d="M39 37H67 M51 34v8" stroke="#786a63" strokeWidth="4"/>
+    <path d="M19 60L49 78L77 58 M51 51V104" stroke="#d7c7a5" strokeWidth="10" fill="none"/>
+    <path d="M48 100L31 119 M55 100L75 119" stroke="#d7c7a5" strokeWidth="9"/>
+    <path d="M14 67L4 92 M81 66L96 90" stroke="#c5b296" strokeWidth="7"/>
+    <circle cx="52" cy="81" r="15" stroke="#c8a374" strokeWidth="6" strokeDasharray="7 3" fill="#484057"/>
+  </g>;
+}
+function ForbiddenExhibitSprite() {
+  return <g>
+    <rect x="10" y="101" width="97" height="22" rx="3" fill="#86708b" stroke="#d1b58c" strokeWidth="4"/>
+    <path d="M25 100L18 53H99L92 100Z" fill="#453b56" stroke="#a28a9a" strokeWidth="3"/>
+    <g className="fx-cursed">
+      <path d="M28 40L18 13L44 24L55 7L69 26L94 13L84 41Z" fill="#d6b272" stroke="#f5d69b" strokeWidth="4"/>
+      <rect x="28" y="40" width="56" height="14" rx="4" fill="#e1bd80" stroke="#f3d5a5" strokeWidth="3"/>
+      <circle cx="54" cy="32" r="8" fill="#d779aa"/>
+      <path d="M41 67L49 73M72 67L64 73" stroke="#ed98b1" strokeWidth="5"/>
+      <path d="M45 89Q56 80 69 90" fill="none" stroke="#e6abc5" strokeWidth="4"/>
+    </g>
+  </g>;
+}
+
 function ActionComposition({ input, recipe }: { input: VisualInput; recipe: VisualRecipe }) {
   const isHollowmere = input.dungeonSlug === "bell-of-hollowmere";
   const ghost = isHollowmere && input.roomIndex === 2;
   const machine = isHollowmere && input.roomIndex === 1;
+  const museum = input.dungeonSlug === "midnight-museum";
   const relevant = recipe.gesture === "dance" || recipe.gesture === "kiss" || recipe.gesture === "offer";
   return <g>
     <rect width="320" height="220" fill="#111128" opacity=".66"/>
     <path d="M0 157 Q90 144 152 172 Q225 146 320 151 V220 H0Z" fill="#261e37" opacity=".85"/>
     <ellipse cx="158" cy="141" rx="126" ry="70" fill={recipe.accent} opacity=".10"/>
-    <g transform="translate(37 67) scale(1.04)"><HeroSprite pose={recipe.gesture === "dance" ? "dance"
+    <g transform={"translate(" + (31 + recipe.variant * 3) + " 67) scale(1.04)"}><HeroSprite pose={recipe.gesture === "dance" ? "dance"
       : recipe.gesture === "sneak" ? "sneak" : recipe.gesture === "fight" ? "fight" : relevant || recipe.gesture === "unlock" ? "reach" : "stand"}/></g>
-    {ghost ? <g transform="translate(222 70) scale(.9)"><GhostSprite free={recipe.mood === "triumph"}/></g>
+    {museum ? <g transform={"translate(" + (216-recipe.variant*2) + " 65) scale(.97)"}>
+        {input.roomIndex === 0 ? <PaintingSprite/> : input.roomIndex === 1
+          ? <ClockworkSkeletonSprite/> : <ForbiddenExhibitSprite/>}
+      </g> : ghost ? <g transform="translate(222 70) scale(.9)"><GhostSprite free={recipe.mood === "triumph"}/></g>
       : machine ? <g transform="translate(217 131)">
           <circle r="45" fill="#59485d" stroke="#bfa279" strokeWidth="11" strokeDasharray="20 5"/>
           <circle r="23" fill="#241f3c" stroke="#e2be8b" strokeWidth="6"/>
@@ -204,6 +257,7 @@ export default function ProceduralIllustration(input: Props) {
         <ellipse cx="160" cy="100" rx="96" ry="81" fill={"url(#glow"+id+")"}/>
         <RoomShimmers recipe={recipe}/>
       </g>}
+      <ProceduralEffects input={input} recipe={recipe}/>
     </svg>
   </div>;
 }
