@@ -10,6 +10,8 @@ export type Judgment = {
   success: string;
   failure: string;
   achievement?: Achievement;
+  epilogueSuccess?: string;
+  epilogueFailure?: string;
 };
 
 type AiBinding = { run(model: string, input: Record<string, unknown>): Promise<unknown> };
@@ -45,11 +47,21 @@ export function parseJudgment(result: unknown): Judgment | null {
     typeof answer.failure !== "string" || answer.failure.trim().length < 15
   ) return null;
   const achievement = answer.creativity >= 4 ? cleanGeneratedAchievement(answer.achievement) : null;
+  // Missing or malformed closing remarks should NEVER invalidate otherwise good
+  // scoring and narration. Existing clients/mock judge responses remain valid.
+  const closing = (value: unknown) =>
+    typeof value === "string" && value.trim().length >= 90
+      ? value.trim().slice(0, 900)
+      : undefined;
+  const epilogueSuccess = closing(answer.epilogueSuccess);
+  const epilogueFailure = closing(answer.epilogueFailure);
   return {
     creativity: answer.creativity,
     success: answer.success.trim().slice(0, 550),
     failure: answer.failure.trim().slice(0, 550),
-    ...(achievement ? { achievement } : {})
+    ...(achievement ? { achievement } : {}),
+    ...(epilogueSuccess ? { epilogueSuccess } : {}),
+    ...(epilogueFailure ? { epilogueFailure } : {})
   };
 }
 
@@ -60,7 +72,8 @@ export async function judgeWithAI(
   challenge: string,
   action: string,
   previousEncounters: readonly PreviousBeat[] = [],
-  inventory: readonly string[] = []
+  inventory: readonly string[] = [],
+  finalRoom = false
 ): Promise<Judgment | null> {
   const instruction = [
     "You are The Dungeon Master: dramatic, witty, theatrical and surprisingly fair.",
@@ -85,7 +98,22 @@ export async function judgeWithAI(
     "Use a title of 2-6 words (max 60 characters), and a playful description of 8-18 words (max 180 characters).",
     "If creativity is 0-3, set achievement to null. Never invent an achievement for ordinary actions.",
     "Keep the adventure PG-13. No graphic violence, hate or explicit sexual content.",
-    "Return ONLY JSON: {\"creativity\":4,\"success\":\"...\",\"failure\":\"...\",\"achievement\":{\"title\":\"Lord of the Dance\",\"description\":\"You danced a goblin out of collecting his toll.\"}}."
+    finalRoom
+      ? [
+          "This is the THIRD AND FINAL room. Also write TWO DIFFERENT EPILOGUES: epilogueSuccess and epilogueFailure.",
+          "Each must be 65-95 words, in your own theatrical Dungeon Master's VOICE, in second person.",
+          "Banter with the player directly; dry, mischievous, a little sarcastic, but genuinely delighted or dramatically outraged.",
+          "Tell a witty little closing story, recalling one SPECIFIC earlier action or strange consequence from previousEncounters and the current action.",
+          "Make any earlier failures part of the joke, not a lie about having won every trial.",
+          "The SUCCESS epilogue celebrates the hero's escape. The FAILURE epilogue mocks the botched finale but accepts the hero escapes if they have hearts left.",
+          "No gameplay stats, counts, scoreboards, dice, hearts or mechanical explanations. No title, sign-off, tomorrow invitation or retelling the entire dungeon.",
+          "Never copy the player's input verbatim; make the callbacks your own and keep everything PG-13.",
+          "These are alternative endings; do not decide the dice or award anything."
+        ].join(" ")
+      : "This is not the final room. Do NOT include epilogue fields.",
+    finalRoom
+      ? 'Return ONLY JSON: {"creativity":4,"success":"...","failure":"...","achievement":{"title":"...","description":"..."},"epilogueSuccess":"...","epilogueFailure":"..."}.'
+      : 'Return ONLY JSON: {"creativity":4,"success":"...","failure":"...","achievement":{"title":"Lord of the Dance","description":"You danced a goblin out of collecting his toll."}}.'
   ].join(" ");
   try {
     const result = await ai.run("@cf/qwen/qwen3-30b-a3b-fp8", {
@@ -96,7 +124,7 @@ export async function judgeWithAI(
           content: JSON.stringify({ scene, character, challenge, playerAction: action, previousEncounters, currentInventory: inventory }) + "\n/no_think"
         }
       ],
-      max_tokens: 520,
+      max_tokens: finalRoom ? 880 : 520,
       temperature: 0.7,
       top_p: 0.8
     });
