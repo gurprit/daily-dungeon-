@@ -9,6 +9,7 @@ type PixelSceneProps = {
   dungeonSlug: string;
   roomIndex?: number;
   className?: string;
+  parallaxDepth?: number;
 };
 type Palette = {
   sky: string;
@@ -541,7 +542,7 @@ function RoomOverlay({ slug, roomIndex }: { slug: string; roomIndex: number }) {
   return roomIndex === 1 ? <Cheese x={124} y={120}/> : <King x={125} y={105}/>;
 }
 
-export default function PixelScene({ dungeonSlug, roomIndex = 0, className }: PixelSceneProps) {
+export default function PixelScene({ dungeonSlug, roomIndex = 0, className, parallaxDepth }: PixelSceneProps) {
   if (dungeonSlug === "lighthouse-lost-dawn" || dungeonSlug === "clockwork-orchard" || dungeonSlug === "dragon-bakery") {
     return <FreshPixelScene dungeonSlug={dungeonSlug} roomIndex={roomIndex} className={className}/>;
   }
@@ -555,7 +556,8 @@ export default function PixelScene({ dungeonSlug, roomIndex = 0, className }: Pi
     "skywhale-express": <SkywhaleDeck p={p}/>,
     "bell-of-hollowmere": <HollowmereTower p={p}/>
   };
-  return <svg className={className} viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
+  return <svg className={className} data-parallax-depth={parallaxDepth}
+    viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
     xmlns="http://www.w3.org/2000/svg" role="img" aria-label={"16-bit fantasy pixel art from today's dungeon"}
     shapeRendering="crispEdges">
     <rect width="320" height="220" fill={p.sky}/>

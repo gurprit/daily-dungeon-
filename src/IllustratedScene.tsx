@@ -98,11 +98,9 @@ export default function IllustratedScene(props: Props) {
   }, [key, enabled, day, roomIndex, kind, variant, preview, ticket]);
 
   const showGenerated = enabled && !!result.url && !broken;
-  const isFresh = dungeonSlug === "lighthouse-lost-dawn" ||
-    dungeonSlug === "clockwork-orchard" || dungeonSlug === "dragon-bakery";
-  // Generated images are flattened, so they get only gentle plane separation.
-  // The deep, true multi-layer parallax happens in the SVG loading/backup art.
-  const parallaxRef = useScrollParallax<HTMLDivElement>(isFresh && showGenerated && ready);
+  // All generated artwork scrolls, not just the three fresh test dungeons.
+  // Fresh SVG fallbacks retain their independent multi-plane scroll animation.
+  const parallaxRef = useScrollParallax<HTMLDivElement>(showGenerated && ready);
   const visualClass = "hybrid-art " + className;
   return <div className={visualClass} ref={parallaxRef}>
     {(!showGenerated || !ready) && <ProceduralIllustration {...props} label={alt}/>}
@@ -110,7 +108,7 @@ export default function IllustratedScene(props: Props) {
       <NesSceneImage src={result.url!} alt={alt} ready={ready}
         onReady={() => setReady(true)} onError={() => setBroken(true)}/>
       {ready && <>
-        <svg className="hybrid-art__svgfx" data-parallax-depth={0.22} viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
+        <svg className="hybrid-art__svgfx" data-parallax-depth={0.95} viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
           aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
           <GeneratedEffects input={props} recipe={recipe}/>
         </svg>

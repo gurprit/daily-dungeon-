@@ -1353,12 +1353,12 @@ p { line-height: 1.7; }
 }
 
 
-/* Extra pixel bleed allows small scroll offsets without exposing empty edges.
-   Only the three fresh NES scenes use this effect on flattened AI artwork. */
+/* All generated scenes overscan by 8% so parallax never reveals the edge.
+   The Canvas is still scaled as deliberately crisp NES pixels. */
 .hybrid-art .hybrid-art__nes {
-  inset: -2%;
-  width: 104%;
-  height: 104%;
+  inset: -8%;
+  width: 116%;
+  height: 116%;
 }
 
 
@@ -1383,4 +1383,13 @@ p { line-height: 1.7; }
   background: rgba(22,23,34,.82);
   color: #c3c7d1;
   border-color: rgba(167,170,185,.3);
+}
+
+/* Mobile parallax keeps its clipping inside the existing illustration frame.
+   Layers should move against one another, not detach from the game page. */
+.hybrid-art__svgfx, .hybrid-art__nes, .procedural-art__background,
+.procedural-art__foreground { will-change: transform; }
+@media (prefers-reduced-motion: reduce) {
+  .hybrid-art__svgfx, .hybrid-art__nes, .procedural-art__background,
+  .procedural-art__foreground { will-change: auto; }
 }
