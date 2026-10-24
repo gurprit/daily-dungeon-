@@ -1,4 +1,4 @@
-import { illustrationHash, type VisualInput, type VisualRecipe } from "./illustration-recipe";
+import { illustrationHash, type VisualInput, type VisualRecipe } from "./illustration-recipe.ts";
 
 export type FxTheme =
   | "museum-painting" | "museum-bones" | "museum-cursed"
