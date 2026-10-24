@@ -31,6 +31,14 @@ const palettes: Record<string, Palette> = {
   "royal-pantry": {
     sky: "#251c2b", deep: "#15111c", stone: "#4b3a3d",
     mid: "#775451", light: "#bc8b6a", accent: "#f2c476", accent2: "#b1cc76"
+  },
+  "midnight-museum": {
+    sky: "#181530", deep: "#101024", stone: "#39354f",
+    mid: "#645774", light: "#c1a1a4", accent: "#f4c780", accent2: "#8cdbcb"
+  },
+  "skywhale-express": {
+    sky: "#153252", deep: "#132741", stone: "#354c73",
+    mid: "#567fa3", light: "#b3bed8", accent: "#f2dca0", accent2: "#8bdce7"
   }
 };
 
@@ -348,8 +356,102 @@ function RoyalKitchen({ p }: { p: Palette }) {
   </g>;
 }
 
+// Two brand-new hand-crafted 320x220 tilemap backgrounds for the refreshed
+// daily adventures. Always rendered for free without any AI calls.
+function MidnightMuseum({ p }: { p: Palette }) {
+  return <g>
+    <rect x="0" y="47" width="320" height="126" fill="#302741"/>
+    <rect x="12" y="55" width="296" height="105" fill="#51405e"/>
+    {Array.from({length: 9}, (_,i) =>
+      <rect key={i} x={i * 39 + 8} y="58" width="6" height="110" fill="#76627b"/>)}
+    <rect x="22" y="62" width="76" height="95" fill="#a78772"/>
+    <rect x="27" y="67" width="66" height="85" fill="#30283f"/>
+    <rect x="33" y="75" width="54" height="63" fill="#77739a"/>
+    <rect x="38" y="84" width="42" height="55" fill="#ad8193"/>
+    <rect x="47" y="99" width="23" height="31" fill="#d7b293"/>
+    <rect x="50" y="96" width="18" height="6" fill="#e6cfaa"/>
+    <rect x="53" y="108" width="4" height="4" fill="#30223b"/>
+    <rect x="63" y="108" width="4" height="4" fill="#30223b"/>
+    <rect x="55" y="122" width="10" height="3" fill="#834e64"/>
+    <rect x="120" y="50" width="78" height="120" fill="#453754"/>
+    <rect x="128" y="55" width="62" height="105" fill="#211c34"/>
+    <rect x="140" y="84" width="35" height="79" fill="#6c5773"/>
+    <rect x="150" y="91" width="15" height="65" fill="#b5a6ac"/>
+    <rect x="148" y="86" width="19" height="8" fill="#ddba89"/>
+    <rect x="213" y="65" width="85" height="85" fill="#b19178"/>
+    <rect x="220" y="73" width="71" height="69" fill="#36324f"/>
+    <rect x="229" y="84" width="52" height="45" fill="#6e6ca5"/>
+    <rect x="238" y="92" width="34" height="28" fill="#d1a48a"/>
+    <StoneFloor p={p} from={164}/>
+    <Torch x={13} y={121} p={p}/>
+    <Torch x={292} y={121} p={p}/>
+    <Hero x={223} y={123}/>
+    <rect x="36" y="159" width="81" height="6" fill="#ad8668"/>
+    <rect x="43" y="155" width="67" height="4" fill="#ead0a0"/>
+  </g>;
+}
+
+function SkywhaleDeck({ p }: { p: Palette }) {
+  return <g>
+    <rect x="0" y="46" width="320" height="174" fill="#24466b"/>
+    {Array.from({length: 5}, (_,i) => <g key={i}>
+      <rect x={i * 80 - 22} y={88 + (i%2)*24} width="86" height="19" fill="#698eaf"/>
+      <rect x={i * 80 - 8} y={81 + (i%2)*24} width="55" height="15" fill="#a0b4c4"/>
+    </g>)}
+    <rect x="33" y="100" width="220" height="48" fill="#467a9e"/>
+    <rect x="59" y="83" width="160" height="66" fill="#6bacc0"/>
+    <rect x="83" y="76" width="105" height="60" fill="#7bc4d4"/>
+    <rect x="58" y="128" width="189" height="23" fill="#386b8e"/>
+    <rect x="22" y="116" width="55" height="23" fill="#6faab7"/>
+    <rect x="10" y="129" width="58" height="15" fill="#568da7"/>
+    <rect x="225" y="104" width="39" height="24" fill="#6da6bf"/>
+    <rect x="246" y="118" width="34" height="14" fill="#5b93ad"/>
+    <rect x="204" y="118" width="7" height="7" fill="#eef4d9"/>
+    <rect x="206" y="120" width="3" height="3" fill="#26334b"/>
+    <rect x="238" y="136" width="14" height="4" fill="#2b4e68"/>
+    <rect x="47" y="151" width="252" height="11" fill="#6f5972"/>
+    <rect x="47" y="162" width="252" height="8" fill="#a58d89"/>
+    {Array.from({length: 11}, (_,i)=><rect key={i} x={49+i*23} y="166" width="3" height="33" fill="#443c56"/>)}
+    <rect x="45" y="170" width="254" height="32" fill="#53445e"/>
+    <rect x="0" y="203" width="320" height="17" fill="#26344e"/>
+    <Hero x={232} y={147}/>
+    <rect x="67" y="147" width="21" height="4" fill="#eadcae"/>
+    <rect x="72" y="137" width="10" height="11" fill="#e1c27c"/>
+  </g>;
+}
+
 function RoomOverlay({ slug, roomIndex }: { slug: string; roomIndex: number }) {
   if (roomIndex === 0) return null;
+  if (slug === "midnight-museum") return roomIndex === 1 ? <g>
+    <rect x="125" y="121" width="15" height="40" fill="#ddd6c2"/>
+    <rect x="148" y="129" width="15" height="32" fill="#ddd6c2"/>
+    <rect x="124" y="97" width="49" height="20" fill="#e5d6b2"/>
+    <rect x="136" y="112" width="29" height="9" fill="#e5d6b2"/>
+    <rect x="149" y="90" width="18" height="15" fill="#e5d6b2"/>
+    <rect x="153" y="94" width="4" height="3" fill="#242035"/>
+    <rect x="162" y="94" width="4" height="3" fill="#242035"/>
+  </g> : <g>
+    <rect x="127" y="114" width="65" height="40" fill="#c9a563"/>
+    <rect x="135" y="101" width="51" height="20" fill="#f4d384"/>
+    <rect x="141" y="94" width="38" height="12" fill="#ecc277"/>
+    <rect x="151" y="86" width="9" height="11" fill="#f7e1a1"/>
+    <rect x="168" y="86" width="9" height="11" fill="#f7e1a1"/>
+  </g>;
+  if (slug === "skywhale-express") return roomIndex === 1 ? <g>
+    <rect x="29" y="68" width="97" height="41" fill="#65708f"/>
+    <rect x="45" y="52" width="76" height="38" fill="#8894ae"/>
+    <rect x="62" y="89" width="61" height="25" fill="#526788"/>
+    <rect x="65" y="73" width="5" height="5" fill="#26334b"/>
+    <rect x="92" y="73" width="5" height="5" fill="#26334b"/>
+    <path d="M80 115h17l-12 18h15l-34 29 8-26H61z" fill="#ffe6a1"/>
+  </g> : <g>
+    <rect x="112" y="62" width="81" height="74" fill="#dad8df"/>
+    <rect x="121" y="70" width="64" height="65" fill="#8f86b3"/>
+    <rect x="141" y="79" width="25" height="28" fill="#f7e6aa"/>
+    <rect x="147" y="88" width="5" height="6" fill="#2b2a47"/>
+    <rect x="160" y="88" width="5" height="6" fill="#2b2a47"/>
+    <rect x="107" y="138" width="100" height="8" fill="#c7b2c4"/>
+  </g>;
   if (slug === "goblins-toll") {
     return roomIndex === 1 ? <g>
       <rect x="36" y="88" width="130" height="65" fill="#24233b"/>
@@ -377,7 +479,9 @@ export default function PixelScene({ dungeonSlug, roomIndex = 0, className }: Pi
   const base: Record<string, ReactNode> = {
     "goblins-toll": <GoblinBridge p={p}/>,
     "wizard-complaint": <WizardTavern p={p}/>,
-    "royal-pantry": <RoyalKitchen p={p}/>
+    "royal-pantry": <RoyalKitchen p={p}/>,
+    "midnight-museum": <MidnightMuseum p={p}/>,
+    "skywhale-express": <SkywhaleDeck p={p}/>
   };
   return <svg className={className} viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
     xmlns="http://www.w3.org/2000/svg" role="img" aria-label={"16-bit fantasy pixel art from today's dungeon"}
