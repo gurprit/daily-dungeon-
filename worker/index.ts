@@ -5,10 +5,8 @@ import { achievementFromJudgment } from "../src/achievements.ts";
 import { judgeWithAI } from "./judge.ts";
 import { priorStoryContext } from "./continuity.ts";
 import { storyRoom, storyGuidance, storyEnding } from "../src/story.ts";
-import { artServiceStatus, handleArtRoute, makeArtTicket, type ArtEnv } from "./art.ts";
-import { handleSharedArtRoute } from "./shared-art.ts";
 
-type Env = ArtEnv & {
+type Env = {
   AI_ENABLED?: string;
   AI_DAILY_LIMIT?: string;
   PREVIEW_TOMORROW_ENABLED?: string;
@@ -64,7 +62,7 @@ async function reserveDailyBudget(env: Env, day: string): Promise<boolean> {
 }
 
 export default {
-  async fetch(request: Request, env: Env, context?: { waitUntil: (task: Promise<unknown>) => void }): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const aiRequested = env.AI_ENABLED === "true";
     const aiConfigured = !!env.DAILY_BUDGET_DB && !!env.AI;
@@ -75,14 +73,9 @@ export default {
         day: getDailyGame().day,
         previewTomorrowEnabled: env.PREVIEW_TOMORROW_ENABLED === "true",
         previewStoryEnabled: env.PREVIEW_STORY_ENABLED === "true",
-        art: artServiceStatus(env)
+        illustrations: "client-side-svg"
       });
     }
-
-    const sharedArt = await handleSharedArtRoute(request, env, context);
-    if (sharedArt) return sharedArt;
-    const artResponse = await handleArtRoute(request, env, context);
-    if (artResponse) return artResponse;
 
     if (url.pathname === "/api/resolve") {
       if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
@@ -168,8 +161,6 @@ export default {
         const conclusion = storyEnding(daily.dungeon.slug, body.action, outcome.success, Math.max(0, 3 - earlierMoments.filter(beat => !beat.success).length - outcome.heartsLost), earlierMoments);
         if (conclusion) { outcome.storyEnding = conclusion; outcome.epilogue = conclusion.epilogue; }
       }
-      const artTicket = await makeArtTicket(env, Number(body.roomIndex), body.action, outcome.narration, outcome.success, daily.day);
-      if (artTicket) outcome.artTicket = artTicket;
       return json(outcome);
     }
 
