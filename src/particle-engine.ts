@@ -1,5 +1,6 @@
 import type { EffectPlan } from "./effect-presets.ts";
 import type { VisualInput } from "./illustration-recipe.ts";
+import { generatedEffectAnchors } from "./image-fx-layout.ts";
 
 /**
  * A tiny deterministic JS particle engine. Canvas particles are graphics only:
@@ -49,10 +50,49 @@ function random(world: ParticleWorld): number {
   return world.state / 4294967296;
 }
 
-export function emittersForScene(plan: EffectPlan, input: VisualInput): Emitter[] {
+export function emittersForScene(plan: EffectPlan, input: VisualInput, imageMode = false): Emitter[] {
   const list: Emitter[] = [];
   const add = (kind: ParticleKind, x: number, y: number, count: number, spread: number, color = palette[kind]) =>
     list.push({ kind, x, y, count, spread, color });
+
+  // Model images contain their own torches and characters. For generated
+  // paintings we emit only effects aligned with the standardized NES framing.
+  if (imageMode) {
+    if (input.kind === "clue") return [];
+    const layout = generatedEffectAnchors(input);
+    const x = layout.focal.x, y = layout.focal.y;
+    const result: Emitter[] = [];
+    const addImage = (kind: ParticleKind, px: number, py: number, count: number, spread: number, color = palette[kind]) =>
+      result.push({ kind, x: px, y: py, count, spread, color });
+    if (plan.ambient.includes("dust") || plan.ambient.includes("mist")) {
+      addImage("dust", layout.ambientDust.x, layout.ambientDust.y, 6, 110);
+    }
+    for (const torch of layout.torches) {
+      addImage("ember", torch.x, torch.y - 8, 7, 9);
+      addImage("flame", torch.x, torch.y + 2, 4, 4);
+    }
+    if (plan.ambient.includes("ghost")) addImage("ghost", x, y+15, 10, 25);
+    if (plan.ambient.includes("paint")) addImage("paint", x, y-20, 5, 24);
+    if (plan.ambient.includes("gears")) addImage("ember", x, y+8, 5, 18);
+    if (plan.ambient.includes("curse")) addImage("magic", x, y, 9, 22, "#d9a8f5");
+    if (input.kind === "action") {
+      if (plan.action.includes("runes")) addImage("magic", x, y, 10, 24);
+      if (plan.action.includes("notes")) addImage("magic", x, y-27, 8, 20, "#f9d78a");
+      if (plan.action.includes("hearts")) addImage("magic", x, y-29, 6, 18, "#ffc0d2");
+      if (plan.action.includes("sparks") || plan.action.includes("impact"))
+        addImage("impact", x, y, 8, 18);
+      if (plan.action.includes("sound")) addImage("magic", x, y-5, 6, 17, "#d6c9fc");
+      if (plan.result.includes("failure")) addImage("impact", x+17, y+11, 5, 18, "#e7889e");
+      if (plan.result.includes("triumph")) addImage("ember", x+12, y+22, 4, 18, "#f9dfad");
+    } else if (input.kind === "ending") addImage("magic", x, y, 12, 40, "#b8f0d1");
+    // Quieter over a pixel painting than over the larger SVG-only fallback.
+    let available = 40;
+    return result.map(e => {
+      const count = Math.max(0, Math.min(e.count, available));
+      available -= count;
+      return { ...e, count };
+    }).filter(e => e.count > 0);
+  }
 
   if (plan.ambient.includes("fire")) {
     add("flame", 46, 132, 8, 9);
