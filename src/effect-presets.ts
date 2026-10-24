@@ -3,7 +3,7 @@ import { illustrationHash, type VisualInput, type VisualRecipe } from "./illustr
 export type FxTheme =
   | "museum-painting" | "museum-bones" | "museum-cursed"
   | "bell-gate" | "bell-gears" | "bell-ghost"
-  | "tavern" | "kitchen" | "sky" | "bridge" | "generic";
+  | "tavern" | "kitchen" | "sky" | "bridge" | "lighthouse" | "orchard" | "bakery" | "generic";
 export type FxTag =
   | "dust" | "fire" | "mist" | "moon" | "paint" | "bones" | "gears"
   | "curse" | "bell" | "ghost" | "notes" | "hearts" | "runes"
@@ -23,6 +23,9 @@ export function roomFxTheme(slug: string, index: number): FxTheme {
   if (slug === "wizard-complaint") return "tavern";
   if (slug === "royal-pantry") return "kitchen";
   if (slug === "skywhale-express") return "sky";
+  if (slug === "lighthouse-lost-dawn") return "lighthouse";
+  if (slug === "clockwork-orchard") return "orchard";
+  if (slug === "dragon-bakery") return "bakery";
   if (slug === "goblins-toll") return "bridge";
   return "generic";
 }
@@ -40,6 +43,9 @@ export function makeEffectPlan(input: VisualInput, recipe: VisualRecipe): Effect
     kitchen: ["fire", "dust"],
     sky: ["moon", "mist"],
     bridge: ["fire", "mist"],
+    lighthouse: ["moon", "mist"],
+    orchard: ["gears", "dust"],
+    bakery: ["fire", "dust"],
     generic: ["dust", "fire"]
   };
   const action: FxTag[] = [];

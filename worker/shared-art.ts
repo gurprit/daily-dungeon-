@@ -1,4 +1,5 @@
-import { getDailyGame, getPreviewDailyGame, type Dungeon } from "../src/game.ts";
+import { getDailyGame, getPreviewDailyGame, getFreshPreviewGame, type Dungeon } from "../src/game.ts";
+import { freshPreviewIndex, type FreshPreviewMode } from "../src/fresh-dungeons.ts";
 import { ILLUSTRATION_STYLE, artEnabled, inferIllustration, type ArtEnv } from "./art.ts";
 import { generatedFxLayout } from "../src/image-fx-layout.ts";
 
@@ -9,11 +10,12 @@ export type SharedArtRequest = {
   roomIndex: number;
   kind: SharedArtKind;
   variant?: string;
-  preview?: "today" | "tomorrow" | "hollowmere";
+  preview?: "today" | "tomorrow" | "hollowmere" | FreshPreviewMode;
 };
 type SharedEnv = ArtEnv & {
   PREVIEW_TOMORROW_ENABLED?: string;
   PREVIEW_STORY_ENABLED?: string;
+  PREVIEW_FRESH_ENABLED?: string;
   ACTION_LIMITER?: { limit(options: { key: string }): Promise<{ success: boolean }> };
 };
 
@@ -41,14 +43,18 @@ export function validateSharedArt(value: unknown, env: SharedEnv, now: Date = ne
   { request: SharedArtRequest; dungeon: Dungeon } | null {
   if (!value || typeof value !== "object") return null;
   const body = value as Partial<SharedArtRequest>;
-  if (body.preview !== "today" && body.preview !== "tomorrow" && body.preview !== "hollowmere") return null;
+  if (body.preview !== "today" && body.preview !== "tomorrow" && body.preview !== "hollowmere" &&
+      freshPreviewIndex(body.preview) === null) return null;
   if (!Number.isInteger(body.roomIndex) || body.roomIndex! < 0 || body.roomIndex! > 2) return null;
   if (body.kind !== "room" && body.kind !== "clue" && body.kind !== "ending") return null;
-  const daily = body.preview === "hollowmere"
-    ? env.PREVIEW_STORY_ENABLED === "true" ? getDailyGame(new Date("2026-10-26T12:00:00Z")) : null
-    : body.preview === "tomorrow"
-      ? env.PREVIEW_TOMORROW_ENABLED === "true" ? getPreviewDailyGame(now) : null
-      : getDailyGame(now);
+  const freshIndex = freshPreviewIndex(body.preview);
+  const daily = freshIndex !== null
+    ? env.PREVIEW_FRESH_ENABLED === "true" ? getFreshPreviewGame(freshIndex) : null
+    : body.preview === "hollowmere"
+      ? env.PREVIEW_STORY_ENABLED === "true" ? getDailyGame(new Date("2026-10-26T12:00:00Z")) : null
+      : body.preview === "tomorrow"
+        ? env.PREVIEW_TOMORROW_ENABLED === "true" ? getPreviewDailyGame(now) : null
+        : getDailyGame(now);
   if (!daily || daily.day !== body.day) return null;
   if (body.kind === "room" && body.variant !== undefined && body.variant !== "") return null;
   if (body.kind === "clue") {

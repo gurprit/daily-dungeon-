@@ -5,7 +5,7 @@ import NesSceneImage from "./NesSceneImage";
 import ParticleCanvas from "./ParticleCanvas";
 import { makeVisualRecipe, type VisualInput } from "./illustration-recipe";
 
-export type ArtPreview = "today" | "tomorrow" | "hollowmere";
+export type ArtPreview = "today" | "tomorrow" | "hollowmere" | "fresh-1" | "fresh-2" | "fresh-3";
 type ArtJob = { id?: string; status?: "pending" | "ready" | "failed"; url?: string };
 type Props = VisualInput & {
   day: string;

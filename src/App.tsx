@@ -3,7 +3,8 @@ import {
   ArrowRight, BookOpen, Check, Crown, Dice5, Download, Flame,
   Heart, ScrollText, Share2, Shield, Skull, Sparkles, Swords
 } from "lucide-react";
-import { getDailyGame, getPreviewDailyGame } from "./game";
+import { getDailyGame, getPreviewDailyGame, getFreshPreviewGame } from "./game";
+import { FRESH_DUNGEONS, FRESH_PREVIEW_MODES, freshPreviewIndex } from "./fresh-dungeons";
 import { storyRoom, storyClues, storyEnding } from "./story";
 import { startingItems, inventoryAfterTurn } from "./inventory";
 import { resolveAction, type ActionOutcome } from "./engine";
@@ -16,11 +17,16 @@ import { chooseEpilogue } from "./epilogue";
 // Date preview is opt-in and never overwrites genuine daily progress.
 const previewTomorrow = new URLSearchParams(window.location.search).get("preview") === "tomorrow";
 const previewHollowmere = new URLSearchParams(window.location.search).get("preview") === "hollowmere";
-const previewMode = previewTomorrow || previewHollowmere;
-const gameForPage = () => previewHollowmere
-  ? getDailyGame(new Date("2026-10-26T12:00:00Z"))
+const freshIndex = freshPreviewIndex(new URLSearchParams(window.location.search).get("preview"));
+const previewFresh = freshIndex !== null;
+const previewMode = previewTomorrow || previewHollowmere || previewFresh;
+const gameForPage = () => freshIndex !== null ? getFreshPreviewGame(freshIndex)
+  : previewHollowmere ? getDailyGame(new Date("2026-10-26T12:00:00Z"))
   : previewTomorrow ? getPreviewDailyGame() : getDailyGame();
-const runStorageKey = (day: string) => "daily-dungeon:" + (previewHollowmere ? "test-hollowmere:" : previewTomorrow ? "test-tomorrow:" : "") + day;
+// New namespace & edition. Never delete, rewrite or combine previous playtest saves.
+const runStorageKey = (day: string) => "daily-dungeon:" +
+  (previewFresh ? "nes-clean-v1:" + FRESH_PREVIEW_MODES[freshIndex!] + ":" :
+   previewHollowmere ? "test-hollowmere:" : previewTomorrow ? "test-tomorrow:" : "") + day;
 
 type Turn = {
   roomTitle: string;
@@ -225,15 +231,17 @@ export default function App() {
   const [certificateNotice, setCertificateNotice] = useState("");
   const [canPreviewTomorrow, setCanPreviewTomorrow] = useState(false);
   const [canPreviewStory, setCanPreviewStory] = useState(false);
+  const [canPreviewFresh, setCanPreviewFresh] = useState(false);
   const [artService, setArtService] = useState<"ready" | "disabled" | "setup-required">("disabled");
   const artEnabled = artService === "ready";
-  const artPreview: ArtPreview = previewHollowmere ? "hollowmere" : previewTomorrow ? "tomorrow" : "today";
+  const artPreview: ArtPreview = freshIndex !== null ? FRESH_PREVIEW_MODES[freshIndex] : previewHollowmere ? "hollowmere" : previewTomorrow ? "tomorrow" : "today";
   useEffect(() => {
     void fetch("/api/health")
       .then(response => response.json())
-      .then((data: { previewTomorrowEnabled?: boolean; previewStoryEnabled?: boolean; art?: { status?: "ready" | "disabled" | "setup-required" } }) => {
+      .then((data: { previewTomorrowEnabled?: boolean; previewStoryEnabled?: boolean; previewFreshEnabled?: boolean; art?: { status?: "ready" | "disabled" | "setup-required" } }) => {
         setCanPreviewTomorrow(data.previewTomorrowEnabled === true);
         setCanPreviewStory(data.previewStoryEnabled === true);
+        setCanPreviewFresh(data.previewFreshEnabled === true);
         setArtService(data.art?.status ?? "disabled");
       })
       .catch(() => setCanPreviewTomorrow(false));
@@ -286,7 +294,8 @@ export default function App() {
               success: turn.outcome.success
             })),
             previewTomorrow,
-            previewHollowmere
+            previewHollowmere,
+            ...(freshIndex !== null ? { previewFresh: freshIndex + 1 } : {})
           })
         });
         if (!response.ok) {
@@ -411,15 +420,19 @@ export default function App() {
           </div>
         </div>
         <div className="site-header__right">
-          <span className="daily-pill"><Sparkles size={14}/> {previewHollowmere ? "HOLLOWMERE · TEST" : previewTomorrow ? "TOMORROW · TEST" : "DAILY"} #{String(daily.number).padStart(3, "0")}</span>
+          <span className="daily-pill"><Sparkles size={14}/> {previewFresh ? "FRESH NES · TEST" : previewHollowmere ? "HOLLOWMERE · TEST" : previewTomorrow ? "TOMORROW · TEST" : "DAILY"} #{String(daily.number).padStart(3, "0")}</span>
           <span className="site-header__date">{new Date(daily.day + "T12:00:00Z").toLocaleDateString("en-GB", { day:"numeric", month:"short", timeZone:"UTC" })}</span>
         </div>
       </header>
 
       <main className="main">
         {previewMode && <div className="preview-ribbon">
-          <strong>⏭ {previewHollowmere ? "Hollowmere story adventure" : "Tomorrow’s dungeon"} · Test mode</strong>
-          <span>Real date and shared AI/art budgets are unchanged. Generated art is enhanced with live particles.</span>
+          <strong>⏭ {previewFresh ? "Fresh NES adventure" : previewHollowmere ? "Hollowmere story adventure" : "Tomorrow’s dungeon"} · Test mode</strong>
+          <span>New dungeon, fresh images and separate saves. Shared daily AI/art budgets still apply.</span>
+          {previewFresh && <nav className="preview-fresh-nav" aria-label="Choose a fresh dungeon">
+            {FRESH_PREVIEW_MODES.map((mode, i) => <a key={mode} href={"?preview=" + mode}
+              aria-current={i === freshIndex ? "page" : undefined}>{i + 1}. {FRESH_DUNGEONS[i].title}</a>)}
+          </nav>}
           <a href={window.location.pathname}>Return to today</a>
         </div>}
         {!run.started && (
@@ -429,7 +442,7 @@ export default function App() {
               <DungeonDoor slug={daily.dungeon.slug} title={daily.dungeon.title} day={daily.day} preview={artPreview} enabled={artEnabled}/>
             </div>
             <div className="intro__copy">
-              <p className="eyebrow">DUNGEON #{String(daily.number).padStart(3, "0")} · {previewHollowmere ? "HOLLOWMERE · STORY PLAYTEST" : previewTomorrow ? "TOMORROW'S QUEST · PREVIEW" : "TODAY'S QUEST"}</p>
+              <p className="eyebrow">DUNGEON #{String(daily.number).padStart(3, "0")} · {previewFresh ? "FRESH NES · CLEAN PLAYTEST" : previewHollowmere ? "HOLLOWMERE · STORY PLAYTEST" : previewTomorrow ? "TOMORROW'S QUEST · PREVIEW" : "TODAY'S QUEST"}</p>
               <h1>{daily.dungeon.title}</h1>
               <p className="intro__subtitle">{daily.dungeon.subtitle}</p>
               <p className="intro__description">{daily.dungeon.intro}</p>
@@ -445,6 +458,7 @@ export default function App() {
               <p className="intro__small">No account. No downloads. Just your imagination. Your three starting items are single-use.</p>
               {!previewMode && canPreviewTomorrow && <a className="preview-link" href="?preview=tomorrow">⏭ Pretend it’s tomorrow · Playtest next dungeon</a>}
                {!previewMode && canPreviewStory && <a className="preview-link" href="?preview=hollowmere">✦ Playtest v0.2 · The Bell of Hollowmere</a>}
+               {!previewMode && canPreviewFresh && <a className="preview-link" href="?preview=fresh-1">🎮 Test three fresh NES adventures</a>}
             </div>
           </section>
         )}
@@ -662,6 +676,7 @@ export default function App() {
               <button className="button button--secondary" onClick={reset}>Replay playtest</button>
               {!previewMode && canPreviewTomorrow && <a className="button button--secondary" href="?preview=tomorrow">⏭ Test tomorrow’s dungeon</a>}
                {!previewMode && canPreviewStory && <a className="button button--secondary" href="?preview=hollowmere">✦ Test Hollowmere v0.2</a>}
+               {!previewMode && canPreviewFresh && <a className="button button--secondary" href="?preview=fresh-1">🎮 Test fresh NES dungeons</a>}
             </div>
             {error && <p className="error" role="alert">{error}</p>}
           </div>

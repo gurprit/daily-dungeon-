@@ -7,6 +7,7 @@ export type SpriteFxLayout = {
   focal: { x: number; y: number };
   hero: { x: number; y: number };
   torches: ReadonlyArray<{ x: number; y: number }>;
+  ovenFire: { x: number; y: number } | null;
   magicAllowed: boolean;
   caption: string;
 };
@@ -21,7 +22,8 @@ export function generatedFxLayout(input: VisualInput): SpriteFxLayout {
   const hero = { x: 84, y: 104 };
   const torches = theme === "bell-gate" || theme === "tavern" || theme === "bridge"
     ? [{ x: 40, y: 136 }, { x: 282, y: 136 }] : [];
-  const magicAllowed = theme === "bell-gears" || theme === "bell-ghost" ||
+  const ovenFire = theme === "bakery" && input.roomIndex === 0 ? { x: 237, y: 154 } : null;
+  const magicAllowed = theme === "lighthouse" || theme === "orchard" || theme === "bell-gears" || theme === "bell-ghost" ||
     theme === "museum-cursed" || theme === "museum-painting" ||
     input.kind === "ending";
   const caption = [
@@ -29,10 +31,10 @@ export function generatedFxLayout(input: VisualInput): SpriteFxLayout {
     "around x=25%; main creature or interactive object on RIGHT THIRD",
     "around x=70%, around half the image height. Keep both instantly readable.",
     "Leave clear space around the central face; never put graphics over eyes.",
-    torches.length ? "Show TWO small wall-mounted burning torches at x=12% and x=88%, y=62%, matching animated ember positions." : "Do not add invented wall torches.",
+    torches.length ? "Show TWO small wall-mounted burning torches at x=12% and x=88%, y=62%, matching animated ember positions." : ovenFire ? "A small bakery oven mouth MUST sit near x=74%, y=70%; its flame originates INSIDE the oven. No wall torches." : "Do not add invented wall torches.",
     magicAllowed ? "The magic, if any, originates from the right-hand objective rather than filling the frame." : "Keep scene-specific ambient effects restrained."
   ].join(" ");
-  return { theme, focal, hero, torches, magicAllowed, caption };
+  return { theme, focal, hero, torches, ovenFire, magicAllowed, caption };
 }
 
 /** Image-aware particle positions. These avoid painting fire over the hero or

@@ -18,6 +18,9 @@ export default function GeneratedEffects({ input, recipe }: { input: VisualInput
   const notes = plan.action.includes("notes");
   const hearts = plan.action.includes("hearts");
   return <g className="generated-fx" pointerEvents="none">
+    {layout.ovenFire && <g transform={"translate("+layout.ovenFire.x+" "+layout.ovenFire.y+")"} className="generated-fx__flame">
+      <path d="M0 4Q-5-3-1-14Q3-19 5-7Q9-1 2 5Z" fill="#ffad59" opacity=".7"/>
+    </g>}
     {layout.torches.map((torch, i) => <g key={i} transform={"translate("+torch.x+" "+torch.y+")"}
       className="generated-fx__flame">
       <path d="M0 3 Q-7 -4 -2 -12 Q3 -22 3 -8 Q11 -3 3 4Z" fill="#efa84e" opacity=".55"/>

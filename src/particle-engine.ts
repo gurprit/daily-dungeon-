@@ -67,6 +67,10 @@ export function emittersForScene(plan: EffectPlan, input: VisualInput, imageMode
     if (plan.ambient.includes("dust") || plan.ambient.includes("mist")) {
       addImage("dust", layout.ambientDust.x, layout.ambientDust.y, 6, 110);
     }
+    if (layout.ovenFire) {
+      addImage("flame", layout.ovenFire.x, layout.ovenFire.y, 8, 5);
+      addImage("ember", layout.ovenFire.x, layout.ovenFire.y - 9, 7, 9);
+    }
     for (const torch of layout.torches) {
       addImage("ember", torch.x, torch.y - 8, 7, 9);
       addImage("flame", torch.x, torch.y + 2, 4, 4);

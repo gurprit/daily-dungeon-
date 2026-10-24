@@ -1,4 +1,5 @@
-import { getDailyGame, getPreviewDailyGame } from "../src/game.ts";
+import { getDailyGame, getPreviewDailyGame, getFreshPreviewGame } from "../src/game.ts";
+import { freshPreviewIndex } from "../src/fresh-dungeons.ts";
 import { startingItems, itemCatalog, unavailableItems } from "../src/inventory.ts";
 import { resolveAction } from "../src/engine.ts";
 import { achievementFromJudgment } from "../src/achievements.ts";
@@ -13,6 +14,7 @@ type Env = ArtEnv & {
   AI_DAILY_LIMIT?: string;
   PREVIEW_TOMORROW_ENABLED?: string;
   PREVIEW_STORY_ENABLED?: string;
+  PREVIEW_FRESH_ENABLED?: string;
   DAILY_BUDGET_DB?: {
     prepare: (sql: string) => {
       bind: (...values: unknown[]) => {
@@ -32,6 +34,7 @@ type ActionRequest = {
   inventory?: unknown;
   previewTomorrow?: unknown;
   previewHollowmere?: unknown;
+  previewFresh?: unknown;
   priorTurns?: unknown;
 };
 
@@ -79,6 +82,7 @@ export default {
         day: getDailyGame().day,
         previewTomorrowEnabled: env.PREVIEW_TOMORROW_ENABLED === "true",
         previewStoryEnabled: env.PREVIEW_STORY_ENABLED === "true",
+        previewFreshEnabled: env.PREVIEW_FRESH_ENABLED === "true",
         illustrations: "generated-with-svg-fallback-and-particles",
         art: artServiceStatus(env)
       });
@@ -108,7 +112,10 @@ export default {
 
       const isPreview = body.previewTomorrow === true;
       const isStoryPreview = body.previewHollowmere === true;
-      if (isPreview && isStoryPreview) return json({ error: "Choose one preview mode." }, 400);
+      const freshIndex = body.previewFresh === undefined ? null : freshPreviewIndex(body.previewFresh);
+      if (body.previewFresh !== undefined && freshIndex === null) return json({ error: "Invalid fresh dungeon selection." }, 400);
+      if ([isPreview, isStoryPreview, freshIndex !== null].filter(Boolean).length > 1)
+        return json({ error: "Choose one preview mode." }, 400);
       if (body.previewHollowmere !== undefined && typeof body.previewHollowmere !== "boolean") return json({ error: "Invalid story preview." }, 400);
       // A playtest preview never modifies the actual daily dungeon, clock or quotas.
       if (body.previewTomorrow !== undefined && typeof body.previewTomorrow !== "boolean") {
@@ -118,7 +125,11 @@ export default {
         return json({ error: "Tomorrow's playtest is not enabled." }, 403);
       }
       if (isStoryPreview && env.PREVIEW_STORY_ENABLED !== "true") return json({ error: "Story playtest is disabled." }, 403);
-      const daily = isStoryPreview ? getDailyGame(new Date("2026-10-26T12:00:00Z")) : isPreview ? getPreviewDailyGame() : getDailyGame();
+      if (freshIndex !== null && env.PREVIEW_FRESH_ENABLED !== "true")
+        return json({ error: "Fresh dungeon playtests are disabled." }, 403);
+      const daily = freshIndex !== null ? getFreshPreviewGame(freshIndex)
+        : isStoryPreview ? getDailyGame(new Date("2026-10-26T12:00:00Z"))
+        : isPreview ? getPreviewDailyGame() : getDailyGame();
       if (body.day !== daily.day) return json({ error: "A new dungeon has begun. Refresh to continue." }, 409);
       if (!Number.isInteger(body.roomIndex) || Number(body.roomIndex) < 0 || Number(body.roomIndex) > 2) {
         return json({ error: "Invalid room." }, 400);
