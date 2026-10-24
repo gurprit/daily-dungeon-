@@ -418,6 +418,24 @@ p { line-height: 1.7; }
   color: #e3d4c4;
   overflow-wrap: anywhere;
 }
+.ending__entry-roll {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 9px;
+  margin: 12px 0;
+  padding: 8px 10px;
+  border: 1px solid #4b473f;
+  border-radius: 4px;
+  background: #25232c;
+  color: #cfc1ad;
+  font: 11px/1.5 Arial, sans-serif;
+}
+.ending__entry-roll svg { flex: none; color: #d9b578; }
+.ending__entry-roll strong { color: #efdbb9; }
+.ending__entry-roll b { margin-left: auto; font-size: 10px; letter-spacing: .06em; }
+.ending__entry-roll--success { color: #a5d4a9; }
+.ending__entry-roll--failed { color: #e7a8a1; }
 .ending__entry .room-artwork {
   width: min(100%, 370px);
   max-width: 100%;
