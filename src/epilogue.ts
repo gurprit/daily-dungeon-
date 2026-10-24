@@ -23,15 +23,15 @@ export function writeEpilogue(options: {
   // input is never echoed unfiltered into the Dungeon Master's voice.
   const rememberedActions = moments.map(beat => beat.action ?? "").join(" ");
   const callbacks: Array<[RegExp, string]> = [
-    [/\\bkazoo\\b/i, "That kazoo recital has been classified as a weather event. The whale insists it was not informed it would be your backing orchestra."],
-    [/\\bumbrella\\b/i, "Your umbrella has been nominated for a medal. It wisely declined, citing professional embarrassment."],
-    [/\\bpotato\\b/i, "The potato has lodged a formal complaint against you. I have filed it under 'Evidence', next to your common sense."],
-    [/\\bcheese\\b/i, "The cheese oracle has begun charging for consultations. Your name is scribbled under 'Unpaid Debts'."],
-    [/\\bpainting\\b/i, "One of the paintings has started blinking nervously whenever your name is mentioned."],
-    [/\\bskeleton\\b/i, "The skeleton is still trying to convince its kneecaps that what happened was an authorised manoeuvre."],
-    [/\\bdanc(?:e|ing)\\b/i, "Your dancing has been reported to the authorities as an arcane disturbance. I cannot say the witnesses are wrong."],
-    [/\\bwhistle\\b/i, "The whistle is now on the museum's prohibited objects list, alongside cursed crowns and unattended adventurers."],
-    [/\\bdragon\\b/i, "The dragon is claiming credit for your finest moment. I have filed an appeal, purely for entertainment."],
+    [/\bkazoo\b/i, "That kazoo recital has been classified as a weather event. The whale insists it was not informed it would be your backing orchestra."],
+    [/\bumbrella\b/i, "Your umbrella has been nominated for a medal. It wisely declined, citing professional embarrassment."],
+    [/\bpotato\b/i, "The potato has lodged a formal complaint against you. I have filed it under 'Evidence', next to your common sense."],
+    [/\bcheese\b/i, "The cheese oracle has begun charging for consultations. Your name is scribbled under 'Unpaid Debts'."],
+    [/\bpainting\b/i, "One of the paintings has started blinking nervously whenever your name is mentioned."],
+    [/\bskeleton\b/i, "The skeleton is still trying to convince its kneecaps that what happened was an authorised manoeuvre."],
+    [/\bdanc(?:e|ing)\b/i, "Your dancing has been reported to the authorities as an arcane disturbance. I cannot say the witnesses are wrong."],
+    [/\bwhistle\b/i, "The whistle is now on the museum's prohibited objects list, alongside cursed crowns and unattended adventurers."],
+    [/\bdragon\b/i, "The dragon is claiming credit for your finest moment. I have filed an appeal, purely for entertainment."],
   ];
   const callback = callbacks.find(([pattern]) => pattern.test(rememberedActions))?.[1];
 
