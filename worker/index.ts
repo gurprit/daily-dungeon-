@@ -1,4 +1,5 @@
-import { getDailyGame, getPreviewDailyGame, STARTING_INVENTORY } from "../src/game.ts";
+import { getDailyGame, getPreviewDailyGame } from "../src/game.ts";
+import { startingItems, itemCatalog, unavailableItems } from "../src/inventory.ts";
 import { resolveAction } from "../src/engine.ts";
 import { achievementFromJudgment } from "../src/achievements.ts";
 import { judgeWithAI } from "./judge.ts";
@@ -40,10 +41,9 @@ const json = (body: unknown, status = 200) =>
   });
 
 function normaliseInventory(value: unknown, daily: ReturnType<typeof getDailyGame>): string[] {
-  const allowed = new Set<string>(STARTING_INVENTORY);
-  for (const room of daily.dungeon.rooms) allowed.add(room.reward);
-  if (!Array.isArray(value)) return [...STARTING_INVENTORY];
-  return value.filter((item): item is string => typeof item === "string" && allowed.has(item)).slice(0, 6);
+  const allowed = new Set(itemCatalog(daily.dungeon));
+  if (!Array.isArray(value)) return startingItems(daily.dungeon);
+  return [...new Set(value.filter((item): item is string => typeof item === "string" && allowed.has(item)))].slice(0, 6);
 }
 
 async function reserveDailyBudget(env: Env, day: string): Promise<boolean> {
@@ -118,6 +118,10 @@ export default {
 
       const room = daily.dungeon.rooms[Number(body.roomIndex)];
       const inventory = normaliseInventory(body.inventory, daily);
+      const unavailable = unavailableItems(body.action, inventory, itemCatalog(daily.dungeon));
+      if (unavailable.length) {
+        return json({ error: unavailable.join(", ") + " is no longer in your inventory. Try another idea!" }, 409);
+      }
       const earlierMoments = priorStoryContext(body.priorTurns, daily.dungeon.rooms, Number(body.roomIndex));
       const die = crypto.getRandomValues(new Uint32Array(1))[0] % 20 + 1;
       let outcome = resolveAction(room, body.action, inventory, die);
@@ -132,7 +136,7 @@ export default {
           console.error("AI budget unavailable", error instanceof Error ? error.message : "unknown");
           return json({ error: "The AI budget gate is unavailable. No model call was made." }, 503);
         }
-        const judgment = await judgeWithAI(env.AI, room.scene, room.character, room.challenge, body.action, earlierMoments);
+        const judgment = await judgeWithAI(env.AI, room.scene, room.character, room.challenge, body.action, earlierMoments, inventory);
         if (judgment) {
           outcome = resolveAction(room, body.action, inventory, die, judgment.creativity);
           outcome.narration = outcome.success ? judgment.success : judgment.failure;
