@@ -1,4 +1,4 @@
-import { HOLLOWMERE_DUNGEON } from "./story";
+import { HOLLOWMERE_DUNGEON } from "./story.ts";
 
 export type Room = {
   title: string;

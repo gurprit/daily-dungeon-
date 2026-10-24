@@ -842,3 +842,33 @@ p { line-height: 1.7; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+
+// Authored story layer: mission, clues, and consequences.
+.story-objective {
+  display: flex; align-items: flex-start; gap: .85rem; margin: 1rem 0;
+  padding: 1rem 1.15rem; border: 1px solid rgba(230, 190, 131, .35);
+  border-radius: 12px; background: rgba(202, 162, 101, .07); color: #ebd8b5;
+  svg { flex: 0 0 auto; margin-top: .15rem; }
+  strong { display: block; font-size: .7rem; letter-spacing: .14em; }
+  p { margin: .35rem 0 0; color: #e2d3cf; line-height: 1.55; }
+}
+.story-objective--active { margin-bottom: 1.25rem; }
+.story-clues {
+  margin: 1.2rem 0; padding: 1rem 1.2rem; border: 1px solid rgba(155, 193, 181, .28);
+  border-radius: 12px; background: rgba(87, 124, 123, .08);
+  h2 { display: flex; align-items: center; gap: .6rem; font-size: 1rem; color: #b9d6cb; margin: 0 0 .7rem; }
+}
+.story-clues__entry {
+  padding-top: .6rem;
+  &:not(:last-child) { padding-bottom: .65rem; border-bottom: 1px solid rgba(155, 193, 181, .15); }
+  strong { color: #e7dfca; }
+  p { margin: .35rem 0 0; color: #d5cbd2; line-height: 1.6; }
+}
+.story-fate {
+  margin: 1.25rem 0; padding: 1.15rem 1.35rem;
+  border: 1px solid rgba(230, 190, 131, .4);
+  border-radius: 12px; background: rgba(230, 190, 131, .07);
+  strong { color: #efce9a; letter-spacing: .12em; font-size: .73rem; }
+  p { margin: .65rem 0 0; color: #f5eadd; font-size: 1.05rem; line-height: 1.6; }
+}

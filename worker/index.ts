@@ -157,13 +157,13 @@ export default {
             if (closing) outcome.epilogue = closing;
           }
           if (isFinalRoom && daily.dungeon.slug === "bell-of-hollowmere") {
-            const conclusion = storyEnding(daily.dungeon.slug, body.action, outcome.success, 3 - outcome.heartsLost, earlierMoments, judgment.finaleChoice);
+            const conclusion = storyEnding(daily.dungeon.slug, body.action, outcome.success, Math.max(0, 3 - earlierMoments.filter(beat => !beat.success).length - outcome.heartsLost), earlierMoments, judgment.finaleChoice);
             if (conclusion) { outcome.storyEnding = conclusion; outcome.epilogue = conclusion.epilogue; }
           }
         }
       }
       if (Number(body.roomIndex) === 2 && daily.dungeon.slug === "bell-of-hollowmere" && !outcome.storyEnding) {
-        const conclusion = storyEnding(daily.dungeon.slug, body.action, outcome.success, 3 - outcome.heartsLost, earlierMoments);
+        const conclusion = storyEnding(daily.dungeon.slug, body.action, outcome.success, Math.max(0, 3 - earlierMoments.filter(beat => !beat.success).length - outcome.heartsLost), earlierMoments);
         if (conclusion) { outcome.storyEnding = conclusion; outcome.epilogue = conclusion.epilogue; }
       }
       const artTicket = await makeArtTicket(env, Number(body.roomIndex), body.action, outcome.narration, outcome.success, daily.day);
