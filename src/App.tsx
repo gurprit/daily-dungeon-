@@ -196,6 +196,21 @@ function RollBadge({ outcome }: { outcome: ActionOutcome }) {
   );
 }
 
+function JourneyRoll({ outcome }: { outcome: ActionOutcome }) {
+  const roll = rollBreakdown(outcome);
+  return (
+    <div className="ending__entry-roll">
+      <Dice5 size={15}/>
+      <span>D20 <strong>{roll.die}</strong> + {roll.creativity} creativity{roll.itemBonus > 0 ? ` + ${roll.itemBonus} item` : ""}
+        {" = "}<strong>{roll.total}</strong> vs DC <strong>{roll.target}</strong>
+      </span>
+      <b className={outcome.success ? "ending__entry-roll--success" : "ending__entry-roll--failed"}>
+        {roll.automaticSuccess ? "MASTERSTROKE" : outcome.success ? "PASS" : "FAIL"}
+      </b>
+    </div>
+  );
+}
+
 export default function App() {
   const { daily, run, setRun } = useDailyRun();
   const [action, setAction] = useState("");
@@ -649,6 +664,7 @@ export default function App() {
                         <span className="ending__entry-label">YOU TRIED</span>
                         <p><em>"{entry.action}"</em></p>
                       </div>
+                      <JourneyRoll outcome={entry.outcome}/>
                       {(entry.outcome.usedItems?.length ?? 0) > 0 && <p className="ending__entry-spent">Used up: {entry.outcome.usedItems?.join(", ")}</p>}
                       <RoomArtwork turn={entry} compact/>
                       <div className="ending__entry-response">
