@@ -531,42 +531,9 @@ p { line-height: 1.7; }
 .last-turn__spent svg { flex: none; }
 .ending__entry-spent { color: #e8ba9e !important; font-size: 12px; font-weight: 700; margin: 4px 0 0 !important; }
 
-/* One ending keepsake: achievement certificate, comic strip, sharing and
-   an opt-in full journal instead of two screen-length panels. */
-.hero-chronicle {
-  margin-bottom: 0;
-}
-.hero-chronicle__gallery {
-  max-width: 600px;
-  padding: 19px 0 4px;
-  border-top: 1px solid #745c4e;
-  margin: 16px auto 0;
-}
-.hero-chronicle__gallery > .eyebrow {
-  margin: 0 0 13px;
-  color: #e4bd81;
-}
-.hero-chronicle__gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: stretch;
-  gap: 9px;
-}
-.hero-chronicle__gallery-grid .room-artwork {
-  margin: 0;
-  border-color: #775b44;
-  border-radius: 5px;
-  box-shadow: none;
-}
-.hero-chronicle__gallery-grid .room-artwork__frame {
-  max-height: none;
-  aspect-ratio: 1 / 1;
-}
-.hero-chronicle__gallery-grid .room-artwork figcaption {
-  font-size: 10px;
-  line-height: 1.4;
-  padding: 9px 5px;
-}
+/* The certificate flows directly into an always-visible Hero's Journey.
+   No duplicated image gallery, no disclosure click, no additional AI inference. */
+.hero-chronicle { margin-bottom: 0; }
 .hero-chronicle__actions {
   display: flex;
   gap: 10px;
@@ -574,54 +541,75 @@ p { line-height: 1.7; }
   flex-wrap: wrap;
   margin: 20px auto;
 }
-.hero-chronicle__actions .button {
-  font-size: 12px;
-  padding: 12px 15px;
-}
-.hero-chronicle__notice {
-  color: #ead1a0;
-  font-size: 12px;
-  margin: 0 0 14px;
-}
+.hero-chronicle__actions .button { font-size: 12px; padding: 12px 15px; }
+.hero-chronicle__notice { color: #ead1a0; font-size: 12px; margin: 0 0 14px; }
 .hero-chronicle__journal {
-  text-align: left;
-  margin: 21px auto -8px;
+  margin: 21px auto 0;
+  padding-top: 20px;
   border-top: 1px solid #745c4e;
+  text-align: left;
 }
-.hero-chronicle__journal > summary {
-  list-style: none;
+.hero-chronicle__journal-title {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 20px 6px 14px;
-  cursor: pointer;
+  gap: 11px;
+  margin: 0 0 6px;
   color: #f1d09c;
+  font: bold clamp(18px, 3vw, 23px)/1.4 'Cinzel', Georgia, serif;
 }
-.hero-chronicle__journal > summary::-webkit-details-marker { display: none; }
-.hero-chronicle__journal > summary > svg:first-child { flex: none; }
-.hero-chronicle__journal > summary span { min-width: 0; flex: 1; }
-.hero-chronicle__journal > summary strong {
-  display: block;
-  font: bold 16px/1.4 'Cinzel', Georgia, serif;
-}
-.hero-chronicle__journal > summary small {
-  display: block;
-  color: #b7adaf;
-  font-size: 11px;
-  line-height: 1.5;
-  margin-top: 4px;
-}
-.hero-chronicle__chevron { flex: none; transition: transform .2s; }
-.hero-chronicle__journal[open] .hero-chronicle__chevron { transform: rotate(180deg); }
-.hero-chronicle__journal > summary:hover,
-.hero-chronicle__journal > summary:focus-visible { color: #ffe6b7; }
-.hero-chronicle__journal-body {
-  padding: 0 4px 2px;
-  animation: art-reveal .3s ease-out;
-}
+.hero-chronicle__journal-title svg { flex: none; }
+.hero-chronicle__journal-body { padding: 0 4px 2px; }
 .hero-chronicle__journal-body .ending__entry { padding: 20px 0; }
-.hero-chronicle__journal-body .ending__entry:last-child { padding-bottom: 0; }
+.hero-chronicle__journal-body .ending__entry:last-child { padding-bottom: 0; border-bottom: 0; }
 .hero-chronicle__journal-body .ending__entry .room-artwork { margin: 14px auto; }
+.room-artwork__unavailable {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 13px auto 18px;
+  padding: 11px 13px;
+  max-width: 370px;
+  background: #29252f;
+  border: 1px solid #5b4950;
+  border-radius: 5px;
+  color: #bdb1b7;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: left;
+}
+.room-artwork__unavailable svg { flex: none; color: #d5b17c; }
+.hero-chronicle__epilogue {
+  margin: 25px auto 0;
+  padding: 24px 19px 22px;
+  border: 1px solid #7a6144;
+  border-radius: 5px;
+  background: radial-gradient(ellipse at 50% 0%, #3c3039, #24212c 90%);
+  text-align: center;
+}
+.hero-chronicle__epilogue > .eyebrow {
+  display: block;
+  margin: 0 0 13px;
+  color: #e6c38d;
+  font-size: 11px;
+}
+.hero-chronicle__epilogue > p {
+  margin: 0 auto;
+  color: #e2d3c0;
+  max-width: 510px;
+  font: 15px/1.75 Georgia, serif;
+}
+.hero-chronicle__epilogue .hero-chronicle__return {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 19px;
+  padding-top: 17px;
+  border-top: 1px solid #705643;
+  color: #edc68d;
+  font: 700 13px/1.7 inherit;
+}
+.hero-chronicle__return svg { flex: none; }
 @media (max-width: 540px) {
   .hero-chronicle { padding: 28px 14px 16px; }
   .hero-chronicle .hero-certificate__ornament { font-size: 29px; }
@@ -632,15 +620,14 @@ p { line-height: 1.7; }
   .hero-chronicle .hero-certificate__award { padding: 8px 0; }
   .hero-chronicle .hero-certificate__award strong { font-size: 14px; }
   .hero-chronicle .hero-certificate__award p { font-size: 11px; line-height: 1.45; }
-  .hero-chronicle__gallery { padding-top: 15px; }
-  .hero-chronicle__gallery-grid { gap: 6px; }
-  .hero-chronicle__gallery-grid .room-artwork figcaption { font-size: 9px; }
   .hero-chronicle__actions { margin: 15px 0; gap: 8px; }
   .hero-chronicle__actions .button { width: 100%; }
-  .hero-chronicle__journal { margin-top: 13px; }
-  .hero-chronicle__journal > summary { padding: 15px 2px 11px; gap: 9px; }
-  .hero-chronicle__journal > summary strong { font-size: 14px; }
+  .hero-chronicle__journal { margin-top: 16px; padding-top: 16px; }
+  .hero-chronicle__journal-title { font-size: 18px; }
   .hero-chronicle__journal-body .ending__entry .room-artwork { width: 100%; }
+  .hero-chronicle__epilogue { margin-top: 17px; padding: 21px 13px; }
+  .hero-chronicle__epilogue > p { font-size: 14px; }
+  .hero-chronicle__epilogue .hero-chronicle__return { font-size: 12px; }
 }
 
 /* Retro room illustrations, rendered by the Cloudflare portrait studio. */
