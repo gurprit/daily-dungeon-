@@ -61,6 +61,12 @@ export function fallbackAchievement(
       description: "You used a little perspective to escape a very large problem."
     }
   ];
+  if (/\b(thimble|kiss)\b/i.test(text) && roomTitle === "The Frightened Guard") {
+    return { title: "Thimble Diplomacy", description: "A kiss, a promise, and one deeply confused goblin." };
+  }
+  if (/\b(key|unlock|plate|inscription)\b/i.test(text) && roomTitle === "The Whispering Stair") {
+    return { title: "Namekeeper's Key", description: "One turn of a key, and oblivion lost its footing." };
+  }
   const matching = matches.find(award => award.pattern.test(text));
   if (matching) {
     // A few light, room-sensitive quips give familiar actions distinct payoffs.
@@ -120,7 +126,12 @@ export function fallbackAchievement(
   };
   return {
     title: roomTitles[roomTitle] ?? "Hero of Unlikely Schemes",
-    description: "The Dungeon Master grudgingly admits your solution was surprisingly inventive."
+    description: [
+      "An audacious solution. The rulebook is considering retirement.",
+      "The Dungeon Master approves. Quietly, to avoid encouraging you.",
+      "Surprisingly brilliant. Please refrain from making it a habit.",
+      "The witnesses are confused. I call that a success."
+    ][stableChoice(action + roomTitle, 4)]
   };
 }
 
