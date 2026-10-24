@@ -6,7 +6,7 @@ A short, daily, D&D-inspired fantasy adventure. Everyone gets the same three-roo
 
 ## Hybrid illustrated adventures
 
-The main illustrations are **AI-generated fantasy storybook artwork**. We keep the existing animated **CSS/SVG effects and JavaScript Canvas particles**, layered over images.
+The main illustrations are **AI-generated early-NES-era 8-bit fantasy pixel scenes**, rendered into an enforced **192×128 virtual screen with 32 fixed NES-inspired colours**. This is not just a prompt: every model image is downscaled and colour-quantised in the browser so painterly/16-bit outputs cannot dominate the final presentation. We keep the existing animated **CSS/SVG effects and JavaScript Canvas particles**, layered over images.
 
 - **Opening and room scenes:** one shared image per room, per day.
 - **Action outcomes:** personal generated pictures based on what the player actually did, the DM narration and the roll's success/failure.
@@ -14,7 +14,7 @@ The main illustrations are **AI-generated fantasy storybook artwork**. We keep t
 - **Final outcomes:** images corresponding to each authored ending.
 - **Hero's Journey:** keeps each action image with the player's story.
 - **Loading, disabled or failed image service:** the previous hand-authored SVG illustration stays visible. The game still works without image generation.
-- **FX overlay after artwork loads:** embers, looping flame, magic runes, ghost mist, soundwaves, paint effects, success/failure accents and the JS particle system remain over the finished painting.
+- **FX overlay after artwork loads:** deliberately placed embers, looping flame, magic runes, ghost motes, music, soundwaves and small success/failure accents over the 8-bit pixel art. Unlike the SVG fallback, the generated artwork uses a subdued, scene-aware overlay; no giant gears, rings or misplaced flames obstruct the characters.
 
 The FX renderer is deterministic and capped at 62 particles per visible illustration. It pauses in background tabs, limits pixel ratio, and respects reduced-motion settings. The old yellow opaque success glow was replaced with gentle outlined halos.
 
@@ -59,8 +59,14 @@ npm run deploy
 
 `ART_SIGNING_KEY` must be at least 32 characters. Verify `/api/health` reports `art.status: "ready"` and `narrator: "ai-ready"` for full functionality. Without the image configuration or if `ART_ENABLED=false`, the game retains the instant SVG fallback and the Dungeon Master can continue using text AI independently.
 
-Cloudflare image resources used by earlier deployments may still exist; this PR does not delete production data or R2 files. Art will be generated on the first request and reused thereafter. The feature branch has **not** been automatically merged or deployed by these commits.
+Cloudflare image resources used by earlier deployments may still exist; this PR does not delete production data or R2 files. The shared image cache key has moved to `v4-nes8`, so existing painterly images are not reused as new shared artwork. **This causes new image-inference calls as scenes are first requested**; the daily budget still applies. New personal action portraits follow the updated prompt. Previously saved personal portraits are displayed through the new pixel palette as well. The feature branch has **not** been automatically merged or deployed by these commits.
 
 ## Tests and product direction
 
 Run `npm test` and `npm run build` before deployment. Test the mobile visuals, especially image composition plus particle overlays, and the loading/failure fallback. This daily game aims to offer a satisfying five-minute alternative to doomscrolling, not an endless feed.
+
+## NES illustration and image-aware FX
+
+`worker/art.ts` and `worker/shared-art.ts` now share a strict NES art direction: simple sprite silhouettes, block pixels, tile backgrounds, 2D side-view, no gradients, painterly shading, SNES detail or modern 3D. `src/nes-palette.ts` forces the result into an intentionally tiny palette, and `src/NesSceneImage.tsx` renders nearest-neighbour pixels.
+
+`src/image-fx-layout.ts` provides a layout contract to both the prompt and animation layer: the purple hero stays to the left, the challenge on the right, and interactive effects originate from the relevant prop or character. Flame emitters are allowed only in torch-bearing rooms; dance/voice/charm particles come from the hero and magical object effects stay toward the object's lower-right side. `src/GeneratedEffects.tsx` contains small overlays for generated art; the richer procedural effects remain in SVG fallback mode. The JavaScript particle engine keeps its existing mobile limits and reduced-motion behaviour.
