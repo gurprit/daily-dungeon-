@@ -3,14 +3,14 @@ import { makeEffectPlan } from "./effect-presets";
 import { advanceParticles, createParticleWorld, emittersForScene, renderParticles } from "./particle-engine";
 import type { VisualInput, VisualRecipe } from "./illustration-recipe";
 
-type Props = { input: VisualInput; recipe: VisualRecipe };
+type Props = { input: VisualInput; recipe: VisualRecipe; imageMode?: boolean };
 
 /**
  * Transparent per-scene 2D Canvas particle layer.
  * Runs only while visible, respects reduced-motion and pauses in hidden tabs.
  * All geometry is computed in JS on the client. No assets or network requests.
  */
-export default function ParticleCanvas({ input, recipe }: Props) {
+export default function ParticleCanvas({ input, recipe, imageMode = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const plan = makeEffectPlan(input, recipe);
   const theme = plan.theme;
@@ -30,7 +30,7 @@ export default function ParticleCanvas({ input, recipe }: Props) {
       endingId: input.endingId
     };
     const activePlan = makeEffectPlan(scene, recipe);
-    const emitters = emittersForScene(activePlan, scene);
+    const emitters = emittersForScene(activePlan, scene, imageMode);
     if (emitters.length === 0) return;
 
     const ctx = canvas.getContext("2d", { alpha: true });
@@ -95,7 +95,7 @@ export default function ParticleCanvas({ input, recipe }: Props) {
       document.removeEventListener("visibilitychange", onVisibility);
       media.removeEventListener("change", onMotionChange);
     };
-  }, [theme, action, kind, success, seed, input.dungeonSlug, input.roomIndex, input.narration, input.clueId, input.endingId]);
+  }, [theme, action, kind, success, seed, input.dungeonSlug, input.roomIndex, input.narration, input.clueId, input.endingId, imageMode]);
 
   return <canvas ref={canvasRef} className="procedural-art__particles" aria-hidden="true"/>;
 }
