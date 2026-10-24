@@ -410,7 +410,7 @@ export default function App() {
       <main className="main">
         {previewMode && <div className="preview-ribbon">
           <strong>⏭ {previewHollowmere ? "Hollowmere story adventure" : "Tomorrow’s dungeon"} · Test mode</strong>
-          <span>Real date and shared text AI budget are unchanged. All illustrations are instant local SVG.</span>}
+          <span>Real date and shared text AI budget are unchanged. All illustrations are instant local SVG.</span>
           <a href={window.location.pathname}>Return to today</a>
         </div>}
         {!run.started && (
