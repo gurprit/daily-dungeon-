@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DUNGEONS, getDailyGame, STARTING_INVENTORY } from "../src/game.ts";
+import { DUNGEONS, NEW_DAILY_DUNGEONS, getDailyGame, STARTING_INVENTORY } from "../src/game.ts";
 import { resolveAction } from "../src/engine.ts";
 
 test("each prototype dungeon has exactly three rooms", () => {
@@ -18,7 +18,8 @@ test("everyone gets the same UTC daily dungeon", () => {
   assert.equal(morning.number, 1);
   assert.equal(morning.dungeon.slug, "goblins-toll");
   assert.equal(evening.dungeon.slug, morning.dungeon.slug);
-  assert.equal(getDailyGame(new Date("2026-10-24T00:00:00Z")).dungeon.slug, "wizard-complaint");
+  assert.equal(getDailyGame(new Date("2026-10-24T00:00:00Z")).dungeon.slug, "midnight-museum");
+  assert.equal(getDailyGame(new Date("2026-10-25T00:00:00Z")).dungeon.slug, "skywhale-express");
 });
 
 test("dice mechanics cannot grant extra health or inventory on failure", () => {
@@ -49,4 +50,17 @@ test("creativity modifier is clamped to 0..5 and masterstrokes succeed", () => {
   assert.equal(outcome.masterstroke, true);
   assert.equal(outcome.success, true);
   assert.ok(outcome.narration.length > 0);
+});
+
+test("refreshed 24 and 25 October dungeons have new gear and distinct three-room plots", () => {
+  assert.equal(NEW_DAILY_DUNGEONS.length, 2);
+  assert.notEqual(NEW_DAILY_DUNGEONS[0].slug, NEW_DAILY_DUNGEONS[1].slug);
+  for (const dungeon of NEW_DAILY_DUNGEONS) {
+    assert.equal(dungeon.edition, 2, "triggers new run for existing saved players");
+    assert.equal(dungeon.rooms.length, 3);
+    assert.equal(dungeon.startingInventory.length, 3);
+    assert.equal(new Set(dungeon.startingInventory).size, 3);
+    assert.ok(dungeon.rooms.every(room => room.reward && room.scene && room.challenge));
+    assert.equal(dungeon.startingInventory.includes("Potato"), false);
+  }
 });
