@@ -125,7 +125,7 @@ After every room, the game automatically scrolls to the top, shows the DM's verd
 
 Images are generated once per server-signed receipt and cached in R2. Reloading or continuing the adventure reuses the existing job. An image failure never affects the dice, health, inventory or story.
 
-**Art is enabled for the active playtest**, with a separate global quota of **36 images per UTC day**. Before deploying, confirm the R2 bucket, D1 migrations, and signing secret are configured. To avoid image charges, set `ART_ENABLED` to `"false"` in `wrangler.jsonc` and redeploy. This does not change the existing text AI limit. A 512 × 512 Flux 2 Klein 4B image is listed at approximately $0.000287 before the shared Cloudflare free Workers AI allocation. Actual billing depends on your total usage: https://developers.cloudflare.com/workers-ai/platform/pricing/
+**Art is enabled for the active playtest**, with a separate global quota of **600 images per UTC day** (configurable). Before deploying, confirm the R2 bucket, D1 migrations, and signing secret are configured. To avoid image charges, set `ART_ENABLED` to `"false"` in `wrangler.jsonc` and redeploy. This does not change the existing text AI limit. A 512 × 512 Flux 2 Klein 4B image is listed at approximately $0.000287 before the shared Cloudflare free Workers AI allocation. Actual billing depends on your total usage: https://developers.cloudflare.com/workers-ai/platform/pricing/
 
 ### One-time setup
 
@@ -150,7 +150,7 @@ npm run deploy
 
 Requirements: Cloudflare AI binding, existing D1 database daily-dungeon-playtest, R2 bucket daily-dungeon-art, and ART_SIGNING_KEY. If a requirement is missing, regular gameplay still works but artwork cannot start. To stop future generations, switch ART_ENABLED to "false" and redeploy.
 
-Images use model @cf/black-forest-labs/flux-2-klein-4b at 512 × 512. They are returned in Base64, stored in R2, and served through the Worker. The browser gets a short-lived HMAC-signed art ticket only after a legitimate game resolution, not arbitrary prompt-submission access. The generation endpoint is POST /api/generate-room-art, with status at GET /api/art-status/{id} and images at GET /api/art/{id}.
+Images use model @cf/black-forest-labs/flux-2-klein-4b at 768 × 512. They are returned in Base64, stored in R2, and served through the Worker. The browser gets a short-lived HMAC-signed art ticket only after a legitimate game resolution, not arbitrary prompt-submission access. The generation endpoint is POST /api/generate-room-art, with status at GET /api/art-status/{id} and images at GET /api/art/{id}.
 
 **Diagnosing missing images:** Open `/api/health` on the deployed Worker and inspect `art.status`. A value of `ready` means the art flag, R2 binding, D1 binding, AI binding and a sufficiently long signing secret are present. `disabled` means the deployed `ART_ENABLED` flag is off, and `setup-required` includes the missing binding names (never secret contents). In `?preview=tomorrow`, a status is also shown directly in the test banner. If the browser produces no art ticket, there will be no portrait in the Hero's Journey, even when AI narration works.
 
@@ -219,10 +219,41 @@ clues, and a final moral dilemma replace unrelated encounter prompts.
   prose. The AI still interprets free-form plans, creative solutions, and dice.
 - The visuals are hand-authored SVG tilemaps (with CSS/SCSS effects), rather than
   requiring a new generated image for each room.
-- The deployed **ART_ENABLED** default is now false, avoiding all future image
-  generation inference until the feature is deliberately switched on again.
-  This does NOT disable text AI or remove previously cached R2 portraits.
+- The v0.2 release originally shipped with art disabled; the illustrated update
+  below has re-enabled image generation. Text AI remains independent.
 - To test immediately, visit /?preview=hollowmere while
   PREVIEW_STORY_ENABLED=true. The preview uses a separate local save and still
   counts against the actual current UTC day's text-AI quota. Disable the preview
   flag before public launch.
+
+
+## Illustrated Daily Dungeon: shared scenes and personal moments
+
+Image inference is enabled by default (ART_ENABLED=true) in wrangler.jsonc.
+It has a separate global limit of 600 images per UTC day, enforced through D1.
+ART_ENABLED=false turns off new image generation without disabling the
+Dungeon Master; handcrafted SVG artwork remains visible as the fallback.
+
+Each dungeon now has a full atmospheric room illustration before the action,
+an image illustrating each player's own action after the roll, smaller art
+for Hollowmere clues, and an ending illustration reflecting the actual
+canonical outcome. The action pictures remain in the Hero's Journey.
+
+The fixed room, clue and ending images are generated only when first requested,
+then shared between all players. The /api/shared-art endpoint accepts only
+whitelisted room/clue/ending keys and current or approved preview dates.
+Each fixed key has a stable UUID and a single atomic D1 art_jobs row,
+preventing duplicate generation. Finished PNG files are cached in R2 and
+served using /api/art/{id}. /api/art-status/{id} reports progress. A usable
+SVG illustration remains on screen until a generated picture is ready.
+
+Images use the existing Cloudflare FLUX.2 Klein 4B model at 768x512 with
+painterly fantasy storybook art direction. No new database migration is needed
+beyond 0002_room_art.sql. For deployment, confirm the AI binding, R2 bucket,
+D1 database and ART_SIGNING_KEY secret (at least 32 characters) are present.
+Set the secret through: npx wrangler secret put ART_SIGNING_KEY
+After deploying, /api/health must report art.status as ready. If disabled or
+setup-required, the game uses SVG placeholders without new image inference.
+
+Achievements remain in the existing DM inference but now request shorter,
+wittier, varied one-line responses with deterministic scripted fallbacks.
