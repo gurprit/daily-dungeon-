@@ -683,7 +683,7 @@ export default function App() {
                     visited: run.history.length,
                     hearts: run.hearts,
                     lastHonour: achievements.at(-1)?.title,
-                    moments: run.history.map(entry => ({ room: entry.roomTitle, success: entry.outcome.success }))
+                    moments: run.history.map(entry => ({ room: entry.roomTitle, success: entry.outcome.success, action: entry.action }))
                   })}</p>
                   <p className="hero-chronicle__return"><Sparkles size={18}/> Come back tomorrow. I've already warned the next dungeon about you. <span>New adventure at midnight UTC.</span></p>
                 </div>
