@@ -98,9 +98,13 @@ The ending uses **one** certificate-and-story keepsake. The standalone **Your Ad
 
 Entering the dungeon and completing any room dismisses the mobile action textbox and scrolls to the top so the player sees the next scene/result. Shared results include the new public URL supplied by the developer: `https://dailydungeon.titkok.co/`. Confirm this custom domain remains current before broader promotion.
 
-## First-time player hints and pixel-art style
+## Simple action input and D20 results
 
-The first encounter now includes a one-sentence explanation of free-form play and three **editable** sentence starters: Use an item, Talk it out, Be ridiculous. Clicking a starter only fills and focuses the action textbox; the player finishes the thought and presses the same button as before. This is zero-cost browser UI and does not grant an automatic pass. Later encounters tuck the same optional help into a small Need inspiration? disclosure. The upside-down tavern copy now spells out the goal of righting the building without breaking glasses.
+The action panel deliberately contains just **What do you do, adventurer?**, a free-text field that says **Tell the Dungeon Master what you would like to do…**, and **Roll the dice**. Tutorial paragraphs, inspiration chips, and extra labels were removed after mobile playtesting, to keep each three-room adventure quick and uncluttered.
+
+After the action resolves, a genuine **D20** result appears above the narrator's reply. It shows the actual 1–20 die number, +0–5 creativity, +2 when an inventory item was used, their sum, and the room's DC (difficulty class). The rules engine still determines success; a creativity 5/5 **masterstroke** can succeed even below the DC, and that special rule is labelled as an automatic success. There is no extra AI usage or second random roll.
+
+## Pixel-art style
 
 The art model now receives one tiny PNG style reference based on the built-in handcrafted pixel scene as `input_image_0`, plus a stricter 16-bit art-direction prompt. Cloudflare FLUX.2 Klein 4B supports input image references (under 512×512). The already-generated room image is also displayed on a coarse browser canvas with posterised colour and nearest-neighbour enlargement. **That browser processing incurs no model calls**. Reference inputs may add inference usage; the global image-call limit remains 36/day and all output images are still cached in R2. Earlier finished adventures and cached portraits are not retroactively regenerated.
 
