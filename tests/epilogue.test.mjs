@@ -7,7 +7,7 @@ test("saved adventures get a theatrical setting-specific conclusion, not a stati
     dungeon: "The Skywhale Express", room: "The Moon Station",
     cleared: 2, visited: 3, hearts: 2, lastHonour: "Brave Kazoo Conductor",
     moments: [
-      { room: "A Whale with Stage Fright", success: true },
+      { room: "A Whale with Stage Fright", success: true, action: "I lead a marching band with my copper kazoo!" },
       { room: "The Thundercloud Tollbooth", success: false },
       { room: "The Moon Station", success: true }
     ]
@@ -15,6 +15,8 @@ test("saved adventures get a theatrical setting-specific conclusion, not a stati
   assert.match(ending, /nervous flying whale/i);
   assert.match(ending, /transport authority/i);
   assert.match(ending, /Brave Kazoo Conductor/);
+  assert.match(ending, /kazoo recital/);
+  assert.match(ending, /backing orchestra/);
   assert.match(ending, /reputation slightly dented/);
   assert.doesNotMatch(ending, /2 of 3|2 hearts|trials cleared|Dungeon Master records/i);
 });
