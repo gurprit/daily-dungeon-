@@ -1,5 +1,6 @@
 import type { Room } from "./game";
 import { fallbackAchievement, type Achievement } from "./achievements.ts";
+import { itemsUsed } from "./inventory.ts";
 
 export type ActionOutcome = {
   success: boolean;
@@ -10,6 +11,7 @@ export type ActionOutcome = {
   difficulty: number;
   heartsLost: number;
   reward: string | null;
+  usedItems: string[];
   narration: string;
   mode: "ai" | "scripted";
   achievement?: Achievement | null;
@@ -17,9 +19,7 @@ export type ActionOutcome = {
 };
 
 function bonusForAction(action: string, inventory: readonly string[]): number {
-  const lower = action.toLowerCase();
-  const usesItem = inventory.some((item) => lower.includes(item.toLowerCase()));
-  return usesItem ? 2 : 0;
+  return itemsUsed(action, inventory).length ? 2 : 0;
 }
 
 export function resolveAction(room: Room, action: string, inventory: readonly string[], roll: number, creativity = 0): ActionOutcome {
@@ -37,6 +37,7 @@ export function resolveAction(room: Room, action: string, inventory: readonly st
     difficulty: room.difficulty,
     heartsLost: success ? 0 : 1,
     reward: success ? room.reward : null,
+    usedItems: itemsUsed(action, inventory),
     narration: fallbackNarration(room, success),
     mode: "scripted",
     achievement: fallbackAchievement(action, room.title, success, 0)
@@ -53,7 +54,13 @@ export function fallbackNarration(room: Room, success: boolean): string {
     "The Wizard's Return": "Grumble tries to look displeased, but hands over a medal. He insists it is a clerical error.",
     "The Onion Rebellion": "The onion delegates confer in tears. A peace treaty is signed, and passage is yours.",
     "The Cheese Oracle": "Brie pauses, impressed. 'That is annoyingly insightful.' A cheesy prophecy is bestowed.",
-    "The Hungry King": "The king stares, takes a bite, then demands that your masterpiece be entered into the royal archives."
+    "The Hungry King": "The king stares, takes a bite, then demands that your masterpiece be entered into the royal archives.",
+    "The Escaped Painting": "Lady Varnish sweeps back into her frame with an extravagant bow. The gallery applauds using only its elbows.",
+    "The Clockwork Skeleton": "Percy snaps his bones into the right slots and dances a victory jig, shaking loose one ceremonial rib.",
+    "The Forbidden Exhibit": "The crown finally falls quiet. Curator Nocturne grants you a midnight pass and swears never to exhibit your methods.",
+    "A Whale with Stage Fright": "Nimbus takes a deep breath, strikes a pose, and rises into the stars. You receive a skywhale ticket.",
+    "The Thundercloud Tollbooth": "Thunderpuff grumbles, but accepts your outrageous toll. The storm parts with a polite rumble.",
+    "The Moon Station": "The passengers make it across just in time. Conductor Crescent awards you a medal under moonlight."
   };
   const sad: Record<string, string> = {
     "The Old Stone Bridge": "Boggle is unmoved. He charges you a toll in dignity instead. You squeeze past, one heart lighter.",
@@ -64,7 +71,13 @@ export function fallbackNarration(room: Room, success: boolean): string {
     "The Wizard's Return": "Grumble turns your eyebrows purple. It is mostly harmless, except to your pride and one heart.",
     "The Onion Rebellion": "The onions boo in several dialects. You retreat through a cloud of weaponised tears.",
     "The Cheese Oracle": "Brie offers only a cryptic snort. A wheel of cheddar rolls over your foot on the way out.",
-    "The Hungry King": "The king declares the dinner a national embarrassment. The royal guards usher you away with a stern look."
+    "The Hungry King": "The king declares the dinner a national embarrassment. The royal guards usher you away with a stern look.",
+    "The Escaped Painting": "Lady Varnish flees behind another statue. You trip over a velvet rope, losing a heart as you scramble onward.",
+    "The Clockwork Skeleton": "Percy reassembles himself as a very confused chair. You escape with bruised toes and one fewer heart.",
+    "The Forbidden Exhibit": "The crown echoes your plan so loudly that the curator faints. You stagger away, ears ringing.",
+    "A Whale with Stage Fright": "Nimbus panics and sneezes a cloud at you. The train eventually leaves, but you lose a heart.",
+    "The Thundercloud Tollbooth": "Thunderpuff sends a very personal rain shower after you. You limp onward, one heart lighter.",
+    "The Moon Station": "The drifting platform clips your boots. You make a messy landing while losing one precious heart."
   };
   return (success ? happy[room.title] : sad[room.title]) ?? (success ? "Somehow, your audacity works. The path opens." : "Your attempt goes sideways. You stagger onward, minus one heart.");
 }
