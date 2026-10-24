@@ -10,8 +10,8 @@ export function sceneScrollProgress(top: number, height: number, viewportHeight:
   return clampSceneProgress((viewportHeight / 2 - center) / ((viewportHeight + height) / 2));
 }
 
-/** Pixel-space translation in SVG viewBox coordinates. Maximum 12px at depth 1. */
+/** Pixel-space translation in SVG viewBox coordinates. Maximum 36 viewBox units at depth 1. Noticeable during normal mobile scrolling. */
 export function sceneLayerShift(progress: number, depth: number): number {
   const safeDepth = Number.isFinite(depth) ? Math.max(0, Math.min(1, depth)) : 0;
-  return Math.round(clampSceneProgress(progress) * safeDepth * 12 * 100) / 100;
+  return Math.round(clampSceneProgress(progress) * safeDepth * 36 * 100) / 100;
 }
