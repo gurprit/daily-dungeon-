@@ -525,6 +525,12 @@ p { line-height: 1.7; }
 .ending__notice { color: #ead1a0; font-size: 12px; margin: -10px 0 24px; }
 
 
+
+.inventory__hint { color: #b4a8a7; font-size: 11px; line-height: 1.5; margin: 9px 0 12px; }
+.last-turn__spent { display: flex; align-items: center; gap: 7px; color: #eeb29a; font-size: 12px; font-weight: 700; margin-top: 5px; }
+.last-turn__spent svg { flex: none; }
+.ending__entry-spent { color: #e8ba9e !important; font-size: 12px; font-weight: 700; margin: 4px 0 0 !important; }
+
 /* One ending keepsake: achievement certificate, comic strip, sharing and
    an opt-in full journal instead of two screen-length panels. */
 .hero-chronicle {
