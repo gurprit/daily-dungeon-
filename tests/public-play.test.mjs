@@ -49,8 +49,8 @@ function actionRequest() {
     body: JSON.stringify({
       day: getDailyGame().day,
       roomIndex: 0,
-      action: "I turn my potato into a tiny goblin crown and offer it to the bridge guard.",
-      inventory: ["Potato", "String", "Rusty spoon"]
+      action: "I lift my pocket mirror toward the portrait and persuade her to admire herself.",
+      inventory: [...getDailyGame().dungeon.startingInventory]
     })
   });
 }
