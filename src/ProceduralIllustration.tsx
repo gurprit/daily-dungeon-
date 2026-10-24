@@ -236,6 +236,7 @@ function EndingComposition({ recipe }: { recipe: VisualRecipe }) {
 export default function ProceduralIllustration(input: Props) {
   const { kind, dungeonSlug, roomIndex, className = "", label, clueId } = input;
   const recipe = makeVisualRecipe(input);
+  const fresh = dungeonSlug === "lighthouse-lost-dawn" || dungeonSlug === "clockwork-orchard" || dungeonSlug === "dragon-bakery";
   const id = useId().replace(/:/g, "");
   const classes = ["procedural-art", "procedural-art--" + kind, className].filter(Boolean).join(" ");
   return <div className={classes} role="img" aria-label={label ?? "Procedural fantasy illustration"}>
@@ -247,8 +248,8 @@ export default function ProceduralIllustration(input: Props) {
         <radialGradient id={"glow"+id}><stop offset="0%" stopColor={recipe.accent} stopOpacity=".35"/>
           <stop offset="100%" stopColor={recipe.accent} stopOpacity="0"/></radialGradient>
       </defs>
-      {kind === "action" && <ActionComposition input={input} recipe={recipe}/>}
-      {kind === "ending" && <EndingComposition recipe={recipe}/>}
+      {kind === "action" && (fresh ? <RoomShimmers recipe={recipe}/> : <ActionComposition input={input} recipe={recipe}/>) }
+      {kind === "ending" && (fresh ? <g><RoomShimmers recipe={recipe}/></g> : <EndingComposition recipe={recipe}/>)}
       {kind === "room" && <g>
         <ellipse cx="170" cy="110" rx="150" ry="100" fill={"url(#glow"+id+")"}/>
         <RoomShimmers recipe={recipe}/>
