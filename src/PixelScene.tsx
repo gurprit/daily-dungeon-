@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import FreshPixelScene from "./FreshPixelScene";
 
 /**
  * Always-on, hand-authored 16-bit scenes: zero inference charges, no remote image
@@ -541,6 +542,9 @@ function RoomOverlay({ slug, roomIndex }: { slug: string; roomIndex: number }) {
 }
 
 export default function PixelScene({ dungeonSlug, roomIndex = 0, className }: PixelSceneProps) {
+  if (dungeonSlug === "lighthouse-lost-dawn" || dungeonSlug === "clockwork-orchard" || dungeonSlug === "dragon-bakery") {
+    return <FreshPixelScene dungeonSlug={dungeonSlug} roomIndex={roomIndex} className={className}/>;
+  }
   const slug = palettes[dungeonSlug] ? dungeonSlug : "goblins-toll";
   const p = palettes[slug];
   const base: Record<string, ReactNode> = {
