@@ -178,7 +178,7 @@ test("real resolved rooms issue signed art tickets when bindings are ready", asy
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       day: getDailyGame().day, roomIndex: 0,
-      action: "I swing a potato over my head and perform an opera.", inventory: ["Potato"]
+      action: "I use my pocket mirror to show the runaway portrait her best angles.", inventory: ["Pocket mirror"]
     })
   }), mock.env);
   assert.equal(result.status, 200);
