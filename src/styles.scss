@@ -1351,3 +1351,12 @@ p { line-height: 1.7; }
     transition: none !important;
   }
 }
+
+
+/* Extra pixel bleed allows small scroll offsets without exposing empty edges.
+   Only the three fresh NES scenes use this effect on flattened AI artwork. */
+.hybrid-art .hybrid-art__nes {
+  inset: -2%;
+  width: 104%;
+  height: 104%;
+}
