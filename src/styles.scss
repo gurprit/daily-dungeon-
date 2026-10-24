@@ -602,41 +602,45 @@ p { line-height: 1.7; }
   text-align: left;
 }
 .room-artwork__unavailable svg { flex: none; color: #d5b17c; }
+/* A Dungeon Master monologue, not another scoreboard or named award. */
 .hero-chronicle__epilogue {
   margin: 25px auto 0;
-  padding: 24px 19px 22px;
+  padding: 24px 21px 22px;
   border: 1px solid #7a6144;
   border-radius: 5px;
   background: radial-gradient(ellipse at 50% 0%, #3c3039, #24212c 90%);
-  text-align: center;
 }
-.hero-chronicle__epilogue > .eyebrow {
-  display: block;
-  margin: 0 0 13px;
-  color: #e6c38d;
-  font-size: 11px;
-}
-.hero-chronicle__epilogue > p {
+.hero-chronicle__epilogue .hero-chronicle__epilogue-story {
+  max-width: 560px;
   margin: 0 auto;
-  color: #e2d3c0;
-  max-width: 510px;
-  font: 15px/1.75 Georgia, serif;
+  color: #f2e2cc;
+  font: 16px/1.8 Georgia, serif;
+  text-align: left;
+  white-space: pre-line;
 }
 .hero-chronicle__epilogue .hero-chronicle__return {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  margin-top: 19px;
+  flex-wrap: wrap;
+  gap: 5px 9px;
+  margin: 19px auto 0;
   padding-top: 17px;
   border-top: 1px solid #705643;
+  max-width: 560px;
+  text-align: center;
   color: #edc68d;
   font-family: Arial, sans-serif;
   font-size: 13px;
   font-weight: 700;
-  line-height: 1.7;
+  line-height: 1.6;
 }
 .hero-chronicle__return svg { flex: none; }
+.hero-chronicle__return span {
+  color: #aa9b91;
+  font-size: 11px;
+  font-weight: 500;
+}
 @media (max-width: 540px) {
   .hero-chronicle { padding: 28px 14px 16px; }
   .hero-chronicle .hero-certificate__ornament { font-size: 29px; }
