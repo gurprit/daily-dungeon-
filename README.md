@@ -131,3 +131,16 @@ Implementation:
 The artwork remains clickable only where the existing game UI is clickable;
 parallax layers do not intercept player inputs. No new libraries, paid effects,
 image inference calls or Worker endpoints are required for parallax.
+
+
+## Gameplay continuity and illustration fallback (v0.3)
+
+The artwork stays deliberately mixed: generated NES-style portraits alongside the handmade SVG/CSS sketches. A procedural sketch is a valid completed fallback, not necessarily a broken game.
+
+**Five authored adventure branches** now carry resolved room outcomes forward into the next physical scene: Lighthouse of Lost Dawn, Clockwork Orchard, Dragon's Last Bakery, Museum After Midnight and Skywhale Express. The successful and unsuccessful paths have different arrivals, environmental details and an explicitly labelled **"Your earlier choice changed this room"** note. They do **not** silently alter d20 difficulty, hearts or rewards. Hollowmere keeps its existing deeper, multi-ending authored story.
+
+The narration model is now instructed to respect changed world state and to reference a real prior consequence when available. If inference is unavailable, the nine rooms across the three fresh NES adventures have character-specific scripted reactions instead of generic replies, with the deterministic consequence echoed after them. No additional AI call is required.
+
+Illustration fallback status is explicit: pending art shows **"Painting this moment…"**; a failed request shows **"Artist unavailable · pixel sketch shown"**; a long-running request shows **"Taking too long · keeping the sketch"**. Decoding an image also has a 20-second safety timeout. The familiar SVG illustration stays visible and all game actions remain usable in every case.
+
+This increment is an unmerged feature branch until reviewed. Automated tests cover success/failure branches, unchanged dice rules, contextual scripted replies, bounded art loading and the existing game behaviour.
