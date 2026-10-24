@@ -124,7 +124,6 @@ export default {
         return json({ error: "Use between 4 and 280 characters." }, 400);
       }
 
-      const baseRoom = daily.dungeon.rooms[Number(body.roomIndex)];
       const inventory = normaliseInventory(body.inventory, daily);
       const unavailable = unavailableItems(body.action, inventory, itemCatalog(daily.dungeon));
       if (unavailable.length) {
