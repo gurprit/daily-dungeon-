@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import ProceduralIllustration from "./ProceduralIllustration";
-import ProceduralEffects from "./ProceduralEffects";
+import GeneratedEffects from "./GeneratedEffects";
+import NesSceneImage from "./NesSceneImage";
 import ParticleCanvas from "./ParticleCanvas";
 import { makeVisualRecipe, type VisualInput } from "./illustration-recipe";
 
@@ -17,6 +18,7 @@ type Props = VisualInput & {
 };
 
 const readyImages = new Map<string, string>();
+const ART_STYLE = "nes8-v4";
 /**
  * An illustrated scene: model artwork in the background, animated SVG + JS
  * particles in the foreground. The old procedural image appears immediately
@@ -31,8 +33,8 @@ export default function IllustratedScene(props: Props) {
     kind, dungeonSlug, roomIndex, day, preview, enabled, alt, variant,
     ticket, className = ""
   } = props;
-  const key = kind === "action" ? (ticket ? "action:" + ticket : "") :
-    [day, preview, kind, roomIndex, variant ?? ""].join("|");
+  const key = kind === "action" ? (ticket ? ART_STYLE + ":action:" + ticket : "") :
+    [ART_STYLE, day, preview, kind, roomIndex, variant ?? ""].join("|");
   const [result, setResult] = useState<ArtJob>(() => ({
     status: "pending", url: key ? readyImages.get(key) : undefined
   }));
@@ -99,16 +101,14 @@ export default function IllustratedScene(props: Props) {
   return <div className={visualClass}>
     {(!showGenerated || !ready) && <ProceduralIllustration {...props} label={alt}/>}
     {showGenerated && <>
-      <img className={"hybrid-art__image " + (ready ? "hybrid-art__image--ready" : "")}
-        src={result.url} alt={alt}
-        loading={kind === "room" ? "eager" : "lazy"}
-        decoding="async" onLoad={() => setReady(true)} onError={() => setBroken(true)}/>
+      <NesSceneImage src={result.url!} alt={alt} ready={ready}
+        onReady={() => setReady(true)} onError={() => setBroken(true)}/>
       {ready && <>
         <svg className="hybrid-art__svgfx" viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
           aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-          <ProceduralEffects input={props} recipe={recipe}/>
+          <GeneratedEffects input={props} recipe={recipe}/>
         </svg>
-        <ParticleCanvas input={props} recipe={recipe}/>
+        <ParticleCanvas input={props} recipe={recipe} imageMode/>
       </>}
     </>}
     {!showGenerated && enabled && !!key && result.status === "pending" &&
