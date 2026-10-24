@@ -54,6 +54,9 @@ test("a reward can be carried forward and is consumed the next time it is used",
 test("item matching requires whole names rather than substrings", () => {
   assert.deepEqual(itemsUsed("I inspect the mirrored hallway.", ["Pocket mirror"]), []);
   assert.deepEqual(itemsUsed("My copper kazoo starts playing.", ["Copper kazoo"]), ["Copper kazoo"]);
+  assert.deepEqual(itemsUsed("I use the mirror to hypnotise her.", ["Pocket mirror"]), ["Pocket mirror"]);
+  assert.deepEqual(itemsUsed("I use the kazoo in the clouds.", ["Copper kazoo"]), ["Copper kazoo"]);
+  assert.deepEqual(itemsUsed("I open the umbrella to catch lightning.", ["Feather umbrella"]), ["Feather umbrella"]);
   assert.deepEqual(unavailableItems("I offer a potato.", ["String"], ["String", "Potato"]), ["Potato"]);
 });
 
