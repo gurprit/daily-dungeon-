@@ -31,8 +31,8 @@
   "vars": {
     "AI_ENABLED": "true",
     "AI_DAILY_LIMIT": "36",
-    "ART_ENABLED": "false",
-    "ART_DAILY_LIMIT": "36",
+    "ART_ENABLED": "true",
+    "ART_DAILY_LIMIT": "600",
     "PREVIEW_TOMORROW_ENABLED": "true",
     "PREVIEW_STORY_ENABLED": "true"
   }
