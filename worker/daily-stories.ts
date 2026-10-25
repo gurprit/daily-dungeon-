@@ -47,6 +47,29 @@ const trimmed = (value: unknown, min: number, max: number): string | null => {
   return s;
 };
 
+/** A prize is a short, usable inventory label, not an essential story beat.
+ * Model prose can be long, missing or malformed; recover the mechanical
+ * reward from the room's validated title instead of throwing away the day.
+ * This is also idempotent when the normalised daily set is read from D1.
+ */
+export function normaliseRoomReward(value: unknown, roomTitle: string): string {
+  const valid = trimmed(value, 2, 45);
+  if (valid) return valid;
+  // Long but safe noun phrases may be shortened without changing their identity.
+  if (typeof value === "string") {
+    const text = value.trim().replace(/\s+/g, " ");
+    if (text.length > 45 && text.length <= 160 &&
+        !/<[^>]+>|https?:\/\/|[\u0000-\u001f]/i.test(text)) {
+      const clipped = text.slice(0, 45).replace(/\s+\S*$/, "").trim();
+      if (clipped.length >= 2) return clipped;
+    }
+  }
+  // Every validated room title is short and safe. Keep fallback within 45
+  // characters so the game's inventory and item matching remain predictable.
+  const label = "Token of " + roomTitle;
+  return label.length <= 45 ? label : label.slice(0, 45).trimEnd();
+}
+
 /** Structured output may be a direct object, a JSON string, or a wrapper
  * around a single story. Never trust it as a gameplay or HTML instruction. */
 function decodedJson(raw: unknown): unknown {
@@ -82,7 +105,7 @@ function parseStoryEntry(entry: unknown, day: string, slot: number): Dungeon | n
     const scene=trimmed(r.scene,42,450);
     const character=trimmed(r.character,3,75);
     const challenge=trimmed(r.challenge,16,260);
-    const reward=trimmed(r.reward,2,45);
+    const reward=title ? normaliseRoomReward(r.reward,title) : null;
     // JSON Schema may omit an arrival, even if requested. Missing branch
     // narration should not invalidate nine rooms of good story content.
     // Reconstruct it from the prior room's actual NPC and earnable reward,
@@ -147,8 +170,9 @@ export function storyValidationField(raw: unknown): string {
     const room=rawRoom as Record<string,unknown>;
     for(const [key,min,max] of [
       ["title",4,65],["scene",42,450],["character",3,75],
-      ["challenge",16,260],["reward",2,45]
+      ["challenge",16,260]
     ] as const)if(!trimmed(room[key],min,max))return "room"+(i+1)+"."+key;
+    // Reward is intentionally repairable and cannot invalidate an entire day.
   }
   return "story.structure";
 }
@@ -226,6 +250,7 @@ export function dailyStoryPrompt(day: string, slot: 0|1|2 = 0): { system: string
       "Keep each branch solvable and never decide the dice or add/remove health.",
       "Use two or three lively sentences for scenes, one short sentence for arrivals.",
       "Be creative, weird and witty. Use simple descriptive nouns instead of existing fictional franchises.",
+      "Each reward MUST be a tangible, usable item with a short name of 2-4 words, maximum 45 characters.",
       "Keep fields concise but meaningful; return only well-formed JSON."
     ].join(" "),
     user:JSON.stringify({
