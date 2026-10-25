@@ -184,3 +184,31 @@ The new daily_story_sets table holds one globally shared set of three complete s
 After deployment, open https://dailydungeon.titkok.co/api/daily-stories. A ready response with source generated means the stories were created and shared. A pending response means the first generation is underway. A fallback response means AI generation was disabled or failed, or the migration is missing, and visitors receive classics instead. No manual daily cron/script is needed. Image art and individual AI judgments continue to use separate guarded budgets.
 
 **Deploy gate:** if the D1 migration command fails, do not consider the new AI daily feature active; the application may safely show classics but cannot generate fresh shared daily stories.
+
+
+### Diagnosing `source: "classic", status: "fallback"`
+
+The API now returns a safe `reason` field without exposing secrets:
+
+- `disabled`: DAILY_STORIES_ENABLED is not true.
+- `missing-bindings`: Workers AI or D1 binding is missing.
+- `database-unavailable`: D1 read failed, often because `0003_daily_stories.sql` was not applied remotely.
+- `generation-failed`: the single AI generation attempt failed or did not yield three complete stories. The row intentionally blocks automatic retries to protect costs.
+- `invalid-cache`: a stored ready payload failed validation.
+
+Check today's remote D1 row (and apply migrations if necessary):
+
+```bash
+npx wrangler d1 migrations apply daily-dungeon-playtest --remote
+npx wrangler d1 execute daily-dungeon-playtest --remote \\
+  --command="SELECT day, status, created_at, updated_at FROM daily_story_sets ORDER BY day DESC LIMIT 5;"
+```
+
+If the status is `failed` after deploying the improved prompt/validator, a maintainer can explicitly rearm **only** that failed UTC date by deleting its failed row; the next GET to `/api/daily-stories` will claim a single new attempt. This incurs an additional model call and should not be repeated endlessly:
+
+```bash
+npx wrangler d1 execute daily-dungeon-playtest --remote \\
+  --command="DELETE FROM daily_story_sets WHERE day = '2026-10-25' AND status = 'failed';"
+```
+
+Note that Cloudflare Cron at 00:03 UTC may already have passed when the new version is first deployed; the public API can trigger the missing day's generation on the first request. The worker code does **not** automatically retry failed dates.
