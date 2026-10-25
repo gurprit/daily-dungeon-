@@ -61,16 +61,16 @@ export function useScrollParallax<T extends SVGSVGElement | HTMLElement = SVGSVG
           // A group works in SVG's 320x220 viewBox units.
           // SVG groups move in viewBox coordinates. Keep outermost props on
           // stage while preserving substantially different depth speeds.
-          const shift = Math.max(-76, Math.min(76, raw));
+          const shift = Math.max(-56, Math.min(56, raw));
           const move = shift === 0 ? "" : "translate(0 " + shift + ")";
           const value = [layer.baseAttribute, move].filter(Boolean).join(" ");
           if (value) layer.node.setAttribute("transform", value);
           else layer.node.removeAttribute("transform");
         } else {
           // Root SVG and Canvas planes are transformed using CSS on mobile.
-          // Their 8% overscan + 14% camera zoom provide ~16% safe vertical
-          // bleed. Cap the pan just below that to avoid visible frame edges.
-          const shift = Math.max(-rect.height * .145, Math.min(rect.height * .145, raw));
+          // Their 8% overscan + 10% camera zoom provide safe vertical bleed.
+          // A gentler 10% pan limit avoids excessive visual movement.
+          const shift = Math.max(-rect.height * .10, Math.min(rect.height * .10, raw));
           const move = shift ? "translate3d(0," + shift.toFixed(2) + "px,0)" : "";
           const zoom = layer.zoom > 1 ? "scale(" + layer.zoom + ")" : "";
           layer.node.style.transform = [layer.baseStyle, move, zoom].filter(Boolean).join(" ");

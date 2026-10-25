@@ -1353,14 +1353,14 @@ p { line-height: 1.7; }
 }
 
 
-/* NES camera images have 8% overscan AND 14% scroll zoom,
-   providing visible movement without revealing blank edges.
+/* NES camera images have 8% overscan and a gentler 10% scroll zoom,
+   preserving subtle depth without revealing blank edges.
    The Canvas is still scaled as deliberately crisp NES pixels. */
 .hybrid-art .hybrid-art__nes {
   inset: -8%;
   width: 116%;
   height: 116%;
-  transform: scale(1.14);
+  transform: scale(1.10);
 }
 
 

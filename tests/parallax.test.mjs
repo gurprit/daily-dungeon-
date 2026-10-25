@@ -16,13 +16,13 @@ test("scroll progress is centred and bounded for mobile viewports", () => {
   assert.equal(sceneScrollProgress(100,200,0),0);
 });
 
-test("background moves less than character layer and no group ever shifts over ninety-six virtual units", () => {
+test("background moves less than character layer and no group ever shifts over seventy-two virtual units", () => {
   assert.equal(sceneLayerShift(0,.8),0);
   assert.ok(sceneLayerShift(1,.08)<sceneLayerShift(1,.47));
   assert.ok(sceneLayerShift(1,.47)<sceneLayerShift(1,.82));
-  assert.equal(sceneLayerShift(99,1),96);
-  assert.equal(sceneLayerShift(-99,1),-96);
-  assert.equal(sceneLayerShift(1,99),96);
+  assert.equal(sceneLayerShift(99,1),72);
+  assert.equal(sceneLayerShift(-99,1),-72);
+  assert.equal(sceneLayerShift(1,99),72);
   assert.equal(sceneLayerShift(1,-1),0);
   assert.equal(sceneLayerShift(Infinity,.5),0);
 });
@@ -98,19 +98,19 @@ test("parallax works for all generated dungeons and legacy SVG scenes", () => {
 });
 
 
-test("strong mobile camera pan builds a visible foreground shift over just one swipe", () => {
+test("gentle mobile camera pan gives controlled depth over one swipe", () => {
   const first = sceneScrollProgress(425,220,800);
   const second = sceneScrollProgress(265,220,800);
-  assert.ok(Math.abs(sceneLayerShift(second,.55) - sceneLayerShift(first,.55)) >= 30,
-    "a normal 160px finger scroll must move the generated image around 30px");
-  assert.equal(sceneLayerShift(1,1),96);
+  assert.ok(Math.abs(sceneLayerShift(second,.55) - sceneLayerShift(first,.55)) >= 19,
+    "a normal 160px finger scroll should move the generated image perceptibly but gently");
+  assert.equal(sceneLayerShift(1,1),72);
   const canvas = read("src/NesSceneImage.tsx");
   const hook = read("src/useScrollParallax.ts");
   const css = read("src/styles.scss");
-  assert.match(canvas,/data-parallax-scale=\{1\.14\}/);
-  assert.match(css,/transform: scale\(1\.14\)/);
-  assert.match(hook,/rect\.height \* \.145/);
+  assert.match(canvas,/data-parallax-scale=\{1\.10\}/);
+  assert.match(css,/transform: scale\(1\.10\)/);
+  assert.match(hook,/rect\.height \* \.10/);
   assert.match(hook,/layer\.zoom/);
-  assert.match(hook,/Math\.max\(-76/);
+  assert.match(hook,/Math\.max\(-56/);
   assert.match(hook,/window\.visualViewport/);
 });
