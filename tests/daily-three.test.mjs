@@ -107,8 +107,8 @@ test("the browser renders a daily roster and keeps its three saves separate", ()
   assert.match(app,/daily-choice-/);
   assert.match(app,/dailySlot=\{dailySlot\}/);
   assert.match(app,/previewFresh: freshIndex \+ 1/);
-  assert.match(art,/preview, dailySlot, kind, roomIndex/);
-  assert.match(art,/\{ day, roomIndex, kind, variant, preview, dailySlot \}/);
+  assert.match(art,/preview, dailySource, dailySlot, kind, roomIndex/);
+  assert.match(art,/\{ day, roomIndex, kind, variant, preview, dailySlot, dailySource \}/);
   assert.match(styles,/@media \(max-width: 690px\)/);
 });
 
@@ -120,8 +120,19 @@ test("public game has no visible preview-day or scenario developer controls", ()
   assert.doesNotMatch(app, /canPreviewTomorrow|canPreviewFresh|canPreviewStory/);
   assert.doesNotMatch(app, /Restart playtest|Replay playtest|FOUNDATION PLAYTEST/);
   assert.match(app, /THREE QUESTS\. ONE DAY\./);
-  assert.match(app, /three-room adventure\. Play one or all three/);
+  assert.match(app, /three rooms\. Play one or all three/);
   assert.match(app, /getDailyChoices\(/, "the real daily three-quest selector must remain");
   assert.match(app, /href=\{index \? "\?quest=" \+ index/, "everyday adventure switching must remain");
   assert.match(app, /getPreviewDailyGame/, "internal test-only routes can still be accessed directly");
+});
+
+
+test("generated adventure snapshots pin the active game and keep legacy saves separate", () => {
+  const app=readFileSync(new URL("../src/App.tsx",import.meta.url),"utf8");
+  assert.match(app,/if\(runRef\.current\.started\) return/);
+  assert.match(app,/ai-stories-v1:quest-/);
+  assert.match(app,/runStorageKey\(run\.day,source\)/);
+  assert.match(app,/dailySource: source/);
+  assert.match(app,/source === "generated"/);
+  assert.match(app,/fetch\("\/api\/daily-stories"/);
 });
