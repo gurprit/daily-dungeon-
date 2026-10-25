@@ -179,7 +179,7 @@ npm run build
 npm run deploy
 ```
 
-The new daily_story_sets table holds one globally shared set of three complete stories per UTC day, obtained through one JSON-mode Llama 3.3 Workers AI request. Atomic D1 insert-or-ignore prevents duplicate model calls from concurrent visitors and multiple Cloudflare locations. Cloudflare Cron (00:03 UTC) attempts creation each day; GET /api/daily-stories can start it if Cron is late or skipped. The browser initially offers classic stories while generation is pending, then switches to the AI stories only if the player has NOT started a quest. Existing adventures remain pinned and their saves are preserved.
+The new daily_story_sets table holds one globally shared set of three complete stories per UTC day, obtained through three compact JSON-schema-guided Llama 3.3 Workers AI requests (one per three-room adventure). Atomic D1 insert-or-ignore prevents duplicate model calls from concurrent visitors and multiple Cloudflare locations. Cloudflare Cron (00:03 UTC) attempts creation each day; GET /api/daily-stories can start it if Cron is late or skipped. The browser initially offers classic stories while generation is pending, then switches to the AI stories only if the player has NOT started a quest. Existing adventures remain pinned and their saves are preserved.
 
 After deployment, open https://dailydungeon.titkok.co/api/daily-stories. A ready response with source generated means the stories were created and shared. A pending response means the first generation is underway. A fallback response means AI generation was disabled or failed, or the migration is missing, and visitors receive classics instead. No manual daily cron/script is needed. Image art and individual AI judgments continue to use separate guarded budgets.
 
@@ -193,7 +193,7 @@ The API now returns a safe `reason` field without exposing secrets:
 - `disabled`: DAILY_STORIES_ENABLED is not true.
 - `missing-bindings`: Workers AI or D1 binding is missing.
 - `database-unavailable`: D1 read failed, often because `0003_daily_stories.sql` was not applied remotely.
-- `generation-failed`: the single AI generation attempt failed or did not yield three complete stories. The row intentionally blocks automatic retries to protect costs.
+- `generation-failed`: the daily AI generation batch failed or did not yield three complete stories. The row intentionally blocks automatic retries to protect costs.
 - `invalid-cache`: a stored ready payload failed validation.
 
 Check today's remote D1 row (and apply migrations if necessary):
@@ -216,4 +216,9 @@ Note that Cloudflare Cron at 00:03 UTC may already have passed when the new vers
 
 ### Failed generation stage, model support
 
-Daily-story generation now uses Cloudflare-supported JSON Mode with `@cf/meta/llama-3.3-70b-instruct-fp8-fast` instead of reasoning-model prose. If a day fails, the existing `stories_json` column holds only a safe `failureStage` code (one of `model-call`, `invalid-output`, `database-write`), and `/api/daily-stories` exposes that code alongside `reason: "generation-failed"`. Old failed records will have no stage until an explicitly approved retry is performed. This does not change hearts, artwork or player decisions, and requires no new migration beyond `0003_daily_stories.sql`.
+Daily-story generation now uses Cloudflare-supported JSON Schema Mode with `@cf/meta/llama-3.3-70b-instruct-fp8-fast`. One model call generates one three-room quest, and three bounded calls are grouped into a single atomic daily cache transaction. If a day fails, the existing `stories_json` column holds only a safe `failureStage` code (one of `model-call`, `invalid-output`, `database-write`), and `/api/daily-stories` exposes that code alongside `reason: "generation-failed"`. Old failed records will have no stage until an explicitly approved retry is performed. This does not change hearts, artwork or player decisions, and requires no new migration beyond `0003_daily_stories.sql`.
+
+
+### Reliability update: three small completions, one daily batch
+
+The original design asked the model to return **nine rooms in a single enormous JSON completion**. Production returned `generation-failed` with `failureStage:invalid-output`, so that approach was replaced. The generator now requests **one fully connected three-room adventure per call**, using a JSON Schema, with three calls in parallel. A single D1 date claim still prevents separate visitors from re-triggering AI generation, and a single ready cache entry is published only if **all three** stories validate. This costs up to three inference calls per UTC day rather than one, not three per visitor. No raw AI output is saved on failures, and previously cached stories are compatible with the new reader. Failure rows remain blocked until a deliberate operator retry to avoid runaway costs.
