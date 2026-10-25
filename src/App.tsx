@@ -165,7 +165,7 @@ function DungeonDoor({ dungeon, day, preview, enabled, dailySource }: {
       </div>
       <div className="pixel-scene__bottombar">
         <span><span className="pixel-scene__life">♥ ♥ ♥</span> HP:03</span>
-        <span className="pixel-scene__quest-name">{title}</span>
+        <span className="pixel-scene__quest-name">{dungeon.title}</span>
       </div>
       <div className="pixel-scene__glimmer pixel-scene__glimmer--one" aria-hidden="true">✧</div>
       <div className="pixel-scene__glimmer pixel-scene__glimmer--two" aria-hidden="true">✦</div>
