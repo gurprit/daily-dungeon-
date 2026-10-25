@@ -67,7 +67,9 @@ export function normaliseRoomReward(value: unknown, roomTitle: string): string {
   // Every validated room title is short and safe. Keep fallback within 45
   // characters so the game's inventory and item matching remain predictable.
   const label = "Token of " + roomTitle;
-  return label.length <= 45 ? label : label.slice(0, 45).trimEnd();
+  if (label.length <= 45) return label;
+  const boundary = label.slice(0,45).replace(/\s+\S*$/, "").trim();
+  return boundary.length > "Token of".length ? boundary : "Room keepsake";
 }
 
 /** Structured output may be a direct object, a JSON string, or a wrapper
