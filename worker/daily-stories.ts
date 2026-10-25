@@ -352,7 +352,7 @@ export async function claimDailyStories(env: StoryEnv, now: Date, ctx?: { waitUn
         if (record.failureStage==="model-call" || record.failureStage==="invalid-output" ||
             record.failureStage==="database-write") failureStage=record.failureStage;
         if(record.failureSlot===0||record.failureSlot===1||record.failureSlot===2)failureSlot=record.failureSlot;
-        if(typeof record.failureField==="string" && /^(story|room[123]|json)([.][a-zA-Z-]+)?$/.test(record.failureField))
+        if(typeof record.failureField==="string" && /^(?:json|(?:story|room[123])(?:[.][a-zA-Z-]+){0,3})$/.test(record.failureField))
           failureField=record.failureField;
       } catch { /* Older failed rows did not store a category. */ }
       return {...fallback(now,"generation-failed"),...(failureStage?{failureStage}:{}),
