@@ -96,7 +96,7 @@ export function parseDailyStories(raw: unknown, day: string): [Dungeon,Dungeon,D
       edition:3,
       title, subtitle, intro, objective,
       startingInventory:cleanItems as string[],
-      rooms: rooms as Dungeon["rooms"]
+      rooms: rooms as unknown as Dungeon["rooms"]
     });
   }
   return stories as [Dungeon,Dungeon,Dungeon];
