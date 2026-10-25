@@ -1398,3 +1398,113 @@ p { line-height: 1.7; }
 
 /* Give older procedural SVG backdrops enough side bleed for sideways motion. */
 .procedural-art__background[data-parallax-depth] { transform-origin: center center; }
+
+
+/* Three distinct daily three-room adventures, with persistent progress per slot. */
+.daily-quests {
+  margin: 0 0 38px;
+  padding: clamp(15px, 2.5vw, 25px);
+  border: 1px solid #594a42;
+  border-radius: 12px;
+  background: linear-gradient(125deg, rgba(49,39,50,.92), rgba(26,29,42,.96));
+}
+.daily-quests__heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: end;
+  gap: 10px 22px;
+  margin-bottom: 18px;
+}
+.daily-quests__heading h2 {
+  margin: 5px 0 0;
+  font-size: clamp(18px, 2.2vw, 24px);
+  color: #f6e4c6;
+}
+.daily-quests__heading p {
+  margin: 0;
+  max-width: 335px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #beb1ae;
+}
+.daily-quests__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+}
+.daily-quests__choice {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 16px;
+  border: 1px solid #5d5156;
+  border-radius: 8px;
+  background: #20202c;
+  color: #e8ddcd;
+  text-decoration: none;
+  transition: background-color .2s, border-color .2s;
+}
+.daily-quests__choice:hover,
+.daily-quests__choice:focus-visible {
+  border-color: #d9bb85;
+  background: #302a35;
+}
+.daily-quests__choice--active {
+  border-color: #ddb97d;
+  background: #332d34;
+  box-shadow: inset 0 0 0 1px rgba(234,193,132,.35);
+}
+.daily-quests__number {
+  color: #b8a9ac;
+  letter-spacing: .11em;
+  font-size: 10px;
+  font-weight: 800;
+}
+.daily-quests__choice strong {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: clamp(13px, 1.5vw, 16px);
+  line-height: 1.36;
+}
+.daily-quests__subtitle {
+  color: #aba3a9;
+  font-size: 11px;
+  line-height: 1.45;
+  flex-grow: 1;
+}
+.daily-quests__status {
+  align-self: flex-start;
+  margin-top: 5px;
+  padding: 5px 8px;
+  border-radius: 3px;
+  background: #39313c;
+  color: #dbc28d;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .07em;
+}
+.daily-quests__choice--active .daily-quests__status {
+  background: #816541;
+  color: #fff6dc;
+}
+@media (max-width: 690px) {
+  .daily-quests__grid { grid-template-columns: 1fr; gap: 8px; }
+  .daily-quests__choice {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 13px;
+  }
+  .daily-quests__choice strong,
+  .daily-quests__subtitle { grid-column: 1 / -1; }
+  .daily-quests__choice .daily-quests__status {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0;
+    white-space: nowrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .daily-quests__choice { transition: none; }
+}
