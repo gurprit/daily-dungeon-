@@ -111,3 +111,17 @@ test("the browser renders a daily roster and keeps its three saves separate", ()
   assert.match(art,/\{ day, roomIndex, kind, variant, preview, dailySlot \}/);
   assert.match(styles,/@media \(max-width: 690px\)/);
 });
+
+
+test("public game has no visible preview-day or scenario developer controls", () => {
+  const app = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(app, /href="\?preview=/, "developer scenario/day links should not appear in public JSX");
+  assert.doesNotMatch(app, /className="preview-ribbon"/);
+  assert.doesNotMatch(app, /canPreviewTomorrow|canPreviewFresh|canPreviewStory/);
+  assert.doesNotMatch(app, /Restart playtest|Replay playtest|FOUNDATION PLAYTEST/);
+  assert.match(app, /THREE QUESTS\. ONE DAY\./);
+  assert.match(app, /three-room adventure\. Play one or all three/);
+  assert.match(app, /getDailyChoices\(/, "the real daily three-quest selector must remain");
+  assert.match(app, /href=\{index \? "\?quest=" \+ index/, "everyday adventure switching must remain");
+  assert.match(app, /getPreviewDailyGame/, "internal test-only routes can still be accessed directly");
+});
