@@ -3,7 +3,7 @@ import {
   ArrowRight, BookOpen, Check, Crown, Dice5, Download, Flame,
   Heart, ScrollText, Share2, Shield, Skull, Sparkles, Swords
 } from "lucide-react";
-import { getDailyGame, getPreviewDailyGame, getFreshPreviewGame } from "./game";
+import { getDailyGame, getDailyChoices, getDailyGameForSlot, getPreviewDailyGame, getFreshPreviewGame } from "./game";
 import { FRESH_DUNGEONS, FRESH_PREVIEW_MODES, freshPreviewIndex } from "./fresh-dungeons";
 import { storyRoom, storyClues, storyEnding } from "./story";
 import { startingItems, inventoryAfterTurn } from "./inventory";
@@ -20,13 +20,16 @@ const previewHollowmere = new URLSearchParams(window.location.search).get("previ
 const freshIndex = freshPreviewIndex(new URLSearchParams(window.location.search).get("preview"));
 const previewFresh = freshIndex !== null;
 const previewMode = previewTomorrow || previewHollowmere || previewFresh;
+const selectedQuest = new URLSearchParams(window.location.search).get("quest");
+const dailySlot: 0 | 1 | 2 = !previewMode && (selectedQuest === "1" || selectedQuest === "2")
+  ? Number(selectedQuest) as 1 | 2 : 0;
 const gameForPage = () => freshIndex !== null ? getFreshPreviewGame(freshIndex)
   : previewHollowmere ? getDailyGame(new Date("2026-10-26T12:00:00Z"))
-  : previewTomorrow ? getPreviewDailyGame() : getDailyGame();
+  : previewTomorrow ? getPreviewDailyGame() : getDailyGameForSlot(dailySlot);
 // New namespace & edition. Never delete, rewrite or combine previous playtest saves.
 const runStorageKey = (day: string) => "daily-dungeon:" +
   (previewFresh ? "nes-clean-v1:" + FRESH_PREVIEW_MODES[freshIndex!] + ":" :
-   previewHollowmere ? "test-hollowmere:" : previewTomorrow ? "test-tomorrow:" : "") + day;
+   previewHollowmere ? "test-hollowmere:" : previewTomorrow ? "test-tomorrow:" : dailySlot ? "daily-choice-" + dailySlot + ":" : "") + day;
 
 type Turn = {
   roomTitle: string;
@@ -108,7 +111,7 @@ function DungeonDoor({ slug, title, day, preview, enabled }: {
     <div className="dungeon-art dungeon-art--pixel">
       <div className="pixel-scene__topbar"><span>✦ QUEST PREVIEW</span><span>3-ROOM ADVENTURE</span></div>
       <div className="pixel-scene__viewport">
-        <IllustratedScene dungeonSlug={slug} roomIndex={0} kind="room" day={day}
+        <IllustratedScene dailySlot={dailySlot} dungeonSlug={slug} roomIndex={0} kind="room" day={day}
           preview={preview} enabled={enabled} alt={"Illustration of " + title}
           className="procedural-art--welcome"/>
         <div className="pixel-scene__scanlines" aria-hidden="true"/>
@@ -155,7 +158,7 @@ function RoomArtwork({ turn, dungeonSlug, roomIndex, day, preview, enabled, comp
   return (
     <figure className={"room-artwork " + (compact ? "room-artwork--compact" : "")}>
       <div className="room-artwork__frame">
-        <IllustratedScene kind="action" dungeonSlug={dungeonSlug} roomIndex={roomIndex}
+        <IllustratedScene dailySlot={dailySlot} kind="action" dungeonSlug={dungeonSlug} roomIndex={roomIndex}
           day={day} preview={preview} enabled={enabled} ticket={turn.outcome.artTicket}
           action={turn.action} narration={turn.outcome.narration}
           success={turn.outcome.success}
@@ -295,6 +298,7 @@ export default function App() {
             })),
             previewTomorrow,
             previewHollowmere,
+            ...(!previewMode ? { dailySlot } : {}),
             ...(freshIndex !== null ? { previewFresh: freshIndex + 1 } : {})
           })
         });
@@ -426,6 +430,34 @@ export default function App() {
       </header>
 
       <main className="main">
+        {!previewMode && <section className="daily-quests" aria-label="Choose one of today's three adventures">
+          <div className="daily-quests__heading">
+            <div><span className="eyebrow">THREE QUESTS · ONE DAY</span>
+              <h2>Choose today's adventure</h2></div>
+            <p>Three separate three-room quests, each about five minutes. New selection at midnight UTC.</p>
+          </div>
+          <nav className="daily-quests__grid" aria-label="Daily adventures">
+            {getDailyChoices(new Date(daily.day + "T12:00:00Z")).map((entry, index) => {
+              const storage = "daily-dungeon:" + (index ? "daily-choice-" + index + ":" : "") + daily.day;
+              let label = "READY";
+              try {
+                const saved = localStorage.getItem(storage);
+                const progress = saved ? JSON.parse(saved) as Partial<Run> : null;
+                if (progress?.finished) label = "COMPLETED";
+                else if (progress?.started) label = "CONTINUE";
+              } catch { /* Browser storage may be unavailable */ }
+              return <a key={entry.dungeon.slug}
+                className={"daily-quests__choice" + (index === dailySlot ? " daily-quests__choice--active" : "")}
+                aria-current={index === dailySlot ? "page" : undefined}
+                href={index ? "?quest=" + index : window.location.pathname}>
+                <span className="daily-quests__number">ADVENTURE {String(index + 1).padStart(2, "0")}</span>
+                <strong>{entry.dungeon.title}</strong>
+                <span className="daily-quests__subtitle">{entry.dungeon.subtitle}</span>
+                <span className="daily-quests__status">{index === dailySlot ? "SELECTED · " : ""}{label}</span>
+              </a>;
+            })}
+          </nav>
+        </section>}
         {previewMode && <div className="preview-ribbon">
           <strong>⏭ {previewFresh ? "Fresh NES adventure" : previewHollowmere ? "Hollowmere story adventure" : "Tomorrow’s dungeon"} · Test mode</strong>
           <span>New dungeon, fresh images and separate saves. Shared daily AI/art budgets still apply.</span>
@@ -504,7 +536,7 @@ export default function App() {
               {clues.length > 0 && <section className="story-clues" aria-label="Clues discovered">
                 <h2><BookOpen size={18}/> What you’ve discovered</h2>
                 {clues.map((clue, i) => <div className="story-clues__entry" key={clue.id}>
-                  <IllustratedScene dungeonSlug={daily.dungeon.slug} roomIndex={i}
+                  <IllustratedScene dailySlot={dailySlot} dungeonSlug={daily.dungeon.slug} roomIndex={i}
                     kind="clue" clueId={clue.id} variant={clue.id} day={daily.day}
                     preview={artPreview} enabled={artEnabled} alt={"Discovery: " + clue.title}
                     className="procedural-art--clue"/>
@@ -517,7 +549,7 @@ export default function App() {
                   <span className="encounter__danger"><Dice5 size={15}/> Difficulty {room.difficulty}</span>
                 </div>
                 <div className="encounter__art encounter__art--illustrated">
-                  <IllustratedScene dungeonSlug={daily.dungeon.slug} roomIndex={run.roomIndex}
+                  <IllustratedScene dailySlot={dailySlot} dungeonSlug={daily.dungeon.slug} roomIndex={run.roomIndex}
                     kind="room" day={daily.day} preview={artPreview} enabled={artEnabled}
                     alt={"Room illustration: " + room.title}
                     className="procedural-art--room"/>
@@ -595,7 +627,7 @@ export default function App() {
               {won ? "Through a combination of wit, audacity and highly suspicious luck, you've made it out alive." :
                 "Your courage was unquestionable. Your decision-making, less so. The Dungeon Master will remember this."}
             </p>
-            <IllustratedScene dungeonSlug={daily.dungeon.slug} roomIndex={2}
+            <IllustratedScene dailySlot={dailySlot} dungeonSlug={daily.dungeon.slug} roomIndex={2}
               kind="ending" day={daily.day} preview={artPreview} enabled={artEnabled}
               variant={finalFate?.id ?? (won ? "victory" : "defeat")}
               endingId={finalFate?.id ?? (won ? "victory" : "defeat")}
