@@ -227,3 +227,10 @@ The original design asked the model to return **nine rooms in a single enormous 
 ### Safe per-adventure generation diagnostics
 
 A failed generated batch now includes `failureStage` and, where relevant, `failureSlot` in the API response and in safe D1 failure metadata. Slots are **zero-indexed**: `0` = first adventure, `1` = second, `2` = third. None of these reveal raw model text. A failure still does not retry automatically. The daily generator uses up to three schema-guided short model requests, all behind the same once-per-date database claim. Review Workers tail logs and the safe fields before deciding to rearm a failed day's claim.
+
+
+### Production resilience after second-adventure invalid output (25 October)
+
+Production identified `failureStage: "invalid-output"` and `failureSlot: 1`, meaning the **second** story's model response was not valid enough to publish. Code inspection revealed two overly strict/contradictory rules: the JSON schema did not require success/failure arrival branches even though game validation insisted on them, and the validator rejected returning NPCs despite the story brief encouraging continuity. Both are fixed. The generation pipeline now repairs a missing/too-short branch using the previous room's genuine NPC and earnable reward, requires branch fields in the schema, and allows the same character to reappear in later rooms.
+
+A single malformed adventure gets **one targeted retry only** (up to four story model calls per daily batch, never one batch per visitor), then the authored fallback takes over if necessary. Persisted diagnostics now include a safe `failureField` name such as `room2.scene` or `story.startingInventory.items`, alongside `failureSlot` and `failureStage`, rather than storing raw provider output. Full batches still publish atomically with exactly three complete adventures. No schema migration is required for these diagnostics. Existing failed days are **not** automatically retried; deploy before manually clearing a failed day, and perform at most one controlled test reset. Do not repeatedly rearm failed days.
