@@ -9,6 +9,8 @@ export type StorySet = {
   day: string;
   source: "generated" | "classic";
   status: "ready" | "pending" | "fallback";
+  /** Safe status for diagnosing config/AI failures without exposing user data. */
+  reason?: "disabled" | "missing-bindings" | "database-unavailable" | "generation-failed" | "invalid-cache";
   choices: readonly Dungeon[];
 };
 type DB = {
@@ -27,8 +29,9 @@ type CachedRow = { status?: unknown; stories_json?: unknown };
 const todayUTC = (now: Date) => now.toISOString().slice(0,10);
 const validDay = (day: string) => /^\d{4}-\d\d-\d\d$/.test(day) &&
   new Date(day+"T12:00:00Z").toISOString().slice(0,10) === day;
-const fallback = (now: Date): StorySet => ({
+const fallback = (now: Date, reason?: StorySet["reason"]): StorySet => ({
   day: todayUTC(now), source: "classic", status: "fallback",
+  ...(reason ? {reason} : {}),
   choices: getDailyChoices(now).map(value => value.dungeon)
 });
 const trimmed = (value: unknown, min: number, max: number): string | null => {
@@ -56,15 +59,15 @@ export function parseDailyStories(raw: unknown, day: string): [Dungeon,Dungeon,D
   for (const [slot, entry] of value.stories.entries()) {
     if (!entry || typeof entry !== "object") return null;
     const story = entry as Record<string,unknown>;
-    const title = trimmed(story.title,8,65);
-    const subtitle = trimmed(story.subtitle,8,90);
-    const intro = trimmed(story.intro,55,440);
-    const objective = trimmed(story.objective,28,240);
+    const title = trimmed(story.title,4,65);
+    const subtitle = trimmed(story.subtitle,5,90);
+    const intro = trimmed(story.intro,35,440);
+    const objective = trimmed(story.objective,18,240);
     if (!title || !subtitle || !intro || !objective || names.has(title.toLowerCase())) return null;
     names.add(title.toLowerCase());
     const items = story.startingInventory;
     if (!Array.isArray(items) || items.length !== 3) return null;
-    const cleanItems = items.map(i=>trimmed(i,3,36));
+    const cleanItems = items.map(i=>trimmed(i,2,36));
     if (cleanItems.some(i=>!i) || new Set(cleanItems.map(i=>i?.toLowerCase())).size !== 3) return null;
     if (!Array.isArray(story.rooms) || story.rooms.length !== 3) return null;
     const rooms: Dungeon["rooms"][number][] = [];
@@ -72,13 +75,13 @@ export function parseDailyStories(raw: unknown, day: string): [Dungeon,Dungeon,D
     for (const [i, item] of story.rooms.entries()) {
       if (!item || typeof item !== "object") return null;
       const r = item as Record<string,unknown>;
-      const title = trimmed(r.title,7,65);
-      const scene = trimmed(r.scene,65,450);
-      const character = trimmed(r.character,4,75);
-      const challenge = trimmed(r.challenge,22,260);
-      const reward = trimmed(r.reward,3,45);
-      const successArrival = i ? trimmed(r.successArrival ?? r.arrivalSuccess,28,240) : undefined;
-      const failureArrival = i ? trimmed(r.failureArrival ?? r.arrivalFailure,28,240) : undefined;
+      const title = trimmed(r.title,4,65);
+      const scene = trimmed(r.scene,42,450);
+      const character = trimmed(r.character,3,75);
+      const challenge = trimmed(r.challenge,16,260);
+      const reward = trimmed(r.reward,2,45);
+      const successArrival = i ? trimmed(r.successArrival ?? r.arrivalSuccess,20,240) : undefined;
+      const failureArrival = i ? trimmed(r.failureArrival ?? r.arrivalFailure,20,240) : undefined;
       if (!title || !scene || !character || !challenge || !reward ||
           (i > 0 && (!successArrival || !failureArrival)) ||
           characters.has(character.toLowerCase())) return null;
@@ -133,8 +136,9 @@ export function dailyStoryPrompt(day: string): { system: string; user: string } 
       "{title,scene,character,challenge,reward,icon,successArrival,failureArrival},",
       "{title,scene,character,challenge,reward,icon,successArrival,failureArrival}]}]}",
       "Each of the three stories must have precisely three room objects and all fields above.",
-      "Descriptions: intro 1-3 sentences, objective one short sentence, scene 2-3 sentences,",
-      "challenge a direct NPC request, arrivals one sentence each, very short titles and rewards."
+      "Keep JSON compact: no indentation, filler text or internal reasoning, and keep under 3200 output tokens.",
+      "Descriptions: intro 1-2 sentences, objective one short sentence, scene 1-2 vivid sentences,",
+      "challenge a direct NPC request, arrivals one short sentence each, very short titles and rewards."
     ].join(" "),
     user: JSON.stringify({
       utcDay:day,
@@ -156,7 +160,7 @@ export async function generateDailyStories(env: StoryEnv, day: string): Promise<
     const prompt=dailyStoryPrompt(day);
     const result=await env.AI.run("@cf/qwen/qwen3-30b-a3b-fp8",{
       messages:[{role:"system",content:prompt.system},{role:"user",content:prompt.user}],
-      max_tokens:4096, temperature:.86, top_p:.9
+      max_tokens:6144, temperature:.78, top_p:.9
     });
     const stories=parseDailyStories(modelText(result),day);
     if (!stories) throw new Error("The daily story model returned an incomplete or unsafe story set");
@@ -186,7 +190,8 @@ export async function cachedDailyStories(env: StoryEnv, day: string): Promise<[D
 
 export async function claimDailyStories(env: StoryEnv, now: Date, ctx?: { waitUntil(task: Promise<unknown>):void }): Promise<StorySet> {
   const classic=fallback(now);
-  if (env.DAILY_STORIES_ENABLED !== "true" || !env.DAILY_BUDGET_DB || !env.AI) return classic;
+  if (env.DAILY_STORIES_ENABLED !== "true") return fallback(now,"disabled");
+  if (!env.DAILY_BUDGET_DB || !env.AI) return fallback(now,"missing-bindings");
   const day=classic.day;
   try {
     const db=env.DAILY_BUDGET_DB;
@@ -194,9 +199,9 @@ export async function claimDailyStories(env: StoryEnv, now: Date, ctx?: { waitUn
     if (prior?.status === "ready") {
       const choices=parseDailyStories(prior.stories_json,day);
       if (choices) return {day,source:"generated",status:"ready",choices};
-      return classic;
+      return fallback(now,"invalid-cache");
     }
-    if (prior?.status === "failed") return classic;
+    if (prior?.status === "failed") return fallback(now,"generation-failed");
     if (prior?.status === "pending") return {...classic,status:"pending"};
     // D1 PRIMARY KEY ensures concurrent first visitors trigger just one model
     // call, even if the two requests land in different Cloudflare regions.
@@ -211,7 +216,7 @@ export async function claimDailyStories(env: StoryEnv, now: Date, ctx?: { waitUn
     return {...classic,status:"pending"};
   } catch (error) {
     console.error("Daily story cache unavailable",error instanceof Error ? error.message : "unknown");
-    return classic;
+    return fallback(now,"database-unavailable");
   }
 }
 
