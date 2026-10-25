@@ -1,9 +1,10 @@
 import { getDailyChoices, type Dungeon } from "../src/game.ts";
 
 /**
- * Exactly one shared AI call creates three complete micro-adventures per UTC
- * date. D1's primary key is the global generation lock; it is never one call
- * per player, per room, or per Cloudflare colo.
+ * One global D1 claim generates and caches three complete adventures daily.
+ * Each adventure gets its own short JSON-mode model call, for three bounded
+ * calls per UTC day rather than one oversized nine-room request.
+ * Not one call per player, room, or Cloudflare colo.
  */
 export type StorySet = {
   day: string;
@@ -42,67 +43,83 @@ const trimmed = (value: unknown, min: number, max: number): string | null => {
   return s;
 };
 
-/** Validate *all* three stories before publishing any of them as today's set. */
-export function parseDailyStories(raw: unknown, day: string): [Dungeon,Dungeon,Dungeon] | null {
-  if (!validDay(day)) return null;
-  let answer: unknown = raw;
-  if (typeof answer === "string") {
-    const cleaned = answer.replace(/<think>[\s\S]*?<\/think>/g,"").trim();
-    const first = cleaned.indexOf("{"), last = cleaned.lastIndexOf("}");
-    if (first < 0 || last <= first) return null;
-    try { answer = JSON.parse(cleaned.slice(first,last+1)); } catch { return null; }
-  }
-  if (!answer || typeof answer !== "object") return null;
-  const value = answer as { stories?: unknown };
-  if (!Array.isArray(value.stories) || value.stories.length !== 3) return null;
-  const stories: Dungeon[] = [];
-  const names = new Set<string>();
-  for (const [slot, entry] of value.stories.entries()) {
-    if (!entry || typeof entry !== "object") return null;
-    const story = entry as Record<string,unknown>;
-    const title = trimmed(story.title,4,65);
-    const subtitle = trimmed(story.subtitle,5,90);
-    const intro = trimmed(story.intro,35,440);
-    const objective = trimmed(story.objective,18,240);
-    if (!title || !subtitle || !intro || !objective || names.has(title.toLowerCase())) return null;
-    names.add(title.toLowerCase());
-    const items = story.startingInventory;
-    if (!Array.isArray(items) || items.length !== 3) return null;
-    const cleanItems = items.map(i=>trimmed(i,2,36));
-    if (cleanItems.some(i=>!i) || new Set(cleanItems.map(i=>i?.toLowerCase())).size !== 3) return null;
-    if (!Array.isArray(story.rooms) || story.rooms.length !== 3) return null;
-    const rooms: Dungeon["rooms"][number][] = [];
-    const characters = new Set<string>();
-    for (const [i, item] of story.rooms.entries()) {
-      if (!item || typeof item !== "object") return null;
-      const r = item as Record<string,unknown>;
-      const title = trimmed(r.title,4,65);
-      const scene = trimmed(r.scene,42,450);
-      const character = trimmed(r.character,3,75);
-      const challenge = trimmed(r.challenge,16,260);
-      const reward = trimmed(r.reward,2,45);
-      const successArrival = i ? trimmed(r.successArrival ?? r.arrivalSuccess,20,240) : undefined;
-      const failureArrival = i ? trimmed(r.failureArrival ?? r.arrivalFailure,20,240) : undefined;
-      if (!title || !scene || !character || !challenge || !reward ||
-          (i > 0 && (!successArrival || !failureArrival)) ||
-          characters.has(character.toLowerCase())) return null;
-      characters.add(character.toLowerCase());
-      const icon = typeof r.icon === "string" && /^[a-z-]{2,22}$/.test(r.icon) ? r.icon : "sparkles";
-      rooms.push({
-        title, scene, character, challenge, reward, icon,
-        subtitle: ["Room I · The Problem","Room II · The Complication","Room III · The Finale"][i],
-        difficulty: [10,12,14][i],
-        ...(i ? { arrivalSuccess:successArrival!, arrivalFailure:failureArrival! } : {})
-      });
-    }
-    stories.push({
-      slug:"daily-ai-"+day+"-"+slot,
-      edition:3,
-      title, subtitle, intro, objective,
-      startingInventory:cleanItems as string[],
-      rooms: rooms as unknown as Dungeon["rooms"]
+/** Structured output may be a direct object, a JSON string, or a wrapper
+ * around a single story. Never trust it as a gameplay or HTML instruction. */
+function decodedJson(raw: unknown): unknown {
+  if (typeof raw !== "string") return raw;
+  const cleaned = raw.replace(/<think>[\s\S]*?<\/think>/g,"").trim();
+  const begin = cleaned.indexOf("{"), end = cleaned.lastIndexOf("}");
+  if (begin < 0 || end <= begin) return null;
+  try { return JSON.parse(cleaned.slice(begin,end+1)); }
+  catch { return null; }
+}
+
+function parseStoryEntry(entry: unknown, day: string, slot: number): Dungeon | null {
+  if (!validDay(day) || !Number.isInteger(slot) || slot < 0 || slot > 2 ||
+      !entry || typeof entry !== "object") return null;
+  const story=entry as Record<string,unknown>;
+  const title=trimmed(story.title,4,65);
+  const subtitle=trimmed(story.subtitle,5,90);
+  const intro=trimmed(story.intro,35,440);
+  const objective=trimmed(story.objective,18,240);
+  if (!title || !subtitle || !intro || !objective) return null;
+  const items=story.startingInventory;
+  if (!Array.isArray(items) || items.length!==3) return null;
+  const inventory=items.map(i=>trimmed(i,2,36));
+  if(inventory.some(i=>!i) || new Set(inventory.map(i=>i?.toLowerCase())).size!==3) return null;
+  if(!Array.isArray(story.rooms) || story.rooms.length!==3) return null;
+  const rooms: Dungeon["rooms"][number][]=[];
+  const characters=new Set<string>();
+  for(const [i,item] of story.rooms.entries()){
+    if(!item || typeof item!=="object") return null;
+    const r=item as Record<string,unknown>;
+    const title=trimmed(r.title,4,65);
+    const scene=trimmed(r.scene,42,450);
+    const character=trimmed(r.character,3,75);
+    const challenge=trimmed(r.challenge,16,260);
+    const reward=trimmed(r.reward,2,45);
+    const success=i?trimmed(r.successArrival??r.arrivalSuccess,20,240):undefined;
+    const failure=i?trimmed(r.failureArrival??r.arrivalFailure,20,240):undefined;
+    if(!title || !scene || !character || !challenge || !reward ||
+       (i>0 && (!success || !failure)) || characters.has(character.toLowerCase()))return null;
+    characters.add(character.toLowerCase());
+    const icon=typeof r.icon==="string" && /^[a-z-]{2,22}$/.test(r.icon)?r.icon:"sparkles";
+    rooms.push({
+      title,scene,character,challenge,reward,icon,
+      subtitle:["Room I · The Problem","Room II · The Complication","Room III · The Finale"][i],
+      difficulty:[10,12,14][i],
+      ...(i?{arrivalSuccess:success!,arrivalFailure:failure!}:{})
     });
   }
+  return {
+    slug:"daily-ai-"+day+"-"+slot,edition:3,
+    title,subtitle,intro,objective,startingInventory:inventory as string[],
+    rooms:rooms as unknown as Dungeon["rooms"]
+  };
+}
+
+/** One compact model response per adventure; accepts {story}, {stories:[x]},
+ * and a direct story object. */
+export function parseDailyStory(raw: unknown, day: string, slot: number): Dungeon | null {
+  const value=decodedJson(raw);
+  if (!value || typeof value!=="object") return null;
+  const answer=value as { story?:unknown; stories?:unknown };
+  const entry=answer.story ??
+    (Array.isArray(answer.stories) && answer.stories.length===1 ? answer.stories[0] : value);
+  return parseStoryEntry(entry,day,slot);
+}
+
+/** Existing D1 story sets are validated independently of the model format.
+ * All three must be correct before the day's generated set can be published. */
+export function parseDailyStories(raw: unknown, day: string): [Dungeon,Dungeon,Dungeon] | null {
+  const answer=decodedJson(raw);
+  if(!answer || typeof answer!=="object")return null;
+  const value=answer as { stories?:unknown };
+  if(!Array.isArray(value.stories) || value.stories.length!==3)return null;
+  const stories=value.stories.map((entry,i)=>parseStoryEntry(entry,day,i));
+  if(stories.some(s=>!s))return null;
+  const titles=stories.map(s=>s!.title.toLowerCase());
+  if(new Set(titles).size!==3)return null;
   return stories as [Dungeon,Dungeon,Dungeon];
 }
 
@@ -113,39 +130,60 @@ const concepts = [
   "a mystical postal delivery mishap","an ancient library with ridiculous rules","a village that has lost something intangible",
   "a floating market run by animals","an apprentice sorcerer's accidental invention","a moonlit rescue mission"
 ];
-export function dailyStoryPrompt(day: string): { system: string; user: string } {
-  const index = Math.floor(Date.parse(day+"T12:00:00Z")/86400000);
-  const themes = [0, 5, 10].map((offset,i)=>concepts[((index*7+offset+i*3)%concepts.length+concepts.length)%concepts.length]);
+// A deliberately small schema: three rooms are generated separately, not
+// nine rooms with dozens of constraints in one huge completion.
+export const SINGLE_STORY_JSON_SCHEMA = {
+  type:"object",
+  properties:{
+    story:{
+      type:"object",
+      properties:{
+        title:{type:"string"},subtitle:{type:"string"},
+        intro:{type:"string"},objective:{type:"string"},
+        startingInventory:{type:"array",items:{type:"string"}},
+        rooms:{type:"array",items:{
+          type:"object",
+          properties:{
+            title:{type:"string"},scene:{type:"string"},
+            character:{type:"string"},challenge:{type:"string"},
+            reward:{type:"string"},icon:{type:"string"},
+            successArrival:{type:"string"},failureArrival:{type:"string"}
+          },
+          required:["title","scene","character","challenge","reward","icon"]
+        }}
+      },
+      required:["title","subtitle","intro","objective","startingInventory","rooms"]
+    }
+  },
+  required:["story"]
+} as const;
+
+export function dailyStoryPrompt(day: string, slot: 0|1|2 = 0): { system: string; user: string } {
+  const index=Math.floor(Date.parse(day+"T12:00:00Z")/86400000);
+  const theme=concepts[((index*7+slot*5+slot*3)%concepts.length+concepts.length)%concepts.length];
   return {
-    system: [
-      "You are the imaginative editor of Daily Dungeon, a funny PG-13 tabletop-inspired browser adventure.",
-      "Write EXACTLY THREE ORIGINAL, MUTUALLY DISTINCT tiny connected fantasy adventures for one shared daily release.",
-      "Each adventure is a single cohesive quest across EXACTLY THREE rooms, NOT three unrelated situations.",
-      "Every room offers a vivid physical scene, a memorable NPC with a funny personality, and a solvable obstacle",
-      "which encourages unlimited inventive approaches (conversation, tricks, dancing, objects). No mandatory combat.",
-      "The stakes and consequences escalate through room two to a satisfying third-room finale.",
-      "For room TWO: successArrival/failureArrival describe how the success or failure in ROOM ONE physically",
-      "changes the arrival at room two. For room THREE: these two branches refer to the outcome of ROOM TWO.",
-      "Both branches must remain solvable. Never award extra hearts or alter the rules.",
-      "Invent three unusual but useful single-use starting inventory objects for each quest.",
-      "Make the three adventures and nine rooms genuinely varied; avoid generic skeletons, cliché dragons and",
-      "repeated bridge tolls. Use a surprising central premise, recurring characters or props, and consequences.",
-      "Keep the tone whimsical, dry and charming. No graphic harm, sex, hate, copyrighted characters or brands.",
-      "Return ONLY strict JSON, no Markdown, no extra commentary.",
-      "Root is {\"stories\":[{title,subtitle,intro,objective,startingInventory:[3 strings],",
-      "rooms:[{title,scene,character,challenge,reward,icon},",
-      "{title,scene,character,challenge,reward,icon,successArrival,failureArrival},",
-      "{title,scene,character,challenge,reward,icon,successArrival,failureArrival}]}]}",
-      "Each of the three stories must have precisely three room objects and all fields above.",
-      "Keep JSON compact: no indentation, filler text or internal reasoning, and keep under 3200 output tokens.",
-      "Descriptions: intro 1-2 sentences, objective one short sentence, scene 1-2 vivid sentences,",
-      "challenge a direct NPC request, arrivals one short sentence each, very short titles and rewards."
+    system:[
+      "You create ONE original, fun, PG-13 fantasy micro-adventure for Daily Dungeon.",
+      "Exactly three linked rooms, one compelling mission and a satisfying conclusion.",
+      "Invent a unique setting, recurring mystery, vivid NPCs, and obstacles open to freeform player solutions.",
+      "The player can dance, negotiate, improvise, use items or attempt noncombat plans.",
+      "Keep stakes funny and meaningful, with an escalating complication in room 2 and finale in room 3.",
+      "Return JSON with exactly ONE 'story' object, NOT three stories.",
+      "Story needs title,subtitle,intro,objective, startingInventory (three distinct named items),",
+      "and rooms (EXACTLY THREE room objects).",
+      "Each room has title,scene,character,challenge,reward,icon.",
+      "Rooms 2 and 3 MUST also include successArrival and failureArrival.",
+      "Those describe how the previous room's success or failure physically changes the NEXT scene.",
+      "Keep each branch solvable and never decide the dice or add/remove health.",
+      "Use two or three lively sentences for scenes, one short sentence for arrivals.",
+      "Be creative, weird and witty. Use simple descriptive nouns instead of existing fictional franchises.",
+      "Keep fields concise but meaningful; return only well-formed JSON."
     ].join(" "),
-    user: JSON.stringify({
-      utcDay:day,
-      seedThemes:themes,
-      request:"Three completely new five-minute quests for all players today. Distinct worldbuilding and clever endings."
-    }) + "\n/no_think"
+    user:JSON.stringify({
+      utcDay:day,adventureNumber:slot+1,corePremise:theme,
+      avoid:"generic dragons, bridge tolls, wizard paperwork, repetitive medieval clichés",
+      request:"ONE complete, original 3-room adventure and its consequence branches."
+    })
   };
 }
 
@@ -156,34 +194,53 @@ function modelText(raw: unknown): unknown {
 }
 
 export async function generateDailyStories(env: StoryEnv, day: string): Promise<void> {
-  if (!env.DAILY_BUDGET_DB || !env.AI) return;
-  let failureStage: StorySet["failureStage"] = "model-call";
+  if(!env.DAILY_BUDGET_DB || !env.AI)return;
+  let failureStage:StorySet["failureStage"]="model-call";
   try {
-    const prompt=dailyStoryPrompt(day);
-    const result=await env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast",{
-      messages:[{role:"system",content:prompt.system},{role:"user",content:prompt.user}],
-      max_tokens:6144, temperature:.75, top_p:.9,
-      response_format:{type:"json_object"}
-    });
-    failureStage = "invalid-output";
-    const stories=parseDailyStories(modelText(result),day);
-    if (!stories) throw new Error("The daily story model returned an incomplete or unsafe story set");
-    failureStage = "database-write";
+    // Three small independent completions are much more robust than one
+    // oversized, frequently malformed nine-room JSON completion.
+    // The D1 daily claim still allows exactly one set-generation attempt.
+    const attempts=await Promise.allSettled(([0,1,2] as const).map(async slot=>{
+      const prompt=dailyStoryPrompt(day,slot);
+      const result=await env.AI!.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast",{
+        messages:[{role:"system",content:prompt.system},{role:"user",content:prompt.user}],
+        max_tokens:2600,temperature:.72,top_p:.9,
+        response_format:{type:"json_schema",json_schema:SINGLE_STORY_JSON_SCHEMA}
+      });
+      const story=parseDailyStory(modelText(result),day,slot);
+      if(!story)throw new Error("invalid-output");
+      return story;
+    }));
+    const invalid=attempts.some(outcome=>outcome.status==="rejected" &&
+      outcome.reason instanceof Error && outcome.reason.message==="invalid-output");
+    if(attempts.some(outcome=>outcome.status==="rejected")){
+      failureStage=invalid?"invalid-output":"model-call";
+      throw new Error("A daily adventure could not be validated");
+    }
+    const stories=attempts.map(outcome=>(outcome as PromiseFulfilledResult<Dungeon>).value);
+    if(new Set(stories.map(story=>story.title.toLowerCase())).size!==3){
+      failureStage="invalid-output";
+      throw new Error("Duplicate daily adventure titles");
+    }
+    // Validate the exact persisted schema before publishing the shared set.
+    if(!parseDailyStories({stories},day)){
+      failureStage="invalid-output";
+      throw new Error("Daily story set did not pass final validation");
+    }
+    failureStage="database-write";
     await env.DAILY_BUDGET_DB.prepare(
       "UPDATE daily_story_sets SET status = 'ready', stories_json = ?, updated_at = CURRENT_TIMESTAMP WHERE day = ? AND status = 'pending'"
     ).bind(JSON.stringify({stories}),day).first();
-  } catch (error) {
+  }catch(error){
     console.error("Daily story generation unavailable",{
       stage:failureStage,
-      detail:error instanceof Error ? error.message.slice(0,240) : "unknown"
+      detail:error instanceof Error?error.message.slice(0,240):"unknown"
     });
-    try {
-      // Store only an error *category*, never raw model output, tokens,
-      // user actions, prompts or stack traces in the public-facing cache.
+    try{
       await env.DAILY_BUDGET_DB.prepare(
         "UPDATE daily_story_sets SET status = 'failed', stories_json = ?, updated_at = CURRENT_TIMESTAMP WHERE day = ? AND status = 'pending'"
       ).bind(JSON.stringify({failureStage}),day).first();
-    } catch { /* Missing migration: the authored rotation remains available */ }
+    }catch{ /* Existing authored rotation remains playable. */ }
   }
 }
 
