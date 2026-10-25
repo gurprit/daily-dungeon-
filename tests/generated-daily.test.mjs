@@ -181,9 +181,10 @@ test("failed daily generation stores only a safe error stage, without leaking ra
   assert.equal(failed.source,"classic");
   assert.equal(failed.reason,"generation-failed");
   assert.equal(failed.failureStage,"invalid-output");
+  assert.equal(failed.failureSlot,0);
   assert.equal(JSON.stringify(failed).includes(badText),false);
   const saved=JSON.parse(fixture.rows.get(day).stories_json);
-  assert.deepEqual(saved,{failureStage:"invalid-output"});
+  assert.deepEqual(saved,{failureStage:"invalid-output",failureSlot:0});
 
   const different=fixtureDb();
   const unavailable={DAILY_STORIES_ENABLED:"true",DAILY_BUDGET_DB:different.db,
@@ -334,6 +335,8 @@ test("an invalid middle adventure rejects the entire daily set without publishin
   await claimDailyStories(env,now);
   assert.equal(calls,3);
   assert.equal(db.rows.get(day).status,"failed");
-  assert.equal((await claimDailyStories(env,now)).failureStage,"invalid-output");
+  const failed=await claimDailyStories(env,now);
+  assert.equal(failed.failureStage,"invalid-output");
+  assert.equal(failed.failureSlot,1);
   assert.equal(await cachedDailyStories(env,day),null);
 });
