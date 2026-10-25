@@ -15,6 +15,8 @@ export type StorySet = {
   failureStage?: "model-call" | "invalid-output" | "database-write";
   /** Zero-based adventure slot that failed, if one specific model call did. */
   failureSlot?: 0 | 1 | 2;
+  /** A fixed field identifier, never the original model text. */
+  failureField?: string;
   choices: readonly Dungeon[];
 };
 type DB = {
@@ -123,6 +125,34 @@ export function parseDailyStory(raw: unknown, day: string, slot: number): Dungeo
   return parseStoryEntry(entry,day,slot);
 }
 
+/** Report only a field name from the model response, never its contents.
+ * Used when the provider returns JSON that fails our stricter game checks. */
+export function storyValidationField(raw: unknown): string {
+  const value=decodedJson(raw);
+  if(!value || typeof value!=="object")return "json";
+  const obj=value as {story?:unknown;stories?:unknown};
+  const entry=obj.story??(Array.isArray(obj.stories)&&obj.stories.length===1?obj.stories[0]:value);
+  if(!entry || typeof entry!=="object")return "story";
+  const story=entry as Record<string,unknown>;
+  for(const [key,min,max] of [
+    ["title",4,65],["subtitle",5,90],["intro",35,440],["objective",18,240]
+  ] as const)if(!trimmed(story[key],min,max))return "story."+key;
+  if(!Array.isArray(story.startingInventory)||story.startingInventory.length!==3)return "story.startingInventory";
+  const items=story.startingInventory.map(item=>trimmed(item,2,36));
+  if(items.some(item=>!item)||new Set(items.map(item=>item?.toLowerCase())).size!==3)
+    return "story.startingInventory.items";
+  if(!Array.isArray(story.rooms)||story.rooms.length!==3)return "story.rooms";
+  for(const [i,rawRoom] of story.rooms.entries()){
+    if(!rawRoom || typeof rawRoom!=="object")return "room"+(i+1);
+    const room=rawRoom as Record<string,unknown>;
+    for(const [key,min,max] of [
+      ["title",4,65],["scene",42,450],["character",3,75],
+      ["challenge",16,260],["reward",2,45]
+    ] as const)if(!trimmed(room[key],min,max))return "room"+(i+1)+"."+key;
+  }
+  return "story.structure";
+}
+
 /** Existing D1 story sets are validated independently of the model format.
  * All three must be correct before the day's generated set can be published. */
 export function parseDailyStories(raw: unknown, day: string): [Dungeon,Dungeon,Dungeon] | null {
@@ -216,37 +246,54 @@ export async function generateDailyStories(env: StoryEnv, day: string): Promise<
   if(!env.DAILY_BUDGET_DB || !env.AI)return;
   let failureStage:StorySet["failureStage"]="model-call";
   let failureSlot:StorySet["failureSlot"];
+  let failureField:StorySet["failureField"];
   try {
-    // Three small independent completions are much more robust than one
-    // oversized, frequently malformed nine-room JSON completion.
-    // The D1 daily claim still allows exactly one set-generation attempt.
-    const attempts=await Promise.allSettled(([0,1,2] as const).map(async slot=>{
+    const generate=async(slot:0|1|2):Promise<Dungeon>=>{
       const prompt=dailyStoryPrompt(day,slot);
       const result=await env.AI!.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast",{
         messages:[{role:"system",content:prompt.system},{role:"user",content:prompt.user}],
         max_tokens:2600,temperature:.72,top_p:.9,
         response_format:{type:"json_schema",json_schema:SINGLE_STORY_JSON_SCHEMA}
       });
-      const story=parseDailyStory(modelText(result),day,slot);
-      if(!story)throw new Error("invalid-output");
+      const raw=modelText(result);
+      const story=parseDailyStory(raw,day,slot);
+      if(!story)throw new Error("invalid-output:"+storyValidationField(raw));
       return story;
-    }));
-    const failedIndex=attempts.findIndex(outcome=>outcome.status==="rejected");
-    if(failedIndex>=0)failureSlot=failedIndex as 0|1|2;
-    const invalid=attempts.some(outcome=>outcome.status==="rejected" &&
-      outcome.reason instanceof Error && outcome.reason.message==="invalid-output");
-    if(attempts.some(outcome=>outcome.status==="rejected")){
-      failureStage=invalid?"invalid-output":"model-call";
+    };
+    // First generate three short stories, simultaneously, under ONE D1 claim.
+    const attempts=await Promise.allSettled(([0,1,2] as const).map(generate));
+    const failed=attempts.map((v,i)=>v.status==="rejected"?i:-1).filter(i=>i>=0);
+    // Exactly one retry is allowed, and only if precisely one of the three
+    // outputs was malformed. Maximum four model calls for the entire UTC day.
+    if(failed.length===1){
+      const i=failed[0] as 0|1|2;
+      const reason=(attempts[i] as PromiseRejectedResult).reason;
+      if(reason instanceof Error && reason.message.startsWith("invalid-output:")){
+        try{
+          attempts[i]={status:"fulfilled",value:await generate(i)};
+        }catch(error){
+          attempts[i]={status:"rejected",reason:error};
+        }
+      }
+    }
+    const failedIndex=attempts.findIndex(v=>v.status==="rejected");
+    if(failedIndex>=0){
+      failureSlot=failedIndex as 0|1|2;
+      const reason=(attempts[failedIndex] as PromiseRejectedResult).reason;
+      const isMalformed=reason instanceof Error && reason.message.startsWith("invalid-output:");
+      failureStage=isMalformed?"invalid-output":"model-call";
+      if(isMalformed)failureField=reason.message.slice("invalid-output:".length, "invalid-output:".length+80);
       throw new Error("A daily adventure could not be validated");
     }
-    const stories=attempts.map(outcome=>(outcome as PromiseFulfilledResult<Dungeon>).value);
+    const stories=attempts.map(v=>(v as PromiseFulfilledResult<Dungeon>).value);
     if(new Set(stories.map(story=>story.title.toLowerCase())).size!==3){
       failureStage="invalid-output";
+      failureField="story.duplicate-title";
       throw new Error("Duplicate daily adventure titles");
     }
-    // Validate the exact persisted schema before publishing the shared set.
     if(!parseDailyStories({stories},day)){
       failureStage="invalid-output";
+      failureField="story.cache-validation";
       throw new Error("Daily story set did not pass final validation");
     }
     failureStage="database-write";
@@ -257,13 +304,18 @@ export async function generateDailyStories(env: StoryEnv, day: string): Promise<
     console.error("Daily story generation unavailable",{
       stage:failureStage,
       ...(failureSlot!==undefined?{slot:failureSlot}:{}),
+      ...(failureField?{field:failureField}:{}),
       detail:error instanceof Error?error.message.slice(0,240):"unknown"
     });
     try{
+      // Only structured diagnostic keys, not raw model text or prompts.
+      const failure={failureStage,
+        ...(failureSlot!==undefined?{failureSlot}:{}),
+        ...(failureField?{failureField}:{})};
       await env.DAILY_BUDGET_DB.prepare(
         "UPDATE daily_story_sets SET status = 'failed', stories_json = ?, updated_at = CURRENT_TIMESTAMP WHERE day = ? AND status = 'pending'"
-      ).bind(JSON.stringify({failureStage,...(failureSlot!==undefined?{failureSlot}:{})}),day).first();
-    }catch{ /* Existing authored rotation remains playable. */ }
+      ).bind(JSON.stringify(failure),day).first();
+    }catch{ /* Authored classics remain playable. */ }
   }
 }
 
@@ -294,14 +346,18 @@ export async function claimDailyStories(env: StoryEnv, now: Date, ctx?: { waitUn
     if (prior?.status === "failed") {
       let failureStage: StorySet["failureStage"];
       let failureSlot: StorySet["failureSlot"];
+      let failureField: StorySet["failureField"];
       try {
-        const record=typeof prior.stories_json==="string" ? JSON.parse(prior.stories_json) as {failureStage?: unknown; failureSlot?:unknown} : {};
+        const record=typeof prior.stories_json==="string" ? JSON.parse(prior.stories_json) as {failureStage?: unknown; failureSlot?:unknown; failureField?:unknown} : {};
         if (record.failureStage==="model-call" || record.failureStage==="invalid-output" ||
             record.failureStage==="database-write") failureStage=record.failureStage;
         if(record.failureSlot===0||record.failureSlot===1||record.failureSlot===2)failureSlot=record.failureSlot;
+        if(typeof record.failureField==="string" && /^(story|room[123]|json)([.][a-zA-Z-]+)?$/.test(record.failureField))
+          failureField=record.failureField;
       } catch { /* Older failed rows did not store a category. */ }
       return {...fallback(now,"generation-failed"),...(failureStage?{failureStage}:{}),
-        ...(failureSlot!==undefined?{failureSlot}:{})};
+        ...(failureSlot!==undefined?{failureSlot}:{}),
+        ...(failureField?{failureField}:{})};
     }
     if (prior?.status === "pending") return {...classic,status:"pending"};
     // D1 PRIMARY KEY ensures concurrent first visitors trigger just one model
