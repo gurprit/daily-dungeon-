@@ -77,8 +77,8 @@ export function parseDailyStories(raw: unknown, day: string): [Dungeon,Dungeon,D
       const character = trimmed(r.character,4,75);
       const challenge = trimmed(r.challenge,22,260);
       const reward = trimmed(r.reward,3,45);
-      const successArrival = i ? trimmed(r.successArrival,28,240) : undefined;
-      const failureArrival = i ? trimmed(r.failureArrival,28,240) : undefined;
+      const successArrival = i ? trimmed(r.successArrival ?? r.arrivalSuccess,28,240) : undefined;
+      const failureArrival = i ? trimmed(r.failureArrival ?? r.arrivalFailure,28,240) : undefined;
       if (!title || !scene || !character || !challenge || !reward ||
           (i > 0 && (!successArrival || !failureArrival)) ||
           characters.has(character.toLowerCase())) return null;
