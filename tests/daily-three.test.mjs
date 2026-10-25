@@ -107,8 +107,8 @@ test("the browser renders a daily roster and keeps its three saves separate", ()
   assert.match(app,/daily-choice-/);
   assert.match(app,/dailySlot=\{dailySlot\}/);
   assert.match(app,/previewFresh: freshIndex \+ 1/);
-  assert.match(art,/preview, dailySource, dailySlot, kind, roomIndex/);
-  assert.match(art,/\{ day, roomIndex, kind, variant, preview, dailySlot, dailySource \}/);
+  assert.match(art,/preview, dailySource, dailySlot, dungeonSlug, kind, roomIndex/);
+  assert.match(art,/\{ day, roomIndex, kind, variant, preview, dailySlot, dailySource, dungeonSlug \}/);
   assert.match(styles,/@media \(max-width: 690px\)/);
 });
 

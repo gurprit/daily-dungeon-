@@ -88,9 +88,9 @@ test("loading and permanent SVG fallback have distinct labels and a bounded canv
   const canvas = readFileSync(new URL("../src/NesSceneImage.tsx", import.meta.url), "utf8");
   const app = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
   const judge = readFileSync(new URL("../worker/judge.ts", import.meta.url), "utf8");
-  assert.match(image, /Artist unavailable/);
-  assert.match(image, /Taking too long/);
-  assert.match(image, /Painting this moment/);
+  assert.match(image, /Image service unavailable/);
+  assert.match(image, /Artwork delayed/);
+  assert.match(image, /Painting this adventure/);
   assert.match(image, /aria-live="polite"/);
   assert.match(canvas, /20_000/);
   assert.match(app, /YOUR EARLIER CHOICE CHANGED THIS ROOM/);
