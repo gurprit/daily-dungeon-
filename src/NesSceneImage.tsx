@@ -10,9 +10,13 @@ export default function NesSceneImage({ src, alt, onReady, onError, ready }: Pro
   useEffect(() => {
     let cancelled = false;
     const image = new Image();
+    // A cached image can still stall on a slow connection or decoding failure.
+    // After 20 seconds the SVG fallback becomes the final artwork for this view.
+    const timeout = window.setTimeout(() => { if (!cancelled) onError(); }, 20_000);
     image.decoding = "async";
     image.onload = () => {
       if (cancelled) return;
+      window.clearTimeout(timeout);
       try {
         const target = canvas.current;
         const ctx = target?.getContext("2d", { willReadFrequently: true });
@@ -29,12 +33,17 @@ export default function NesSceneImage({ src, alt, onReady, onError, ready }: Pro
         if (!cancelled) onError();
       }
     };
-    image.onerror = () => { if (!cancelled) onError(); };
+    image.onerror = () => { window.clearTimeout(timeout); if (!cancelled) onError(); };
     image.src = src;
-    return () => { cancelled = true; image.onload = null; image.onerror = null; };
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+      image.onload = null;
+      image.onerror = null;
+    };
   }, [src]);
   return <canvas ref={canvas} width={NES_WIDTH} height={NES_HEIGHT}
     role="img" aria-label={alt}
     className={"hybrid-art__image hybrid-art__nes " + (ready ? "hybrid-art__image--ready" : "")}
-    data-parallax-depth={0.12}/>;
+    data-parallax-depth={0.55} data-parallax-scale={1.10}/>;
 }

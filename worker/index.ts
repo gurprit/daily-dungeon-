@@ -1,4 +1,4 @@
-import { getDailyGame, getPreviewDailyGame, getFreshPreviewGame } from "../src/game.ts";
+import { getDailyGame, getDailyGameForSlot, getPreviewDailyGame, getFreshPreviewGame } from "../src/game.ts";
 import { freshPreviewIndex } from "../src/fresh-dungeons.ts";
 import { startingItems, itemCatalog, unavailableItems } from "../src/inventory.ts";
 import { resolveAction } from "../src/engine.ts";
@@ -8,8 +8,10 @@ import { priorStoryContext } from "./continuity.ts";
 import { storyRoom, storyGuidance, storyEnding } from "../src/story.ts";
 import { handleArtRoute, artServiceStatus, makeArtTicket, type ArtEnv } from "./art.ts";
 import { handleSharedArtRoute } from "./shared-art.ts";
+import { handleDailyStoriesRoute, claimDailyStories, cachedDailyStories, type StoryEnv } from "./daily-stories.ts";
 
-type Env = ArtEnv & {
+type Env = ArtEnv & StoryEnv & {
+  DAILY_STORIES_ENABLED?: string;
   AI_ENABLED?: string;
   AI_DAILY_LIMIT?: string;
   PREVIEW_TOMORROW_ENABLED?: string;
@@ -35,6 +37,8 @@ type ActionRequest = {
   previewTomorrow?: unknown;
   previewHollowmere?: unknown;
   previewFresh?: unknown;
+  dailySlot?: unknown;
+  dailySource?: unknown;
   priorTurns?: unknown;
 };
 
@@ -69,6 +73,8 @@ async function reserveDailyBudget(env: Env, day: string): Promise<boolean> {
 export default {
   async fetch(request: Request, env: Env, context?: { waitUntil: (task: Promise<unknown>) => void }): Promise<Response> {
     const url = new URL(request.url);
+    const dailyStoriesResponse = await handleDailyStoriesRoute(request, env, context);
+    if (dailyStoriesResponse) return dailyStoriesResponse;
     const sharedArtResponse = await handleSharedArtRoute(request, env, context);
     if (sharedArtResponse) return sharedArtResponse;
     const artResponse = await handleArtRoute(request, env, context);
@@ -113,6 +119,11 @@ export default {
       const isPreview = body.previewTomorrow === true;
       const isStoryPreview = body.previewHollowmere === true;
       const freshIndex = body.previewFresh === undefined ? null : freshPreviewIndex(body.previewFresh);
+      const dailySlot = body.dailySlot === undefined ? 0 : body.dailySlot;
+      if (dailySlot !== 0 && dailySlot !== 1 && dailySlot !== 2)
+        return json({ error: "Choose one of today's three adventures." }, 400);
+      if ((isPreview || isStoryPreview || freshIndex !== null) && dailySlot !== 0)
+        return json({ error: "Daily adventure choices are not available in preview mode." }, 400);
       if (body.previewFresh !== undefined && freshIndex === null) return json({ error: "Invalid fresh dungeon selection." }, 400);
       if ([isPreview, isStoryPreview, freshIndex !== null].filter(Boolean).length > 1)
         return json({ error: "Choose one preview mode." }, 400);
@@ -127,9 +138,18 @@ export default {
       if (isStoryPreview && env.PREVIEW_STORY_ENABLED !== "true") return json({ error: "Story playtest is disabled." }, 403);
       if (freshIndex !== null && env.PREVIEW_FRESH_ENABLED !== "true")
         return json({ error: "Fresh dungeon playtests are disabled." }, 403);
-      const daily = freshIndex !== null ? getFreshPreviewGame(freshIndex)
+      if (body.dailySource !== undefined && body.dailySource !== "generated" && body.dailySource !== "classic")
+        return json({error:"Invalid adventure source."},400);
+      if ((isPreview || isStoryPreview || freshIndex !== null) && body.dailySource === "generated")
+        return json({error:"Generated daily quests are not available in preview mode."},400);
+      let daily = freshIndex !== null ? getFreshPreviewGame(freshIndex)
         : isStoryPreview ? getDailyGame(new Date("2026-10-26T12:00:00Z"))
-        : isPreview ? getPreviewDailyGame() : getDailyGame();
+        : isPreview ? getPreviewDailyGame() : getDailyGameForSlot(dailySlot);
+      if (!isPreview && !isStoryPreview && freshIndex === null && body.dailySource === "generated") {
+        const stories = await cachedDailyStories(env,getDailyGame().day);
+        if (!stories) return json({error:"Today's new stories are not available. Try the classic quests."},409);
+        daily = {...daily,dungeon:stories[dailySlot]};
+      }
       if (body.day !== daily.day) return json({ error: "A new dungeon has begun. Refresh to continue." }, 409);
       if (!Number.isInteger(body.roomIndex) || Number(body.roomIndex) < 0 || Number(body.roomIndex) > 2) {
         return json({ error: "Invalid room." }, 400);
@@ -181,12 +201,17 @@ export default {
       }
       // The browser cannot submit arbitrary image prompts: only a successful
       // resolution creates a short-lived signed ticket for this exact moment.
-      const artTicket = await makeArtTicket(env, Number(body.roomIndex), body.action, outcome.narration, outcome.success, daily.day);
+      const artTicket = await makeArtTicket(env, Number(body.roomIndex), body.action, outcome.narration, outcome.success, daily.day, daily.dungeon.slug);
       if (artTicket) outcome.artTicket = artTicket;
       return json(outcome);
     }
 
     if (url.pathname.startsWith("/api/")) return json({ error: "Not found." }, 404);
     return env.ASSETS.fetch(request);
+  },
+  async scheduled(_event: unknown, env: Env, context: {waitUntil(task:Promise<unknown>):void}) {
+    // Cloudflare Cron pre-warms the same unique, D1-locked set the GET route
+    // uses. GET remains safe if cron delivery is delayed or skipped.
+    await claimDailyStories(env,new Date(),context);
   }
 };

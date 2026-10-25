@@ -1,4 +1,5 @@
 import type { Dungeon, Room } from "./game";
+import { applyRoomConsequence } from "./room-consequences.ts";
 
 /**
  * A miniature authored adventure: code owns the truth and consequences; the
@@ -83,7 +84,13 @@ export function storyClues(dungeonSlug: string, beats: readonly StoryBeat[]): St
 
 export function storyRoom(dungeon: Dungeon, roomIndex: number, beats: readonly StoryBeat[]): Room {
   const room = dungeon.rooms[Math.min(2, Math.max(0, roomIndex))];
-  if (dungeon.slug !== HOLLOWMERE_DUNGEON.slug || roomIndex === 0) return room;
+  if (dungeon.slug.startsWith("daily-ai-")) {
+    if (roomIndex === 0 || beats.length < roomIndex) return room;
+    const arrival = beats[roomIndex-1]?.success ? room.arrivalSuccess : room.arrivalFailure;
+    return arrival ? { ...room, arrival, echo:"Your previous decision has changed the situation." } : room;
+  }
+  if (dungeon.slug !== HOLLOWMERE_DUNGEON.slug) return applyRoomConsequence(dungeon, roomIndex, beats, room);
+  if (roomIndex === 0) return room;
   if (roomIndex === 1) {
     return {
       ...room,

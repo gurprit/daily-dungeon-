@@ -38,7 +38,7 @@ test("rendering style is shared and uses a new cache version", async () => {
   assert.match(createSharedArtPrompt(game.dungeon, { day, roomIndex: 0, kind:"room", preview:"hollowmere" }), /LEFT THIRD/);
   assert.match(createPixelArtPrompt({ id:"test", day, roomIndex:0, issuedAt:Date.now(), action:"I dance", narration:"The goblin smiles", success:true }), /small readable pixel sprites/);
   const source = readFileSync(new URL("../worker/shared-art.ts", import.meta.url), "utf8");
-  assert.match(source, /v4-nes8/);
+  assert.match(source, /v5-nes8/);
 });
 
 test("generated art emits flames ONLY in scenes with torches", () => {

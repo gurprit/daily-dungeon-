@@ -1,13 +1,17 @@
-import { getDailyGame, getPreviewDailyGame, getFreshPreviewGame, type Dungeon } from "../src/game.ts";
+import { getDailyGame, getDailyGameForSlot, getPreviewDailyGame, getFreshPreviewGame, type Dungeon } from "../src/game.ts";
 import { freshPreviewIndex, type FreshPreviewMode } from "../src/fresh-dungeons.ts";
 import { ILLUSTRATION_STYLE, artEnabled, inferIllustration, type ArtEnv } from "./art.ts";
 import { generatedFxLayout } from "../src/image-fx-layout.ts";
+import { cachedDailyStories } from "./daily-stories.ts";
 
 /** Fixed pictures shared by every player. User actions remain separately illustrated. */
 export type SharedArtKind = "room" | "clue" | "ending";
 export type SharedArtRequest = {
   day: string;
   roomIndex: number;
+  dailySlot?: 0 | 1 | 2;
+  dailySource?: "generated" | "classic";
+  dungeonSlug?: string;
   kind: SharedArtKind;
   variant?: string;
   preview?: "today" | "tomorrow" | "hollowmere" | FreshPreviewMode;
@@ -48,14 +52,22 @@ export function validateSharedArt(value: unknown, env: SharedEnv, now: Date = ne
   if (!Number.isInteger(body.roomIndex) || body.roomIndex! < 0 || body.roomIndex! > 2) return null;
   if (body.kind !== "room" && body.kind !== "clue" && body.kind !== "ending") return null;
   const freshIndex = freshPreviewIndex(body.preview);
+  const dailySlot = body.dailySlot === undefined ? 0 : body.dailySlot;
+  // Synchronous validation is for the authored rotation; the generated
+  // story is loaded and validated asynchronously in the request handler.
+  if (body.dailySource !== undefined && body.dailySource !== "classic") return null;
+  if (dailySlot !== 0 && dailySlot !== 1 && dailySlot !== 2) return null;
+  if (body.dungeonSlug !== undefined && (typeof body.dungeonSlug !== "string" || body.dungeonSlug.length > 90)) return null;
+  if (body.preview !== "today" && dailySlot !== 0) return null;
   const daily = freshIndex !== null
     ? env.PREVIEW_FRESH_ENABLED === "true" ? getFreshPreviewGame(freshIndex) : null
     : body.preview === "hollowmere"
       ? env.PREVIEW_STORY_ENABLED === "true" ? getDailyGame(new Date("2026-10-26T12:00:00Z")) : null
       : body.preview === "tomorrow"
         ? env.PREVIEW_TOMORROW_ENABLED === "true" ? getPreviewDailyGame(now) : null
-        : getDailyGame(now);
+        : getDailyGameForSlot(dailySlot, now);
   if (!daily || daily.day !== body.day) return null;
+  if (body.dungeonSlug !== undefined && body.dungeonSlug !== daily.dungeon.slug) return null;
   if (body.kind === "room" && body.variant !== undefined && body.variant !== "") return null;
   if (body.kind === "clue") {
     if (daily.dungeon.slug !== "bell-of-hollowmere" ||
@@ -73,11 +85,15 @@ export function validateSharedArt(value: unknown, env: SharedEnv, now: Date = ne
 
 export function createSharedArtPrompt(dungeon: Dungeon, data: SharedArtRequest): string {
   const room = dungeon.rooms[data.roomIndex];
-  const setting = ILLUSTRATION_STYLE + " Setting: " + dungeon.title + ". " + dungeon.intro + ". " +
+  const setting = ILLUSTRATION_STYLE + " THIS PICTURE MUST SHOW THE REAL QUEST, NOT A STOCK FANTASY SET. " +
+    "Do not include a castle, goblin bridge, wizard or torch unless the room actually has one. " +
+    "Story: " + dungeon.title + ". Mission: " + (dungeon.objective ?? dungeon.subtitle) +
+    ". Setting: " + dungeon.intro + ". " +
     generatedFxLayout({ kind: data.kind, dungeonSlug: dungeon.slug, roomIndex: data.roomIndex, endingId: data.variant, clueId: data.variant }).caption + " ";
   if (data.kind === "room") return (
     setting + " Establishing scene BEFORE the player acts. Simple 8-bit tile background, one memorable focal sprite, no spoilers. " +
-    "Room: " + room.title + ". " + room.scene + " Character: " + room.character
+    "Room: " + room.title + ". " + room.scene + " Character: " + room.character +
+    ". Encounter: " + room.challenge
   ).slice(0, 3100);
   if (data.kind === "clue") return (
     setting + " Pixel sprite discovery close-up, ONE large readable object or face, plain background. " +
@@ -91,7 +107,10 @@ export function createSharedArtPrompt(dungeon: Dungeon, data: SharedArtRequest):
 
 /* First 128 bits of SHA256, with UUIDv4 version bits, form a stable job ID. */
 export async function sharedArtId(data: SharedArtRequest): Promise<string> {
-  const key = "v4-nes8/" + data.day + "/" + data.kind + "/" + data.roomIndex + "/" + (data.variant ?? "");
+  // Stable model-art identity includes the exact story, not merely a room
+  // number. v5 also avoids reusing previous v4 failed D1/R2 jobs.
+  const key = ["v5-nes8",data.day,data.preview ?? "today",data.dailySource ?? "classic",
+    data.dailySlot ?? 0,data.dungeonSlug ?? "legacy",data.kind,data.roomIndex,data.variant ?? ""].join("/");
   const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key)));
   const bytes = hash.slice(0, 16);
   bytes[6] = (bytes[6] & 15) | 64;
@@ -113,7 +132,23 @@ export async function handleSharedArtRoute(
     if (raw.length > 900) return json({ error: "Request too large." }, 413);
     body = JSON.parse(raw);
   } catch { return json({ error: "Invalid request." }, 400); }
-  const valid = validateSharedArt(body, env);
+  let valid = validateSharedArt(body, env);
+  const dailyRequest = body && typeof body === "object" ? body as Partial<SharedArtRequest> : null;
+  if (!valid && dailyRequest?.dailySource === "generated" && dailyRequest.preview === "today" &&
+      Number.isInteger(dailyRequest.dailySlot) && [0,1,2].includes(dailyRequest.dailySlot!) &&
+      dailyRequest.day === getDailyGame().day &&
+      Number.isInteger(dailyRequest.roomIndex) && dailyRequest.roomIndex! >= 0 && dailyRequest.roomIndex! <= 2 &&
+      (dailyRequest.kind === "room" || dailyRequest.kind === "ending") &&
+      (dailyRequest.kind !== "room" || !dailyRequest.variant) &&
+      (dailyRequest.kind !== "ending" || (dailyRequest.roomIndex === 2 &&
+        (dailyRequest.variant === "victory" || dailyRequest.variant === "defeat")))) {
+    const stories = await cachedDailyStories(env, dailyRequest.day);
+    if (stories) {
+      const dungeon=stories[dailyRequest.dailySlot!];
+      if (!dailyRequest.dungeonSlug || dailyRequest.dungeonSlug===dungeon.slug)
+        valid={request:dailyRequest as SharedArtRequest,dungeon};
+    }
+  }
   if (!valid) return json({ error: "Unknown illustration." }, 400);
 
   if (env.ACTION_LIMITER) {
@@ -123,7 +158,7 @@ export async function handleSharedArtRoute(
   }
   const db = env.DAILY_BUDGET_DB!;
   const { request: scene, dungeon } = valid;
-  const id = await sharedArtId(scene);
+  const id = await sharedArtId({...scene,dungeonSlug:dungeon.slug});
   // D1 PRIMARY KEY makes a single job for all visitors, even concurrently.
   const inserted = await db.prepare(
     "INSERT OR IGNORE INTO art_jobs (id, day, room_index, status) VALUES (?, ?, ?, 'pending') RETURNING id"
@@ -158,7 +193,7 @@ export async function handleSharedArtRoute(
   const job = (async () => {
     try {
       const image = await inferIllustration(env, createSharedArtPrompt(dungeon, scene));
-      const key = "shared/v3/" + scene.day + "/" + id + ".png";
+      const key = "shared/v5/" + scene.day + "/" + id + ".png";
       await env.ART_BUCKET!.put(key, image, { httpMetadata: { contentType: "image/png" } });
       await db.prepare("UPDATE art_jobs SET status = ?, object_key = ? WHERE id = ?")
         .bind("ready", key, id).first();

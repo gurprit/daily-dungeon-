@@ -1,5 +1,6 @@
 import { useId } from "react";
 import PixelScene from "./PixelScene";
+import { useScrollParallax } from "./useScrollParallax";
 import ClueSketch from "./ClueSketch";
 import ProceduralEffects from "./ProceduralEffects";
 import ParticleCanvas from "./ParticleCanvas";
@@ -238,11 +239,17 @@ export default function ProceduralIllustration(input: Props) {
   const recipe = makeVisualRecipe(input);
   const fresh = dungeonSlug === "lighthouse-lost-dawn" || dungeonSlug === "clockwork-orchard" || dungeonSlug === "dragon-bakery";
   const id = useId().replace(/:/g, "");
+  // Fresh scenes control their own multi-depth SVG subgroups. Older rooms get
+  // two independently moving planes rather than a static pixel backdrop.
+  const parallaxRef = useScrollParallax<HTMLDivElement>(!fresh && kind !== "clue");
   const classes = ["procedural-art", "procedural-art--" + kind, className].filter(Boolean).join(" ");
-  return <div className={classes} role="img" aria-label={label ?? "Procedural fantasy illustration"}>
+  return <div ref={parallaxRef} className={classes} role="img" aria-label={label ?? "Procedural fantasy illustration"}>
     {kind === "clue" ? <ClueSketch variant={clueId ?? "inscription"}/> :
-      <PixelScene dungeonSlug={dungeonSlug} roomIndex={roomIndex} className="procedural-art__background"/>}
-    <svg className="procedural-art__foreground" viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
+      <PixelScene dungeonSlug={dungeonSlug} roomIndex={roomIndex}
+          storyTitle={input.storyTitle} roomTitle={input.roomTitle} sceneText={input.sceneText}
+          className="procedural-art__background" parallaxDepth={!fresh ? 0.4 : undefined}/>}
+    <svg className="procedural-art__foreground" data-parallax-depth={!fresh && kind !== "clue" ? 0.95 : undefined}
+      viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
       aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <radialGradient id={"glow"+id}><stop offset="0%" stopColor={recipe.accent} stopOpacity=".35"/>

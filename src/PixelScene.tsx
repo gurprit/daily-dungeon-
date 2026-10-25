@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import FreshPixelScene from "./FreshPixelScene";
+import GeneratedPixelScene from "./GeneratedPixelScene";
 
 /**
  * Always-on, hand-authored 16-bit scenes: zero inference charges, no remote image
@@ -8,7 +9,11 @@ import FreshPixelScene from "./FreshPixelScene";
 type PixelSceneProps = {
   dungeonSlug: string;
   roomIndex?: number;
+  storyTitle?: string;
+  roomTitle?: string;
+  sceneText?: string;
   className?: string;
+  parallaxDepth?: number;
 };
 type Palette = {
   sky: string;
@@ -541,7 +546,14 @@ function RoomOverlay({ slug, roomIndex }: { slug: string; roomIndex: number }) {
   return roomIndex === 1 ? <Cheese x={124} y={120}/> : <King x={125} y={105}/>;
 }
 
-export default function PixelScene({ dungeonSlug, roomIndex = 0, className }: PixelSceneProps) {
+export default function PixelScene({ dungeonSlug, roomIndex = 0, storyTitle, roomTitle, sceneText, className, parallaxDepth }: PixelSceneProps) {
+  // Fresh AI stories must never inherit the goblin bridge from the old
+  // hard-coded authored palette fallback.
+  if (dungeonSlug.startsWith("daily-ai-")) {
+    return <GeneratedPixelScene dungeonSlug={dungeonSlug} roomIndex={roomIndex}
+      storyTitle={storyTitle} roomTitle={roomTitle} sceneText={sceneText}
+      className={className} parallaxDepth={parallaxDepth}/>;
+  }
   if (dungeonSlug === "lighthouse-lost-dawn" || dungeonSlug === "clockwork-orchard" || dungeonSlug === "dragon-bakery") {
     return <FreshPixelScene dungeonSlug={dungeonSlug} roomIndex={roomIndex} className={className}/>;
   }
@@ -555,7 +567,9 @@ export default function PixelScene({ dungeonSlug, roomIndex = 0, className }: Pi
     "skywhale-express": <SkywhaleDeck p={p}/>,
     "bell-of-hollowmere": <HollowmereTower p={p}/>
   };
-  return <svg className={className} viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
+  return <svg className={className} data-parallax-depth={parallaxDepth}
+    data-parallax-scale={parallaxDepth ? 1.16 : undefined}
+    viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
     xmlns="http://www.w3.org/2000/svg" role="img" aria-label={"16-bit fantasy pixel art from today's dungeon"}
     shapeRendering="crispEdges">
     <rect width="320" height="220" fill={p.sky}/>

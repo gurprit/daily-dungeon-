@@ -16,13 +16,13 @@ test("scroll progress is centred and bounded for mobile viewports", () => {
   assert.equal(sceneScrollProgress(100,200,0),0);
 });
 
-test("background moves less than character layer and no group ever shifts over twelve SVG pixels", () => {
+test("background moves less than character layer and no group ever shifts over seventy-two virtual units", () => {
   assert.equal(sceneLayerShift(0,.8),0);
   assert.ok(sceneLayerShift(1,.08)<sceneLayerShift(1,.47));
   assert.ok(sceneLayerShift(1,.47)<sceneLayerShift(1,.82));
-  assert.equal(sceneLayerShift(99,1),12);
-  assert.equal(sceneLayerShift(-99,1),-12);
-  assert.equal(sceneLayerShift(1,99),12);
+  assert.equal(sceneLayerShift(99,1),72);
+  assert.equal(sceneLayerShift(-99,1),-72);
+  assert.equal(sceneLayerShift(1,99),72);
   assert.equal(sceneLayerShift(1,-1),0);
   assert.equal(sceneLayerShift(Infinity,.5),0);
 });
@@ -64,9 +64,80 @@ test("hybrid generated images and their particles have smaller, separate scroll 
   const image = read("src/NesSceneImage.tsx");
   const particle = read("src/ParticleCanvas.tsx");
   assert.match(scene,/useScrollParallax<HTMLDivElement>/);
-  assert.match(scene,/isFresh && showGenerated && ready/);
-  assert.match(scene,/data-parallax-depth=\{0\.22\}/);
-  assert.match(image,/data-parallax-depth=\{0\.12\}/);
-  assert.match(particle,/data-parallax-depth=\{imageMode \? 0\.3/);
+  assert.match(scene,/showGenerated && ready/);
+  assert.match(scene,/data-parallax-depth=\{0\.62\}/);
+  assert.match(image,/data-parallax-depth=\{0\.55\}/);
+  assert.match(particle,/data-parallax-depth=\{imageMode \? 1/);
   assert.match(scene,/ProceduralIllustration/);
+});
+
+
+test("a normal mobile scroll produces perceptible movement, not subpixel motion", () => {
+  // A 220px tall illustration in an 800px viewport travels up by 240px.
+  const atTop = sceneScrollProgress(430, 220, 800);
+  const atBottom = sceneScrollProgress(190, 220, 800);
+  const backgroundTravel = sceneLayerShift(atBottom, .2) - sceneLayerShift(atTop, .2);
+  const foregroundTravel = sceneLayerShift(atBottom, .95) - sceneLayerShift(atTop, .95);
+  assert.ok(Math.abs(foregroundTravel) >= 40, "foreground must clearly move on a normal phone swipe");
+  assert.ok(Math.abs(foregroundTravel - backgroundTravel) >= 25, "foreground and background must clearly separate");
+});
+
+test("parallax works for all generated dungeons and legacy SVG scenes", () => {
+  const scene = read("src/IllustratedScene.tsx");
+  const procedural = read("src/ProceduralIllustration.tsx");
+  const fallback = read("src/PixelScene.tsx");
+  const hook = read("src/useScrollParallax.ts");
+  assert.doesNotMatch(scene, /isFresh && showGenerated/);
+  assert.match(procedural, /parallaxDepth=\{!fresh/);
+  assert.match(fallback, /data-parallax-depth=\{parallaxDepth\}/);
+  assert.match(hook, /window\.visualViewport/);
+  assert.match(hook, /touchmove/);
+  assert.match(hook, /localName\.toLowerCase\(\) === "g"/);
+  assert.match(hook, /node\.style\.transform/);
+  assert.match(hook, /window\.requestAnimationFrame/);
+});
+
+
+test("gentle horizontal camera pan keeps controlled depth over one swipe", () => {
+  const first = sceneScrollProgress(425,220,800);
+  const second = sceneScrollProgress(265,220,800);
+  assert.ok(Math.abs(sceneLayerShift(second,.55) - sceneLayerShift(first,.55)) >= 19,
+    "a normal 160px finger scroll should move the generated image perceptibly but gently");
+  assert.equal(sceneLayerShift(1,1),72);
+  const canvas = read("src/NesSceneImage.tsx");
+  const hook = read("src/useScrollParallax.ts");
+  const css = read("src/styles.scss");
+  assert.match(canvas,/data-parallax-scale=\{1\.10\}/);
+  assert.match(css,/transform: scale\(1\.10\)/);
+  assert.match(hook,/rect\.width \* \.07/);
+  assert.match(hook,/layer\.zoom/);
+  assert.match(hook,/Math\.max\(-22/);
+  assert.match(hook,/window\.visualViewport/);
+});
+
+
+test("scroll-driven transforms are horizontal only for generated and procedural art", () => {
+  const hook = read("src/useScrollParallax.ts");
+  const pixel = read("src/PixelScene.tsx");
+  assert.match(hook, /translate\(" \+ shift \+ " 0\)/,
+    "SVG groups must translate along X only");
+  assert.match(hook, /translate3d\(" \+ shift\.toFixed\(2\) \+ "px,0,0\)/,
+    "root SVGs and generated canvases must translate along X only");
+  assert.doesNotMatch(hook, /"translate\(0 " \+ shift/,
+    "no scroll-linked vertical transform on SVG groups");
+  assert.doesNotMatch(hook, /"translate3d\(0," \+ shift/,
+    "no scroll-linked vertical transform on images and particles");
+  assert.match(hook, /sceneLayerShift\(progress, layer\.depth\) \* 0\.5/);
+  assert.match(pixel, /data-parallax-scale=\{parallaxDepth \? 1\.16/);
+  assert.match(hook, /rect\.width \* \.07/,
+    "horizontal image pan must be bounded by width and safe overscan");
+});
+
+test("side-to-side parallax keeps far and near layers visibly separated", () => {
+  const up = sceneScrollProgress(430, 220, 800);
+  const down = sceneScrollProgress(190, 220, 800);
+  const drift = depth => Math.min(22, Math.max(-22, sceneLayerShift(down, depth) * .5)) -
+    Math.min(22, Math.max(-22, sceneLayerShift(up, depth) * .5));
+  assert.ok(drift(.82) > drift(.08) + 6, "hero drifts farther sideways than background");
+  assert.ok(drift(.82) <= 44, "total pan stays within 22 viewBox units each way");
 });

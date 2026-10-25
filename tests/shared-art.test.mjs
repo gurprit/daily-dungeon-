@@ -133,3 +133,20 @@ test("disabled art cannot start a job and does not spend the image budget", asyn
   assert.equal(result.status, 503);
   assert.deepEqual(mock.counts(), { reservations: 0, generations: 0 });
 });
+
+
+test("new story slugs separate images, and a forged slug cannot steal another adventure's art", async()=>{
+  const {env}=envMock();
+  const day=getDailyGame().day;
+  const valid=validateSharedArt({day,preview:"today",dailySlot:0,roomIndex:0,kind:"room"},env);
+  assert.ok(valid);
+  assert.ok(validateSharedArt({day,preview:"today",dailySlot:0,roomIndex:0,kind:"room",dungeonSlug:valid.dungeon.slug},env));
+  assert.equal(validateSharedArt({day,preview:"today",dailySlot:0,roomIndex:0,kind:"room",dungeonSlug:"daily-ai-9999-01-01-1"},env),null);
+  const base={day,preview:"today",dailySource:"generated",dailySlot:0,roomIndex:0,kind:"room"};
+  assert.notEqual(await sharedArtId({...base,dungeonSlug:"daily-ai-"+day+"-0"}),
+    await sharedArtId({...base,dungeonSlug:"daily-ai-"+day+"-1"}));
+  assert.notEqual(await sharedArtId({...base,dungeonSlug:"daily-ai-"+day+"-0"}),
+    await sharedArtId({...base,roomIndex:1,dungeonSlug:"daily-ai-"+day+"-0"}));
+  assert.notEqual(await sharedArtId({...base,dungeonSlug:"daily-ai-"+day+"-0"}),
+    await sharedArtId({...base,dailySource:"classic",dungeonSlug:"daily-ai-"+day+"-0"}));
+});

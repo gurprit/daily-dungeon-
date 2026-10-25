@@ -97,5 +97,5 @@ export default function ParticleCanvas({ input, recipe, imageMode = false }: Pro
     };
   }, [theme, action, kind, success, seed, input.dungeonSlug, input.roomIndex, input.narration, input.clueId, input.endingId, imageMode]);
 
-  return <canvas ref={canvasRef} className="procedural-art__particles" data-parallax-depth={imageMode ? 0.3 : undefined} aria-hidden="true"/>;
+  return <canvas ref={canvasRef} className="procedural-art__particles" data-parallax-depth={imageMode ? 1 : undefined} aria-hidden="true"/>;
 }

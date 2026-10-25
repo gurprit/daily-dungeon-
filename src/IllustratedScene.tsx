@@ -7,7 +7,7 @@ import ParticleCanvas from "./ParticleCanvas";
 import { makeVisualRecipe, type VisualInput } from "./illustration-recipe";
 
 export type ArtPreview = "today" | "tomorrow" | "hollowmere" | "fresh-1" | "fresh-2" | "fresh-3";
-type ArtJob = { id?: string; status?: "pending" | "ready" | "failed"; url?: string };
+type ArtJob = { id?: string; status?: "pending" | "ready" | "failed" | "timed-out"; url?: string };
 type Props = VisualInput & {
   day: string;
   preview: ArtPreview;
@@ -15,11 +15,13 @@ type Props = VisualInput & {
   alt: string;
   variant?: string;
   ticket?: string;
+  dailySlot?: 0 | 1 | 2;
+  dailySource?: "classic" | "generated";
   className?: string;
 };
 
 const readyImages = new Map<string, string>();
-const ART_STYLE = "nes8-v4";
+const ART_STYLE = "nes8-v5";
 /**
  * An illustrated scene: model artwork in the background, animated SVG + JS
  * particles in the foreground. The old procedural image appears immediately
@@ -32,10 +34,10 @@ const ART_STYLE = "nes8-v4";
 export default function IllustratedScene(props: Props) {
   const {
     kind, dungeonSlug, roomIndex, day, preview, enabled, alt, variant,
-    ticket, className = ""
+    ticket, dailySlot = 0, dailySource = "classic", className = ""
   } = props;
   const key = kind === "action" ? (ticket ? ART_STYLE + ":action:" + ticket : "") :
-    [ART_STYLE, day, preview, kind, roomIndex, variant ?? ""].join("|");
+    [ART_STYLE, day, preview, dailySource, dailySlot, dungeonSlug, kind, roomIndex, variant ?? ""].join("|");
   const [result, setResult] = useState<ArtJob>(() => ({
     status: "pending", url: key ? readyImages.get(key) : undefined
   }));
@@ -60,7 +62,7 @@ export default function IllustratedScene(props: Props) {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(shared
-            ? { day, roomIndex, kind, variant, preview }
+            ? { day, roomIndex, kind, variant, preview, dailySlot, dailySource, dungeonSlug }
             : { token: ticket })
         });
         if (!response.ok) throw new Error("Artwork unavailable");
@@ -87,7 +89,7 @@ export default function IllustratedScene(props: Props) {
           }
           if (job.status === "failed") throw new Error("Artwork unavailable");
         }
-        if (alive) setResult({ status: "failed" });
+        if (alive) setResult({ status: "timed-out" });
       } catch {
         if (alive) setResult({ status: "failed" });
       }
@@ -95,14 +97,12 @@ export default function IllustratedScene(props: Props) {
     // A cached image needs no other API call.
     if (!cache) void run();
     return () => { alive = false; };
-  }, [key, enabled, day, roomIndex, kind, variant, preview, ticket]);
+  }, [key, enabled, day, roomIndex, kind, variant, preview, ticket, dailySlot, dailySource]);
 
   const showGenerated = enabled && !!result.url && !broken;
-  const isFresh = dungeonSlug === "lighthouse-lost-dawn" ||
-    dungeonSlug === "clockwork-orchard" || dungeonSlug === "dragon-bakery";
-  // Generated images are flattened, so they get only gentle plane separation.
-  // The deep, true multi-layer parallax happens in the SVG loading/backup art.
-  const parallaxRef = useScrollParallax<HTMLDivElement>(isFresh && showGenerated && ready);
+  // All generated artwork scrolls, not just the three fresh test dungeons.
+  // Fresh SVG fallbacks retain their independent multi-plane scroll animation.
+  const parallaxRef = useScrollParallax<HTMLDivElement>(showGenerated && ready);
   const visualClass = "hybrid-art " + className;
   return <div className={visualClass} ref={parallaxRef}>
     {(!showGenerated || !ready) && <ProceduralIllustration {...props} label={alt}/>}
@@ -110,14 +110,24 @@ export default function IllustratedScene(props: Props) {
       <NesSceneImage src={result.url!} alt={alt} ready={ready}
         onReady={() => setReady(true)} onError={() => setBroken(true)}/>
       {ready && <>
-        <svg className="hybrid-art__svgfx" data-parallax-depth={0.22} viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
+        <svg className="hybrid-art__svgfx" data-parallax-depth={0.62} viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
           aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
           <GeneratedEffects input={props} recipe={recipe}/>
         </svg>
         <ParticleCanvas input={props} recipe={recipe} imageMode/>
       </>}
     </>}
-    {!showGenerated && enabled && !!key && result.status === "pending" &&
-      <span className="hybrid-art__painting" role="status">Painting this moment…</span>}
+    {!showGenerated && enabled && !!key && (
+      result.status === "pending" || result.status === "failed" ||
+      result.status === "timed-out" || broken
+    ) && <span className={"hybrid-art__painting " +
+      (result.status === "pending" && !broken ? "" : "hybrid-art__painting--fallback")}
+      role="status" aria-live="polite">
+      {broken || result.status === "failed"
+        ? "Image service unavailable · story sketch shown"
+        : result.status === "timed-out"
+          ? "Artwork delayed · story sketch shown"
+          : "Painting this adventure…"}
+    </span>}
   </div>;
 }

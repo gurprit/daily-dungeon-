@@ -131,3 +131,113 @@ Implementation:
 The artwork remains clickable only where the existing game UI is clickable;
 parallax layers do not intercept player inputs. No new libraries, paid effects,
 image inference calls or Worker endpoints are required for parallax.
+
+
+## Gameplay continuity and illustration fallback (v0.3)
+
+The artwork stays deliberately mixed: generated NES-style portraits alongside the handmade SVG/CSS sketches. A procedural sketch is a valid completed fallback, not necessarily a broken game.
+
+**Five authored adventure branches** now carry resolved room outcomes forward into the next physical scene: Lighthouse of Lost Dawn, Clockwork Orchard, Dragon's Last Bakery, Museum After Midnight and Skywhale Express. The successful and unsuccessful paths have different arrivals, environmental details and an explicitly labelled **"Your earlier choice changed this room"** note. They do **not** silently alter d20 difficulty, hearts or rewards. Hollowmere keeps its existing deeper, multi-ending authored story.
+
+The narration model is now instructed to respect changed world state and to reference a real prior consequence when available. If inference is unavailable, the nine rooms across the three fresh NES adventures have character-specific scripted reactions instead of generic replies, with the deterministic consequence echoed after them. No additional AI call is required.
+
+Illustration fallback status is explicit: pending art shows **"Painting this moment…"**; a failed request shows **"Artist unavailable · pixel sketch shown"**; a long-running request shows **"Taking too long · keeping the sketch"**. Decoding an image also has a 20-second safety timeout. The familiar SVG illustration stays visible and all game actions remain usable in every case.
+
+This increment is an unmerged feature branch until reviewed. Automated tests cover success/failure branches, unchanged dice rules, contextual scripted replies, bounded art loading and the existing game behaviour.
+
+
+### More visible scroll parallax
+
+The v0.3 scroll effect now reaches its full depth change over roughly half a viewport, rather than requiring the scene to travel across the whole screen. Near and far SVG layers separate substantially during a normal mobile swipe. Flattened generated NES images receive a stronger, overscanned 14% camera zoom and vertical pan, with the action effects following at a nearby depth to preserve alignment. Reduced-motion settings continue to disable scroll-driven effects. The browser result should be checked on the actual device after deploy.
+
+
+### Side-to-side scroll parallax (v0.3 refinement)
+Vertical page scrolling now pans illustration layers **horizontally only**. Scene Y remains fixed. NES-generated images, particles, SVG effect overlays, all three multi-layer fresh SVG environments, and older procedural illustrations share the change. Far backgrounds move less than nearby props. Generated canvas images retain their 8% bleed and 10% scale; older static SVG backgrounds gain 16% zoom to hide their side edges. Horizontal pan is limited to 7% of image width for root planes and 22 viewBox units for SVG groups, at half-strength. Independent flames and idle animations are unchanged. The reduced-motion preference still disables scroll parallax.
+
+
+## Three daily adventures (v0.3)
+
+The public home page now offers **three independent adventures every UTC day**, each a complete three-room, ~five-minute quest. Everyone sees the same daily choices. The default featured adventure remains the first option, preserving existing player progress and earlier date-specific story assignments. The other two choices use query parameters \`?quest=1\` and \`?quest=2\`; each has separate localStorage progress. You can play all three on the same day, and the selection refreshes at midnight UTC.
+
+The initial pool contains **nine authored adventures** (the original three, the museum, skywhale, Hollowmere, lighthouse, orchard and bakery). As of v0.3, this is the **no-inference fallback**, not the default: the Worker creates and caches three new, original AI stories once every UTC day. Classic stories remain playable when generation or the new D1 migration is unavailable.
+
+Daily slots are validated against the same calendar-day selection by the Cloudflare Worker, including their shared illustration cache keys and signed personalised art prompts. Preview modes remain separate and cannot be combined with extra public daily slots. Each choice keeps its own inventory, hearts, choices and hero journal.
+
+
+### Public launch UI polish
+The player-facing interface presents only today's three short adventures and links between the current day's choices. The old links to preview tomorrow, Hollowmere v0.2 and fresh NES QA scenarios, their test ribbon, and the foundation-playtest footer badge are removed from the regular game. Developer preview handlers remain available to maintainers via explicit query strings, but are no longer exposed in public navigation. No existing saves, authored adventures or development scenarios are deleted.
+
+
+## Fresh AI daily adventures: Cloudflare setup
+
+The DAILY_STORIES_ENABLED=true feature uses Workers AI and the existing D1 binding. Apply the **new database migration before deployment**:
+
+```bash
+npx wrangler d1 migrations apply daily-dungeon-playtest --remote
+npm test
+npm run build
+npm run deploy
+```
+
+The new daily_story_sets table holds one globally shared set of three complete stories per UTC day, obtained through three compact JSON-schema-guided Llama 3.3 Workers AI requests (one per three-room adventure). Atomic D1 insert-or-ignore prevents duplicate model calls from concurrent visitors and multiple Cloudflare locations. Cloudflare Cron (00:03 UTC) attempts creation each day; GET /api/daily-stories can start it if Cron is late or skipped. The browser initially offers classic stories while generation is pending, then switches to the AI stories only if the player has NOT started a quest. Existing adventures remain pinned and their saves are preserved.
+
+After deployment, open https://dailydungeon.titkok.co/api/daily-stories. A ready response with source generated means the stories were created and shared. A pending response means the first generation is underway. A fallback response means AI generation was disabled or failed, or the migration is missing, and visitors receive classics instead. No manual daily cron/script is needed. Image art and individual AI judgments continue to use separate guarded budgets.
+
+**Deploy gate:** if the D1 migration command fails, do not consider the new AI daily feature active; the application may safely show classics but cannot generate fresh shared daily stories.
+
+
+### Diagnosing `source: "classic", status: "fallback"`
+
+The API now returns a safe `reason` field without exposing secrets:
+
+- `disabled`: DAILY_STORIES_ENABLED is not true.
+- `missing-bindings`: Workers AI or D1 binding is missing.
+- `database-unavailable`: D1 read failed, often because `0003_daily_stories.sql` was not applied remotely.
+- `generation-failed`: the daily AI generation batch failed or did not yield three complete stories. The row intentionally blocks automatic retries to protect costs.
+- `invalid-cache`: a stored ready payload failed validation.
+
+Check today's remote D1 row (and apply migrations if necessary):
+
+```bash
+npx wrangler d1 migrations apply daily-dungeon-playtest --remote
+npx wrangler d1 execute daily-dungeon-playtest --remote \\
+  --command="SELECT day, status, created_at, updated_at FROM daily_story_sets ORDER BY day DESC LIMIT 5;"
+```
+
+If the status is `failed` after deploying the improved prompt/validator, a maintainer can explicitly rearm **only** that failed UTC date by deleting its failed row; the next GET to `/api/daily-stories` will claim a single new attempt. This incurs an additional model call and should not be repeated endlessly:
+
+```bash
+npx wrangler d1 execute daily-dungeon-playtest --remote \\
+  --command="DELETE FROM daily_story_sets WHERE day = '2026-10-25' AND status = 'failed';"
+```
+
+Note that Cloudflare Cron at 00:03 UTC may already have passed when the new version is first deployed; the public API can trigger the missing day's generation on the first request. The worker code does **not** automatically retry failed dates.
+
+
+### Failed generation stage, model support
+
+Daily-story generation now uses Cloudflare-supported JSON Schema Mode with `@cf/meta/llama-3.3-70b-instruct-fp8-fast`. One model call generates one three-room quest, and three bounded calls are grouped into a single atomic daily cache transaction. If a day fails, the existing `stories_json` column holds only a safe `failureStage` code (one of `model-call`, `invalid-output`, `database-write`), and `/api/daily-stories` exposes that code alongside `reason: "generation-failed"`. Old failed records will have no stage until an explicitly approved retry is performed. This does not change hearts, artwork or player decisions, and requires no new migration beyond `0003_daily_stories.sql`.
+
+
+### Reliability update: three small completions, one daily batch
+
+The original design asked the model to return **nine rooms in a single enormous JSON completion**. Production returned `generation-failed` with `failureStage:invalid-output`, so that approach was replaced. The generator now requests **one fully connected three-room adventure per call**, using a JSON Schema, with three calls in parallel. A single D1 date claim still prevents separate visitors from re-triggering AI generation, and a single ready cache entry is published only if **all three** stories validate. This costs up to three inference calls per UTC day rather than one, not three per visitor. No raw AI output is saved on failures, and previously cached stories are compatible with the new reader. Failure rows remain blocked until a deliberate operator retry to avoid runaway costs.
+
+
+### Safe per-adventure generation diagnostics
+
+A failed generated batch now includes `failureStage` and, where relevant, `failureSlot` in the API response and in safe D1 failure metadata. Slots are **zero-indexed**: `0` = first adventure, `1` = second, `2` = third. None of these reveal raw model text. A failure still does not retry automatically. The daily generator uses up to three schema-guided short model requests, all behind the same once-per-date database claim. Review Workers tail logs and the safe fields before deciding to rearm a failed day's claim.
+
+
+### Production resilience after second-adventure invalid output (25 October)
+
+Production identified `failureStage: "invalid-output"` and `failureSlot: 1`, meaning the **second** story's model response was not valid enough to publish. Code inspection revealed two overly strict/contradictory rules: the JSON schema did not require success/failure arrival branches even though game validation insisted on them, and the validator rejected returning NPCs despite the story brief encouraging continuity. Both are fixed. The generation pipeline now repairs a missing/too-short branch using the previous room's genuine NPC and earnable reward, requires branch fields in the schema, and allows the same character to reappear in later rooms.
+
+A single malformed adventure gets **one targeted retry only** (up to four story model calls per daily batch, never one batch per visitor), then the authored fallback takes over if necessary. Persisted diagnostics now include a safe `failureField` name such as `room2.scene` or `story.startingInventory.items`, alongside `failureSlot` and `failureStage`, rather than storing raw provider output. Full batches still publish atomically with exactly three complete adventures. No schema migration is required for these diagnostics. Existing failed days are **not** automatically retried; deploy before manually clearing a failed day, and perform at most one controlled test reset. Do not repeatedly rearm failed days.
+
+
+### Recovering unusable reward labels (25 October)
+
+The live daily generation API reported `failureStage: "invalid-output"`, `failureSlot: 0`, `failureField: "room2.reward"`. The story itself may have been sound; a reward label was missing, too long, too short or unsafe. The validator now normalises optional mechanical reward names: valid 2–45-character item names are preserved, long safe labels are shortened at a word boundary, and unusable labels become a deterministic, story-specific `Token of <room title>`. This fallback is stable when the cache is reloaded and keeps the game's single-use inventory rules intact. Story essentials (a valid scene, NPC, challenge and exactly three rooms) remain mandatory. The generation prompt explicitly requests short tangible reward items.
+
+This change requires no new migration. **136 tests pass, including a full cached day where one generated adventure has a malformed reward, with no extra AI calls caused by that label.** Deploy before any further manual retry. Prior failed D1 dates remain failed until an operator explicitly rearms them; alternatively, the next scheduled UTC day's generated batch uses the new code automatically.
