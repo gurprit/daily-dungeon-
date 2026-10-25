@@ -222,3 +222,8 @@ Daily-story generation now uses Cloudflare-supported JSON Schema Mode with `@cf/
 ### Reliability update: three small completions, one daily batch
 
 The original design asked the model to return **nine rooms in a single enormous JSON completion**. Production returned `generation-failed` with `failureStage:invalid-output`, so that approach was replaced. The generator now requests **one fully connected three-room adventure per call**, using a JSON Schema, with three calls in parallel. A single D1 date claim still prevents separate visitors from re-triggering AI generation, and a single ready cache entry is published only if **all three** stories validate. This costs up to three inference calls per UTC day rather than one, not three per visitor. No raw AI output is saved on failures, and previously cached stories are compatible with the new reader. Failure rows remain blocked until a deliberate operator retry to avoid runaway costs.
+
+
+### Safe per-adventure generation diagnostics
+
+A failed generated batch now includes `failureStage` and, where relevant, `failureSlot` in the API response and in safe D1 failure metadata. Slots are **zero-indexed**: `0` = first adventure, `1` = second, `2` = third. None of these reveal raw model text. A failure still does not retry automatically. The daily generator uses up to three schema-guided short model requests, all behind the same once-per-date database claim. Review Workers tail logs and the safe fields before deciding to rearm a failed day's claim.
