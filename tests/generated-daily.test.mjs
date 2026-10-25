@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { getDailyChoices } from "../src/game.ts";
 import { storyRoom } from "../src/story.ts";
 import {
-  parseDailyStories, parseDailyStory, storyValidationField, SINGLE_STORY_JSON_SCHEMA, dailyStoryPrompt, claimDailyStories, cachedDailyStories,
+  parseDailyStories, parseDailyStory, storyValidationField, normaliseRoomReward, SINGLE_STORY_JSON_SCHEMA, dailyStoryPrompt, claimDailyStories, cachedDailyStories,
   handleDailyStoriesRoute
 } from "../worker/daily-stories.ts";
 import worker from "../worker/index.ts";
@@ -386,6 +386,62 @@ test("field-only diagnostics identify broken content without exposing model narr
   assert.equal(storyValidationField(tiny),"story.subtitle");
   assert.equal(storyValidationField("not json"),"json");
   assert.equal(storyValidationField({story:fiction().stories[0]}),"story.structure");
+});
+
+test("missing, too-short, oversized and unsafe rewards are normalised to valid inventory items",()=>{
+  const title="An Unusually Stubborn Clockwork Oracle";
+  const examples=[
+    undefined,null,"", "X", " ".repeat(5),
+    "<script>alert(1)</script>", "https://example.com/prize",
+    12, "A".repeat(300)
+  ];
+  for(const bad of examples){
+    const label=normaliseRoomReward(bad,title);
+    assert.equal(label,"Token of "+title);
+    assert.ok(label.length<=45);
+    assert.ok(!label.includes("<") && !label.includes("://"));
+  }
+  assert.equal(normaliseRoomReward("Moon whistle",title),"Moon whistle");
+  assert.equal(normaliseRoomReward("A very elaborate sparkly telescope that measures the moods of distant clouds",title),
+    "A very elaborate sparkly telescope that");
+  assert.equal(normaliseRoomReward(undefined,"The Extremely Long And Magnificently Obscure First Chamber Of Clocks").length,45);
+});
+
+test("a complete three-room story with a malformed second-room reward still publishes",()=>{
+  const original=fiction();
+  original.stories[0].rooms[1].reward=undefined;
+  original.stories[1].rooms[1].reward="<script>malice</script>";
+  original.stories[2].rooms[1].reward="a ridiculously long "+("ceremonial ".repeat(10))+"teapot";
+  const parsed=parseDailyStories(original,day);
+  assert.ok(parsed);
+  assert.equal(parsed.length,3);
+  assert.equal(parsed[0].rooms[1].reward,"Token of The Peculiar Middle Complication");
+  assert.equal(parsed[1].rooms[1].reward,parsed[0].rooms[1].reward);
+  assert.ok(parsed[2].rooms[1].reward.length<=45);
+  assert.equal(storyValidationField({story:original.stories[0]}),"story.structure");
+  // D1 revalidation must be stable: generated canonical rewards cannot mutate.
+  const reread=parseDailyStories({stories:parsed},day);
+  assert.deepEqual(reread,parsed);
+});
+
+test("a malformed reward in adventure two does not consume another AI generation attempt",async()=>{
+  const mock=fixtureDb();
+  const requests=[0,0,0];
+  const env={DAILY_STORIES_ENABLED:"true",DAILY_BUDGET_DB:mock.db,
+    AI:{async run(_model,body){
+      const slot=JSON.parse(body.messages[1].content).adventureNumber-1;
+      requests[slot]++;
+      const story=structuredClone(fiction().stories[slot]);
+      if(slot===1)story.rooms[1].reward=undefined;
+      return {response:{story}};
+    }}
+  };
+  await claimDailyStories(env,now);
+  const cached=await claimDailyStories(env,now);
+  assert.equal(cached.status,"ready");
+  assert.equal(cached.source,"generated");
+  assert.deepEqual(requests,[1,1,1]);
+  assert.equal(cached.choices[1].rooms[1].reward,"Token of The Peculiar Middle Complication");
 });
 
 test("an invalid middle adventure rejects the entire daily set without publishing mismatched rooms",async()=>{
