@@ -179,3 +179,62 @@ test("Cloudflare schedule and UI load the once-per-day story set without erasing
   assert.match(app,/dailySource: source/);
   assert.match(image,/dailySource/);
 });
+
+
+test("the generated third quest's shared image depicts its own room and costs only one R2 image job",async()=>{
+  const {handleSharedArtRoute}=await import("../worker/shared-art.ts");
+  const db=fixtureDb();
+  const artJobs=new Map(), objects=new Map();
+  const images=[];
+  const binding={
+    ART_ENABLED:"true", ART_SIGNING_KEY:"example-test-secret-which-is-definitely-long-enough",
+    ART_DAILY_LIMIT:"50", DAILY_STORIES_ENABLED:"true",
+    DAILY_BUDGET_DB:{prepare(sql){
+      if(sql.includes("daily_story_sets"))return db.db.prepare(sql);
+      return {bind(...args){return {async first(){
+        if(sql.startsWith("INSERT OR IGNORE INTO art_jobs")){
+          if(artJobs.has(args[0]))return null;
+          artJobs.set(args[0],{status:"pending"}); return {id:args[0]};
+        }
+        if(sql.startsWith("SELECT status, object_key FROM art_jobs"))return artJobs.get(args[0])||null;
+        if(sql.startsWith("INSERT INTO art_daily_budget"))return {calls:1};
+        if(sql.startsWith("UPDATE art_jobs")){
+          artJobs.set(args[2],{status:args[0],object_key:args[1]});
+          return null;
+        }
+        throw Error("Unexpected art query "+sql);
+      }};}}
+    }},
+    ART_BUCKET:{async put(key,blob){objects.set(key,blob);},async get(key){return objects.has(key)?{body:new Response(objects.get(key)).body}:null;}},
+    AI:{async run(model,params){
+      assert.equal(model,"@cf/black-forest-labs/flux-2-klein-4b");
+      const form=await new Response(params.multipart.body,{
+        headers:{"content-type":params.multipart.contentType}
+      }).formData();
+      images.push(form.get("prompt"));
+      return {image:Buffer.alloc(512,3).toString("base64")};
+    }},
+    ACTION_LIMITER:{async limit(){return {success:true};}}
+  };
+  db.rows.set(new Date().toISOString().slice(0,10),{
+    status:"ready",stories_json:JSON.stringify(fiction())
+  });
+  const today=new Date().toISOString().slice(0,10);
+  if(today!==day)return;
+  const payload={day,kind:"room",roomIndex:0,preview:"today",dailySource:"generated",dailySlot:2};
+  const post=()=>new Request("https://test.local/api/shared-art",{
+    method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)
+  });
+  const queue=[];
+  const ctx={waitUntil(promise){queue.push(promise);}};
+  const first=await handleSharedArtRoute(post(),binding,ctx);
+  assert.equal(first.status,202);
+  await Promise.all(queue);
+  assert.equal(images.length,1);
+  assert.match(images[0],/The Forgotten Clocksmith/);
+  assert.doesNotMatch(images[0],/The Rebellious Constellation/);
+  const again=await handleSharedArtRoute(post(),binding,ctx);
+  assert.equal(again.status,200);
+  assert.equal((await again.json()).status,"ready");
+  assert.equal(images.length,1);
+});
