@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { getDailyChoices } from "../src/game.ts";
 import { storyRoom } from "../src/story.ts";
 import {
-  parseDailyStories, dailyStoryPrompt, claimDailyStories, cachedDailyStories,
+  parseDailyStories, parseDailyStory, SINGLE_STORY_JSON_SCHEMA, dailyStoryPrompt, claimDailyStories, cachedDailyStories,
   handleDailyStoriesRoute
 } from "../worker/daily-stories.ts";
 import worker from "../worker/index.ts";
@@ -43,9 +43,10 @@ function fixtureDb() {
     ai:{async run(model,body){
       calls++;
       assert.equal(model,"@cf/meta/llama-3.3-70b-instruct-fp8-fast");
-      assert.deepEqual(body.response_format,{type:"json_object"});
+      assert.deepEqual(body.response_format,{type:"json_schema",json_schema:SINGLE_STORY_JSON_SCHEMA});
       assert.match(JSON.stringify(body),/three-room|THREE/);
-      return {response:JSON.stringify(fiction())};
+      const slot=JSON.parse(body.messages[1].content).adventureNumber-1;
+      return {response:{story:fiction().stories[slot]}};
     }},
     db:{prepare(query){
       return {bind(...args){
@@ -104,7 +105,7 @@ test("a malformed, duplicated or incomplete story set never becomes public",()=>
   assert.equal(parseDailyStories(injection,day),null);
 });
 
-test("first visitor claims one D1 generation globally, everyone else receives the identical cached stories",async()=>{
+test("first visitor claims one D1 daily batch; only three short model calls serve all users",async()=>{
   const m=fixtureDb();
   const env={DAILY_STORIES_ENABLED:"true",DAILY_BUDGET_DB:m.db,AI:m.ai};
   const scheduled=[];
@@ -119,12 +120,12 @@ test("first visitor claims one D1 generation globally, everyone else receives th
   assert.equal(ready.source,"generated");
   assert.equal(ready.choices.length,3);
   assert.equal(ready.choices[2].slug,"daily-ai-"+day+"-2");
-  assert.equal(m.calls,1);
+  assert.equal(m.calls,3);
   assert.equal((await cachedDailyStories(env,day))?.[1].title,ready.choices[1].title);
   const response=await handleDailyStoriesRoute(new Request("https://daily.test/api/daily-stories"),env,context);
   assert.equal(response.status,200);
   assert.equal((await response.json()).source,"generated");
-  assert.equal(m.calls,1,"cached visits incur zero new model calls");
+  assert.equal(m.calls,3,"cached visits incur zero new model calls");
 });
 
 test("AI disabled, migration unavailable or malformed generated stories fall back safely",async()=>{
@@ -293,4 +294,46 @@ test("the generated third quest's shared image depicts its own room and costs on
   assert.equal(again.status,200);
   assert.equal((await again.json()).status,"ready");
   assert.equal(images.length,1);
+});
+
+
+test("short single-adventure schema is accepted in both JSON mode object and string forms",()=>{
+  const f=fiction();
+  assert.equal(parseDailyStory({story:f.stories[1]},day,1)?.title,f.stories[1].title);
+  assert.equal(parseDailyStory(JSON.stringify({story:f.stories[2]}),day,2)?.slug,"daily-ai-"+day+"-2");
+  assert.equal(parseDailyStory({stories:[f.stories[0]]},day,0)?.title,f.stories[0].title);
+  assert.equal(parseDailyStory({stories:f.stories},day,0),null);
+  assert.equal(parseDailyStory({story:{title:"Not enough fields"}},day,0),null);
+  assert.equal(SINGLE_STORY_JSON_SCHEMA.properties.story.type,"object");
+  assert.equal(SINGLE_STORY_JSON_SCHEMA.properties.story.properties.rooms.type,"array");
+});
+
+test("three bounded inference calls publish one daily batch, with no more inference on visits",async()=>{
+  const mock=fixtureDb();
+  const env={AI:mock.ai,DAILY_BUDGET_DB:mock.db,DAILY_STORIES_ENABLED:"true"};
+  await claimDailyStories(env,now);
+  assert.equal(mock.claims,1);
+  assert.equal(mock.calls,3);
+  for(let i=0;i<15;i++){
+    const data=await claimDailyStories(env,now);
+    assert.equal(data.status,"ready");
+    assert.equal(data.choices.length,3);
+  }
+  assert.equal(mock.calls,3);
+});
+
+test("an invalid middle adventure rejects the entire daily set without publishing mismatched rooms",async()=>{
+  const db=fixtureDb();
+  let calls=0;
+  const ai={async run(_model,body){
+    calls++;
+    const slot=JSON.parse(body.messages[1].content).adventureNumber-1;
+    return {response:slot===1?{story:{title:"incomplete"}}:{story:fiction().stories[slot]}};
+  }};
+  const env={AI:ai,DAILY_BUDGET_DB:db.db,DAILY_STORIES_ENABLED:"true"};
+  await claimDailyStories(env,now);
+  assert.equal(calls,3);
+  assert.equal(db.rows.get(day).status,"failed");
+  assert.equal((await claimDailyStories(env,now)).failureStage,"invalid-output");
+  assert.equal(await cachedDailyStories(env,day),null);
 });
