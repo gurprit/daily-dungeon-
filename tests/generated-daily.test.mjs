@@ -42,7 +42,8 @@ function fixtureDb() {
     get calls(){return calls;},
     ai:{async run(model,body){
       calls++;
-      assert.equal(model,"@cf/qwen/qwen3-30b-a3b-fp8");
+      assert.equal(model,"@cf/meta/llama-3.3-70b-instruct-fp8-fast");
+      assert.deepEqual(body.response_format,{type:"json_object"});
       assert.match(JSON.stringify(body),/three-room|THREE/);
       return {response:JSON.stringify(fiction())};
     }},
@@ -63,7 +64,7 @@ function fixtureDb() {
             return null;
           }
           if(query.startsWith("UPDATE daily_story_sets SET status = 'failed'")){
-            rows.set(args[0],{status:"failed",stories_json:null});
+            rows.set(args[1],{status:"failed",stories_json:args[0]});
             return null;
           }
           throw Error("Unexpected SQL "+query);
@@ -166,6 +167,36 @@ test("validation accepts concise complete scenes without requiring excessive pad
   assert.equal(stories?.length,3);
 });
 
+test("failed daily generation stores only a safe error stage, without leaking raw AI output",async()=>{
+  const fixture=fixtureDb();
+  const badText='private unexpected model text that must never appear in a public API';
+  const env={
+    DAILY_STORIES_ENABLED:"true",DAILY_BUDGET_DB:fixture.db,
+    AI:{async run(){return {response:badText};}}
+  };
+  const pending=await claimDailyStories(env,now);
+  assert.equal(pending.status,"pending");
+  const failed=await claimDailyStories(env,now);
+  assert.equal(failed.source,"classic");
+  assert.equal(failed.reason,"generation-failed");
+  assert.equal(failed.failureStage,"invalid-output");
+  assert.equal(JSON.stringify(failed).includes(badText),false);
+  const saved=JSON.parse(fixture.rows.get(day).stories_json);
+  assert.deepEqual(saved,{failureStage:"invalid-output"});
+
+  const different=fixtureDb();
+  const unavailable={DAILY_STORIES_ENABLED:"true",DAILY_BUDGET_DB:different.db,
+    AI:{async run(){throw Error("provider-specific sensitive error text");}}};
+  await claimDailyStories(unavailable,now);
+  const after=await claimDailyStories(unavailable,now);
+  assert.equal(after.failureStage,"model-call");
+  assert.equal(JSON.stringify(after).includes("sensitive"),false);
+});
+
+test("structured JSON object output is supported by the daily parser",()=>{
+  const typed={stories:fiction().stories};
+  assert.equal(parseDailyStories(typed,day)?.length,3);
+});
 test("seed changes every day and generated quests are selected only through the published D1 canon",async()=>{
   assert.notDeepEqual(dailyStoryPrompt(day).user,dailyStoryPrompt("2026-10-26").user);
   const m=fixtureDb(),env={
