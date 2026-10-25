@@ -71,7 +71,8 @@ function parseStoryEntry(entry: unknown, day: string, slot: number): Dungeon | n
   if(inventory.some(i=>!i) || new Set(inventory.map(i=>i?.toLowerCase())).size!==3) return null;
   if(!Array.isArray(story.rooms) || story.rooms.length!==3) return null;
   const rooms: Dungeon["rooms"][number][]=[];
-  const characters=new Set<string>();
+  // A returning NPC is a feature of a connected story, not a validation
+  // failure. Multiple rooms may legitimately feature the same character.
   for(const [i,item] of story.rooms.entries()){
     if(!item || typeof item!=="object") return null;
     const r=item as Record<string,unknown>;
@@ -80,11 +81,22 @@ function parseStoryEntry(entry: unknown, day: string, slot: number): Dungeon | n
     const character=trimmed(r.character,3,75);
     const challenge=trimmed(r.challenge,16,260);
     const reward=trimmed(r.reward,2,45);
-    const success=i?trimmed(r.successArrival??r.arrivalSuccess,20,240):undefined;
-    const failure=i?trimmed(r.failureArrival??r.arrivalFailure,20,240):undefined;
+    // JSON Schema may omit an arrival, even if requested. Missing branch
+    // narration should not invalidate nine rooms of good story content.
+    // Reconstruct it from the prior room's actual NPC and earnable reward,
+    // never from arbitrary model instructions.
+    const previous = i > 0 ? rooms[i-1] : undefined;
+    const earned = previous ? previous.reward.slice(0,36) : "";
+    const previousNPC = previous ? previous.character.slice(0,44) : "";
+    const nextNPC = character?.slice(0,44) ?? "the next character";
+    const linkedSuccess = previous ?
+      `With ${earned} earned from ${previousNPC}, you reach ${nextNPC} with a useful clue, though the next obstacle still waits.` : undefined;
+    const linkedFailure = previous ?
+      `Without ${earned} from ${previousNPC}, you approach ${nextNPC} at a disadvantage, but another clever solution is possible.` : undefined;
+    const success=i?(trimmed(r.successArrival??r.arrivalSuccess,20,240)??linkedSuccess):undefined;
+    const failure=i?(trimmed(r.failureArrival??r.arrivalFailure,20,240)??linkedFailure):undefined;
     if(!title || !scene || !character || !challenge || !reward ||
-       (i>0 && (!success || !failure)) || characters.has(character.toLowerCase()))return null;
-    characters.add(character.toLowerCase());
+       (i>0 && (!success || !failure)))return null;
     const icon=typeof r.icon==="string" && /^[a-z-]{2,22}$/.test(r.icon)?r.icon:"sparkles";
     rooms.push({
       title,scene,character,challenge,reward,icon,
@@ -151,7 +163,10 @@ export const SINGLE_STORY_JSON_SCHEMA = {
             reward:{type:"string"},icon:{type:"string"},
             successArrival:{type:"string"},failureArrival:{type:"string"}
           },
-          required:["title","scene","character","challenge","reward","icon"]
+          // All room objects carry these fields, even the first one. The
+          // first room's branch text is ignored; for rooms 2/3 it is canon.
+          required:["title","scene","character","challenge","reward","icon",
+            "successArrival","failureArrival"]
         }}
       },
       required:["title","subtitle","intro","objective","startingInventory","rooms"]
@@ -174,7 +189,9 @@ export function dailyStoryPrompt(day: string, slot: 0|1|2 = 0): { system: string
       "Story needs title,subtitle,intro,objective, startingInventory (three distinct named items),",
       "and rooms (EXACTLY THREE room objects).",
       "Each room has title,scene,character,challenge,reward,icon.",
-      "Rooms 2 and 3 MUST also include successArrival and failureArrival.",
+      "Every room MUST include successArrival and failureArrival in its JSON object.",
+      "The game uses those branches only for rooms 2 and 3.",
+      "A named character MAY return in later rooms. Repeated NPCs reinforce story continuity.",
       "Those describe how the previous room's success or failure physically changes the NEXT scene.",
       "Keep each branch solvable and never decide the dice or add/remove health.",
       "Use two or three lively sentences for scenes, one short sentence for arrivals.",
