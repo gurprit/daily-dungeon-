@@ -4,7 +4,7 @@ import {
   Heart, ScrollText, Share2, Shield, Skull, Sparkles, Swords
 } from "lucide-react";
 import { getDailyGame, getDailyChoices, getDailyGameForSlot, getPreviewDailyGame, getFreshPreviewGame } from "./game";
-import { FRESH_DUNGEONS, FRESH_PREVIEW_MODES, freshPreviewIndex } from "./fresh-dungeons";
+import { FRESH_PREVIEW_MODES, freshPreviewIndex } from "./fresh-dungeons";
 import { storyRoom, storyClues, storyEnding } from "./story";
 import { startingItems, inventoryAfterTurn } from "./inventory";
 import { resolveAction, type ActionOutcome } from "./engine";
@@ -232,22 +232,16 @@ export default function App() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [certificateNotice, setCertificateNotice] = useState("");
-  const [canPreviewTomorrow, setCanPreviewTomorrow] = useState(false);
-  const [canPreviewStory, setCanPreviewStory] = useState(false);
-  const [canPreviewFresh, setCanPreviewFresh] = useState(false);
   const [artService, setArtService] = useState<"ready" | "disabled" | "setup-required">("disabled");
   const artEnabled = artService === "ready";
   const artPreview: ArtPreview = freshIndex !== null ? FRESH_PREVIEW_MODES[freshIndex] : previewHollowmere ? "hollowmere" : previewTomorrow ? "tomorrow" : "today";
   useEffect(() => {
     void fetch("/api/health")
       .then(response => response.json())
-      .then((data: { previewTomorrowEnabled?: boolean; previewStoryEnabled?: boolean; previewFreshEnabled?: boolean; art?: { status?: "ready" | "disabled" | "setup-required" } }) => {
-        setCanPreviewTomorrow(data.previewTomorrowEnabled === true);
-        setCanPreviewStory(data.previewStoryEnabled === true);
-        setCanPreviewFresh(data.previewFreshEnabled === true);
+      .then((data: { art?: { status?: "ready" | "disabled" | "setup-required" } }) => {
         setArtService(data.art?.status ?? "disabled");
       })
-      .catch(() => setCanPreviewTomorrow(false));
+      .catch(() => setArtService("disabled"));
   }, []);
   const storyBeats = run.history.map(turn => ({ action: turn.action, success: turn.outcome.success }));
   const room = storyRoom(daily.dungeon, run.roomIndex, storyBeats);
@@ -420,11 +414,11 @@ export default function App() {
           <span className="site-header__crest"><Swords size={23} strokeWidth={1.7}/></span>
           <div>
             <div className="site-header__name">THE DAILY <span>DUNGEON</span></div>
-            <div className="site-header__tagline">ONE DUNGEON. ENDLESS POSSIBILITIES.</div>
+            <div className="site-header__tagline">THREE QUESTS. ONE DAY.</div>
           </div>
         </div>
         <div className="site-header__right">
-          <span className="daily-pill"><Sparkles size={14}/> {previewFresh ? "FRESH NES · TEST" : previewHollowmere ? "HOLLOWMERE · TEST" : previewTomorrow ? "TOMORROW · TEST" : "DAILY"} #{String(daily.number).padStart(3, "0")}</span>
+          <span className="daily-pill"><Sparkles size={14}/> DAILY #{String(daily.number).padStart(3, "0")}</span>
           <span className="site-header__date">{new Date(daily.day + "T12:00:00Z").toLocaleDateString("en-GB", { day:"numeric", month:"short", timeZone:"UTC" })}</span>
         </div>
       </header>
@@ -432,9 +426,9 @@ export default function App() {
       <main className="main">
         {!previewMode && !run.started && <section className="daily-quests" aria-label="Choose one of today's three adventures">
           <div className="daily-quests__heading">
-            <div><span className="eyebrow">THREE QUESTS · ONE DAY</span>
+            <div><span className="eyebrow">THREE SHORT QUESTS · ONE DAY</span>
               <h2>Choose today's adventure</h2></div>
-            <p>Three separate three-room quests, each about five minutes. New selection at midnight UTC.</p>
+            <p>Each quest is a five-minute, three-room adventure. Play one or all three. The choices rotate at midnight UTC.</p>
           </div>
           <nav className="daily-quests__grid" aria-label="Daily adventures">
             {getDailyChoices(new Date(daily.day + "T12:00:00Z")).map((entry, index) => {
@@ -458,15 +452,6 @@ export default function App() {
             })}
           </nav>
         </section>}
-        {previewMode && <div className="preview-ribbon">
-          <strong>⏭ {previewFresh ? "Fresh NES adventure" : previewHollowmere ? "Hollowmere story adventure" : "Tomorrow’s dungeon"} · Test mode</strong>
-          <span>New dungeon, fresh images and separate saves. Shared daily AI/art budgets still apply.</span>
-          {previewFresh && <nav className="preview-fresh-nav" aria-label="Choose a fresh dungeon">
-            {FRESH_PREVIEW_MODES.map((mode, i) => <a key={mode} href={"?preview=" + mode}
-              aria-current={i === freshIndex ? "page" : undefined}>{i + 1}. {FRESH_DUNGEONS[i].title}</a>)}
-          </nav>}
-          <a href={window.location.pathname}>Return to today</a>
-        </div>}
         {!run.started && (
           <section className="intro">
             <div className="intro__visual">
@@ -474,7 +459,7 @@ export default function App() {
               <DungeonDoor slug={daily.dungeon.slug} title={daily.dungeon.title} day={daily.day} preview={artPreview} enabled={artEnabled}/>
             </div>
             <div className="intro__copy">
-              <p className="eyebrow">DUNGEON #{String(daily.number).padStart(3, "0")} · {previewFresh ? "FRESH NES · CLEAN PLAYTEST" : previewHollowmere ? "HOLLOWMERE · STORY PLAYTEST" : previewTomorrow ? "TOMORROW'S QUEST · PREVIEW" : "TODAY'S QUEST"}</p>
+              <p className="eyebrow">ADVENTURE {String(dailySlot + 1).padStart(2, "0")} · THREE-ROOM QUEST</p>
               <h1>{daily.dungeon.title}</h1>
               <p className="intro__subtitle">{daily.dungeon.subtitle}</p>
               <p className="intro__description">{daily.dungeon.intro}</p>
@@ -488,9 +473,6 @@ export default function App() {
                 Enter the dungeon <ArrowRight size={19}/>
               </button>
               <p className="intro__small">No account. No downloads. Just your imagination. Your three starting items are single-use.</p>
-              {!previewMode && canPreviewTomorrow && <a className="preview-link" href="?preview=tomorrow">⏭ Pretend it’s tomorrow · Playtest next dungeon</a>}
-               {!previewMode && canPreviewStory && <a className="preview-link" href="?preview=hollowmere">✦ Playtest v0.2 · The Bell of Hollowmere</a>}
-               {!previewMode && canPreviewFresh && <a className="preview-link" href="?preview=fresh-1">🎮 Test three fresh NES adventures</a>}
             </div>
           </section>
         )}
@@ -612,8 +594,7 @@ export default function App() {
                   </details>
                 ))}
               </div>
-              <button className="reset-link" onClick={reset}>↺ Restart playtest</button>
-              {!previewMode && canPreviewTomorrow && <a className="preview-link" href="?preview=tomorrow">⏭ Test tomorrow’s dungeon</a>}
+              <button className="reset-link" onClick={reset}>↺ Restart this adventure</button>
             </aside>
           </div>
         )}
@@ -701,7 +682,7 @@ export default function App() {
                     lastHonour: achievements.at(-1)?.title,
                     moments: run.history.map(entry => ({ room: entry.roomTitle, success: entry.outcome.success, action: entry.action }))
                   })}</p>
-                  <p className="hero-chronicle__return"><Sparkles size={18}/> More adventures await today. <span>Three fresh choices from our story rotation arrive at midnight UTC.</span></p>
+                  <p className="hero-chronicle__return"><Sparkles size={18}/> Your story is written, but there may be more quests to explore today. <span>Three adventures rotate at midnight UTC.</span></p>
                 </div>
               </section>
             </section>
@@ -713,9 +694,6 @@ export default function App() {
                   <Swords size={15}/> Play {choice.dungeon.title}
                 </a> : null
               )}
-              {!previewMode && canPreviewTomorrow && <a className="button button--secondary" href="?preview=tomorrow">⏭ Test tomorrow’s dungeon</a>}
-               {!previewMode && canPreviewStory && <a className="button button--secondary" href="?preview=hollowmere">✦ Test Hollowmere v0.2</a>}
-               {!previewMode && canPreviewFresh && <a className="button button--secondary" href="?preview=fresh-1">🎮 Test fresh NES dungeons</a>}
             </div>
             {error && <p className="error" role="alert">{error}</p>}
           </div>
@@ -724,7 +702,6 @@ export default function App() {
       <footer className="footer">
         <span><Swords size={16}/> THE DAILY DUNGEON</span>
         <span>Crafted for creative heroes, terrible decisions & excellent stories.</span>
-        <span className="footer__playtest">FOUNDATION PLAYTEST · NOT YET A COMPETITIVE GAME</span>
       </footer>
     </div>
   );
