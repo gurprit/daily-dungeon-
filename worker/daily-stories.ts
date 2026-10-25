@@ -11,6 +11,7 @@ export type StorySet = {
   status: "ready" | "pending" | "fallback";
   /** Safe status for diagnosing config/AI failures without exposing user data. */
   reason?: "disabled" | "missing-bindings" | "database-unavailable" | "generation-failed" | "invalid-cache";
+  failureStage?: "model-call" | "invalid-output" | "database-write";
   choices: readonly Dungeon[];
 };
 type DB = {
@@ -156,23 +157,32 @@ function modelText(raw: unknown): unknown {
 
 export async function generateDailyStories(env: StoryEnv, day: string): Promise<void> {
   if (!env.DAILY_BUDGET_DB || !env.AI) return;
+  let failureStage: StorySet["failureStage"] = "model-call";
   try {
     const prompt=dailyStoryPrompt(day);
-    const result=await env.AI.run("@cf/qwen/qwen3-30b-a3b-fp8",{
+    const result=await env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast",{
       messages:[{role:"system",content:prompt.system},{role:"user",content:prompt.user}],
-      max_tokens:6144, temperature:.78, top_p:.9
+      max_tokens:6144, temperature:.75, top_p:.9,
+      response_format:{type:"json_object"}
     });
+    failureStage = "invalid-output";
     const stories=parseDailyStories(modelText(result),day);
     if (!stories) throw new Error("The daily story model returned an incomplete or unsafe story set");
+    failureStage = "database-write";
     await env.DAILY_BUDGET_DB.prepare(
       "UPDATE daily_story_sets SET status = 'ready', stories_json = ?, updated_at = CURRENT_TIMESTAMP WHERE day = ? AND status = 'pending'"
     ).bind(JSON.stringify({stories}),day).first();
   } catch (error) {
-    console.error("Daily story generation unavailable",error instanceof Error ? error.message : "unknown");
+    console.error("Daily story generation unavailable",{
+      stage:failureStage,
+      detail:error instanceof Error ? error.message.slice(0,240) : "unknown"
+    });
     try {
+      // Store only an error *category*, never raw model output, tokens,
+      // user actions, prompts or stack traces in the public-facing cache.
       await env.DAILY_BUDGET_DB.prepare(
-        "UPDATE daily_story_sets SET status = 'failed', updated_at = CURRENT_TIMESTAMP WHERE day = ? AND status = 'pending'"
-      ).bind(day).first();
+        "UPDATE daily_story_sets SET status = 'failed', stories_json = ?, updated_at = CURRENT_TIMESTAMP WHERE day = ? AND status = 'pending'"
+      ).bind(JSON.stringify({failureStage}),day).first();
     } catch { /* Missing migration: the authored rotation remains available */ }
   }
 }
@@ -201,7 +211,15 @@ export async function claimDailyStories(env: StoryEnv, now: Date, ctx?: { waitUn
       if (choices) return {day,source:"generated",status:"ready",choices};
       return fallback(now,"invalid-cache");
     }
-    if (prior?.status === "failed") return fallback(now,"generation-failed");
+    if (prior?.status === "failed") {
+      let failureStage: StorySet["failureStage"];
+      try {
+        const record=typeof prior.stories_json==="string" ? JSON.parse(prior.stories_json) as {failureStage?: unknown} : {};
+        if (record.failureStage==="model-call" || record.failureStage==="invalid-output" ||
+            record.failureStage==="database-write") failureStage=record.failureStage;
+      } catch { /* Older failed rows did not store a category. */ }
+      return {...fallback(now,"generation-failed"),...(failureStage?{failureStage}:{})};
+    }
     if (prior?.status === "pending") return {...classic,status:"pending"};
     // D1 PRIMARY KEY ensures concurrent first visitors trigger just one model
     // call, even if the two requests land in different Cloudflare regions.
