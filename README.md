@@ -162,3 +162,7 @@ The public home page now offers **three independent adventures every UTC day**, 
 The initial pool contains **nine fully authored adventures** (the original three, the museum, the skywhale, Hollowmere, lighthouse, orchard and bakery). A deterministic date-based rotation chooses three different titles every day. **This does not create three brand-new AI-written campaigns every night**: authored plots eventually reappear. Expanding the story library or implementing reviewed server-side daily story creation is future work. Rotating the existing stories incurs no extra overnight inference. Artwork is generated only when needed, within the existing R2/D1 daily inference budget.
 
 Daily slots are validated against the same calendar-day selection by the Cloudflare Worker, including their shared illustration cache keys and signed personalised art prompts. Preview modes remain separate and cannot be combined with extra public daily slots. Each choice keeps its own inventory, hearts, choices and hero journal.
+
+
+### Public launch UI polish
+The player-facing interface presents only today's three short adventures and links between the current day's choices. The old links to preview tomorrow, Hollowmere v0.2 and fresh NES QA scenarios, their test ribbon, and the foundation-playtest footer badge are removed from the regular game. Developer preview handlers remain available to maintainers via explicit query strings, but are no longer exposed in public navigation. No existing saves, authored adventures or development scenarios are deleted.
