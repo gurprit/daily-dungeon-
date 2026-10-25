@@ -16,6 +16,7 @@ type Props = VisualInput & {
   variant?: string;
   ticket?: string;
   dailySlot?: 0 | 1 | 2;
+  dailySource?: "classic" | "generated";
   className?: string;
 };
 
@@ -33,10 +34,10 @@ const ART_STYLE = "nes8-v4";
 export default function IllustratedScene(props: Props) {
   const {
     kind, dungeonSlug, roomIndex, day, preview, enabled, alt, variant,
-    ticket, dailySlot = 0, className = ""
+    ticket, dailySlot = 0, dailySource = "classic", className = ""
   } = props;
   const key = kind === "action" ? (ticket ? ART_STYLE + ":action:" + ticket : "") :
-    [ART_STYLE, day, preview, dailySlot, kind, roomIndex, variant ?? ""].join("|");
+    [ART_STYLE, day, preview, dailySource, dailySlot, kind, roomIndex, variant ?? ""].join("|");
   const [result, setResult] = useState<ArtJob>(() => ({
     status: "pending", url: key ? readyImages.get(key) : undefined
   }));
@@ -61,7 +62,7 @@ export default function IllustratedScene(props: Props) {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(shared
-            ? { day, roomIndex, kind, variant, preview, dailySlot }
+            ? { day, roomIndex, kind, variant, preview, dailySlot, dailySource }
             : { token: ticket })
         });
         if (!response.ok) throw new Error("Artwork unavailable");
@@ -96,7 +97,7 @@ export default function IllustratedScene(props: Props) {
     // A cached image needs no other API call.
     if (!cache) void run();
     return () => { alive = false; };
-  }, [key, enabled, day, roomIndex, kind, variant, preview, ticket, dailySlot]);
+  }, [key, enabled, day, roomIndex, kind, variant, preview, ticket, dailySlot, dailySource]);
 
   const showGenerated = enabled && !!result.url && !broken;
   // All generated artwork scrolls, not just the three fresh test dungeons.
