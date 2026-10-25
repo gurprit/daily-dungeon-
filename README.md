@@ -159,10 +159,28 @@ Vertical page scrolling now pans illustration layers **horizontally only**. Scen
 
 The public home page now offers **three independent adventures every UTC day**, each a complete three-room, ~five-minute quest. Everyone sees the same daily choices. The default featured adventure remains the first option, preserving existing player progress and earlier date-specific story assignments. The other two choices use query parameters \`?quest=1\` and \`?quest=2\`; each has separate localStorage progress. You can play all three on the same day, and the selection refreshes at midnight UTC.
 
-The initial pool contains **nine fully authored adventures** (the original three, the museum, the skywhale, Hollowmere, lighthouse, orchard and bakery). A deterministic date-based rotation chooses three different titles every day. **This does not create three brand-new AI-written campaigns every night**: authored plots eventually reappear. Expanding the story library or implementing reviewed server-side daily story creation is future work. Rotating the existing stories incurs no extra overnight inference. Artwork is generated only when needed, within the existing R2/D1 daily inference budget.
+The initial pool contains **nine authored adventures** (the original three, the museum, skywhale, Hollowmere, lighthouse, orchard and bakery). As of v0.3, this is the **no-inference fallback**, not the default: the Worker creates and caches three new, original AI stories once every UTC day. Classic stories remain playable when generation or the new D1 migration is unavailable.
 
 Daily slots are validated against the same calendar-day selection by the Cloudflare Worker, including their shared illustration cache keys and signed personalised art prompts. Preview modes remain separate and cannot be combined with extra public daily slots. Each choice keeps its own inventory, hearts, choices and hero journal.
 
 
 ### Public launch UI polish
 The player-facing interface presents only today's three short adventures and links between the current day's choices. The old links to preview tomorrow, Hollowmere v0.2 and fresh NES QA scenarios, their test ribbon, and the foundation-playtest footer badge are removed from the regular game. Developer preview handlers remain available to maintainers via explicit query strings, but are no longer exposed in public navigation. No existing saves, authored adventures or development scenarios are deleted.
+
+
+## Fresh AI daily adventures: Cloudflare setup
+
+The DAILY_STORIES_ENABLED=true feature uses Workers AI and the existing D1 binding. Apply the **new database migration before deployment**:
+
+```bash
+npx wrangler d1 migrations apply daily-dungeon-playtest --remote
+npm test
+npm run build
+npm run deploy
+```
+
+The new daily_story_sets table holds one globally shared set of three complete stories per UTC day, obtained through one Qwen Workers AI request. Atomic D1 insert-or-ignore prevents duplicate model calls from concurrent visitors and multiple Cloudflare locations. Cloudflare Cron (00:03 UTC) attempts creation each day; GET /api/daily-stories can start it if Cron is late or skipped. The browser initially offers classic stories while generation is pending, then switches to the AI stories only if the player has NOT started a quest. Existing adventures remain pinned and their saves are preserved.
+
+After deployment, open https://dailydungeon.titkok.co/api/daily-stories. A ready response with source generated means the stories were created and shared. A pending response means the first generation is underway. A fallback response means AI generation was disabled or failed, or the migration is missing, and visitors receive classics instead. No manual daily cron/script is needed. Image art and individual AI judgments continue to use separate guarded budgets.
+
+**Deploy gate:** if the D1 migration command fails, do not consider the new AI daily feature active; the application may safely show classics but cannot generate fresh shared daily stories.
