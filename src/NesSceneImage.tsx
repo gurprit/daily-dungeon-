@@ -45,5 +45,5 @@ export default function NesSceneImage({ src, alt, onReady, onError, ready }: Pro
   return <canvas ref={canvas} width={NES_WIDTH} height={NES_HEIGHT}
     role="img" aria-label={alt}
     className={"hybrid-art__image hybrid-art__nes " + (ready ? "hybrid-art__image--ready" : "")}
-    data-parallax-depth={0.6}/>;
+    data-parallax-depth={0.55} data-parallax-scale={1.14}/>;
 }

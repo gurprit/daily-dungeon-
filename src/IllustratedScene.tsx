@@ -108,7 +108,7 @@ export default function IllustratedScene(props: Props) {
       <NesSceneImage src={result.url!} alt={alt} ready={ready}
         onReady={() => setReady(true)} onError={() => setBroken(true)}/>
       {ready && <>
-        <svg className="hybrid-art__svgfx" data-parallax-depth={0.95} viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
+        <svg className="hybrid-art__svgfx" data-parallax-depth={0.62} viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
           aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
           <GeneratedEffects input={props} recipe={recipe}/>
         </svg>

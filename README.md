@@ -144,3 +144,8 @@ The narration model is now instructed to respect changed world state and to refe
 Illustration fallback status is explicit: pending art shows **"Painting this moment…"**; a failed request shows **"Artist unavailable · pixel sketch shown"**; a long-running request shows **"Taking too long · keeping the sketch"**. Decoding an image also has a 20-second safety timeout. The familiar SVG illustration stays visible and all game actions remain usable in every case.
 
 This increment is an unmerged feature branch until reviewed. Automated tests cover success/failure branches, unchanged dice rules, contextual scripted replies, bounded art loading and the existing game behaviour.
+
+
+### More visible scroll parallax
+
+The v0.3 scroll effect now reaches its full depth change over roughly half a viewport, rather than requiring the scene to travel across the whole screen. Near and far SVG layers separate substantially during a normal mobile swipe. Flattened generated NES images receive a stronger, overscanned 14% camera zoom and vertical pan, with the action effects following at a nearby depth to preserve alignment. Reduced-motion settings continue to disable scroll-driven effects. The browser result should be checked on the actual device after deploy.

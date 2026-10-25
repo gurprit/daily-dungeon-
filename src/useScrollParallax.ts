@@ -19,9 +19,11 @@ export function useScrollParallax<T extends SVGSVGElement | HTMLElement = SVGSVG
       .map(node => {
         const raw = Number(node.getAttribute("data-parallax-depth"));
         const group = node instanceof SVGElement && node.localName.toLowerCase() === "g";
+        const zoom = Number(node.getAttribute("data-parallax-scale"));
         return {
           node, depth: Number.isFinite(raw) ? Math.max(0, Math.min(raw, 1)) : 0,
-          group, baseAttribute: group ? node.getAttribute("transform") : null,
+          group, zoom: !group && Number.isFinite(zoom) && zoom > 1 && zoom <= 1.4 ? zoom : 1,
+          baseAttribute: group ? node.getAttribute("transform") : null,
           baseStyle: group ? "" : node.style.transform
         };
       }).filter(layer => layer.depth > 0);
@@ -57,17 +59,21 @@ export function useScrollParallax<T extends SVGSVGElement | HTMLElement = SVGSVG
         const raw = sceneLayerShift(progress, layer.depth);
         if (layer.group) {
           // A group works in SVG's 320x220 viewBox units.
-          const move = raw === 0 ? "" : "translate(0 " + raw + ")";
+          // SVG groups move in viewBox coordinates. Keep outermost props on
+          // stage while preserving substantially different depth speeds.
+          const shift = Math.max(-76, Math.min(76, raw));
+          const move = shift === 0 ? "" : "translate(0 " + shift + ")";
           const value = [layer.baseAttribute, move].filter(Boolean).join(" ");
           if (value) layer.node.setAttribute("transform", value);
           else layer.node.removeAttribute("transform");
         } else {
-          // For root SVG overlays and canvases, SVG transform attributes are
-          // unreliable across browsers. Use CSS pixels, and stay within the
-          // frame's 7.5% overscan so there are no exposed image edges.
-          const shift = Math.max(-rect.height * .07, Math.min(rect.height * .07, raw));
+          // Root SVG and Canvas planes are transformed using CSS on mobile.
+          // Their 8% overscan + 14% camera zoom provide ~16% safe vertical
+          // bleed. Cap the pan just below that to avoid visible frame edges.
+          const shift = Math.max(-rect.height * .145, Math.min(rect.height * .145, raw));
           const move = shift ? "translate3d(0," + shift.toFixed(2) + "px,0)" : "";
-          layer.node.style.transform = [layer.baseStyle, move].filter(Boolean).join(" ");
+          const zoom = layer.zoom > 1 ? "scale(" + layer.zoom + ")" : "";
+          layer.node.style.transform = [layer.baseStyle, move, zoom].filter(Boolean).join(" ");
         }
       }
     };
