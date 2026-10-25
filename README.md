@@ -153,3 +153,12 @@ The v0.3 scroll effect now reaches its full depth change over roughly half a vie
 
 ### Side-to-side scroll parallax (v0.3 refinement)
 Vertical page scrolling now pans illustration layers **horizontally only**. Scene Y remains fixed. NES-generated images, particles, SVG effect overlays, all three multi-layer fresh SVG environments, and older procedural illustrations share the change. Far backgrounds move less than nearby props. Generated canvas images retain their 8% bleed and 10% scale; older static SVG backgrounds gain 16% zoom to hide their side edges. Horizontal pan is limited to 7% of image width for root planes and 22 viewBox units for SVG groups, at half-strength. Independent flames and idle animations are unchanged. The reduced-motion preference still disables scroll parallax.
+
+
+## Three daily adventures (v0.3)
+
+The public home page now offers **three independent adventures every UTC day**, each a complete three-room, ~five-minute quest. Everyone sees the same daily choices. The default featured adventure remains the first option, preserving existing player progress and earlier date-specific story assignments. The other two choices use query parameters \`?quest=1\` and \`?quest=2\`; each has separate localStorage progress. You can play all three on the same day, and the selection refreshes at midnight UTC.
+
+The initial pool contains **nine fully authored adventures** (the original three, the museum, the skywhale, Hollowmere, lighthouse, orchard and bakery). A deterministic date-based rotation chooses three different titles every day. **This does not create three brand-new AI-written campaigns every night**: authored plots eventually reappear. Expanding the story library or implementing reviewed server-side daily story creation is future work. Rotating the existing stories incurs no extra overnight inference. Artwork is generated only when needed, within the existing R2/D1 daily inference budget.
+
+Daily slots are validated against the same calendar-day selection by the Cloudflare Worker, including their shared illustration cache keys and signed personalised art prompts. Preview modes remain separate and cannot be combined with extra public daily slots. Each choice keeps its own inventory, hearts, choices and hero journal.
