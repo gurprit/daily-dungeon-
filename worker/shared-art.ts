@@ -1,4 +1,4 @@
-import { getDailyGame, getPreviewDailyGame, getFreshPreviewGame, type Dungeon } from "../src/game.ts";
+import { getDailyGame, getDailyGameForSlot, getPreviewDailyGame, getFreshPreviewGame, type Dungeon } from "../src/game.ts";
 import { freshPreviewIndex, type FreshPreviewMode } from "../src/fresh-dungeons.ts";
 import { ILLUSTRATION_STYLE, artEnabled, inferIllustration, type ArtEnv } from "./art.ts";
 import { generatedFxLayout } from "../src/image-fx-layout.ts";
@@ -8,6 +8,7 @@ export type SharedArtKind = "room" | "clue" | "ending";
 export type SharedArtRequest = {
   day: string;
   roomIndex: number;
+  dailySlot?: 0 | 1 | 2;
   kind: SharedArtKind;
   variant?: string;
   preview?: "today" | "tomorrow" | "hollowmere" | FreshPreviewMode;
@@ -48,13 +49,16 @@ export function validateSharedArt(value: unknown, env: SharedEnv, now: Date = ne
   if (!Number.isInteger(body.roomIndex) || body.roomIndex! < 0 || body.roomIndex! > 2) return null;
   if (body.kind !== "room" && body.kind !== "clue" && body.kind !== "ending") return null;
   const freshIndex = freshPreviewIndex(body.preview);
+  const dailySlot = body.dailySlot === undefined ? 0 : body.dailySlot;
+  if (dailySlot !== 0 && dailySlot !== 1 && dailySlot !== 2) return null;
+  if (body.preview !== "today" && dailySlot !== 0) return null;
   const daily = freshIndex !== null
     ? env.PREVIEW_FRESH_ENABLED === "true" ? getFreshPreviewGame(freshIndex) : null
     : body.preview === "hollowmere"
       ? env.PREVIEW_STORY_ENABLED === "true" ? getDailyGame(new Date("2026-10-26T12:00:00Z")) : null
       : body.preview === "tomorrow"
         ? env.PREVIEW_TOMORROW_ENABLED === "true" ? getPreviewDailyGame(now) : null
-        : getDailyGame(now);
+        : getDailyGameForSlot(dailySlot, now);
   if (!daily || daily.day !== body.day) return null;
   if (body.kind === "room" && body.variant !== undefined && body.variant !== "") return null;
   if (body.kind === "clue") {
@@ -91,7 +95,7 @@ export function createSharedArtPrompt(dungeon: Dungeon, data: SharedArtRequest):
 
 /* First 128 bits of SHA256, with UUIDv4 version bits, form a stable job ID. */
 export async function sharedArtId(data: SharedArtRequest): Promise<string> {
-  const key = "v4-nes8/" + data.day + "/" + data.kind + "/" + data.roomIndex + "/" + (data.variant ?? "");
+  const key = "v4-nes8/" + data.day + "/" + data.kind + "/" + data.roomIndex + "/" + (data.variant ?? "") + (data.dailySlot ? "/daily-slot-" + data.dailySlot : "");
   const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key)));
   const bytes = hash.slice(0, 16);
   bytes[6] = (bytes[6] & 15) | 64;
