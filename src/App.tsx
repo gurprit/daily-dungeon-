@@ -478,7 +478,7 @@ export default function App() {
           <nav className="daily-quests__grid" aria-label="Daily adventures">
             {choices.map((dungeon, index) => {
               const entry={dungeon};
-              const storage=runStorageKey(daily.day,source,index);
+              const storage=runStorageKey(daily.day,source,index as 0 | 1 | 2);
               let label = "READY";
               try {
                 const saved = localStorage.getItem(storage);
