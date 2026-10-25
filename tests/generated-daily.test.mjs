@@ -99,7 +99,9 @@ test("a malformed, duplicated or incomplete story set never becomes public",()=>
   assert.equal(parseDailyStories(invalid,day),null);
   const missing=fiction();
   delete missing.stories[0].rooms[1].failureArrival;
-  assert.equal(parseDailyStories(missing,day),null);
+  const repaired=parseDailyStories(missing,day);
+  assert.ok(repaired,"missing one branch can be repaired without discarding the daily set");
+  assert.match(repaired[0].rooms[1].arrivalFailure,/Without Tin medal from Muddle/);
   const injection=fiction();
   injection.stories[0].title="<script>unsafe</script>";
   assert.equal(parseDailyStories(injection,day),null);
@@ -297,6 +299,37 @@ test("the generated third quest's shared image depicts its own room and costs on
   assert.equal(images.length,1);
 });
 
+
+test("the advertised story schema requires success and failure arrivals for every room",()=>{
+  const fields=SINGLE_STORY_JSON_SCHEMA.properties.story.properties.rooms.items.required;
+  assert.ok(fields.includes("successArrival"));
+  assert.ok(fields.includes("failureArrival"));
+});
+
+test("a recurring NPC can anchor every room of one continuous story",()=>{
+  const example=fiction().stories[0];
+  example.rooms[1].character=example.rooms[0].character;
+  example.rooms[2].character=example.rooms[0].character;
+  const parsed=parseDailyStory({story:example},day,0);
+  assert.equal(parsed?.rooms[1].character,parsed?.rooms[0].character);
+  assert.equal(parsed?.rooms[2].character,parsed?.rooms[0].character);
+});
+
+test("missing or too-short arrival branches are repaired using prior earned rewards",()=>{
+  const example=fiction().stories[1];
+  delete example.rooms[1].successArrival;
+  example.rooms[1].failureArrival="No";
+  example.rooms[2].successArrival="X";
+  delete example.rooms[2].failureArrival;
+  const story=parseDailyStory({story:example},day,1);
+  assert.ok(story);
+  assert.match(story.rooms[1].arrivalSuccess,/Tin medal/);
+  assert.match(story.rooms[1].arrivalFailure,/Without Tin medal/);
+  assert.match(story.rooms[2].arrivalSuccess,/Moon whistle/);
+  assert.match(story.rooms[2].arrivalFailure,/Without Moon whistle/);
+  assert.notEqual(story.rooms[1].arrivalSuccess,story.rooms[1].arrivalFailure);
+  assert.equal(story.rooms.length,3);
+});
 
 test("short single-adventure schema is accepted in both JSON mode object and string forms",()=>{
   const f=fiction();
