@@ -340,7 +340,7 @@ export default function App() {
   }
 
   function reset() {
-    if (!window.confirm("Restart today's playtest? Your current adventure will be lost.")) return;
+    if (!window.confirm("Restart this adventure? Your progress in this quest will be lost.")) return;
     setRun(freshRun(daily.day));
     setAction("");
     setError("");
@@ -430,7 +430,7 @@ export default function App() {
       </header>
 
       <main className="main">
-        {!previewMode && <section className="daily-quests" aria-label="Choose one of today's three adventures">
+        {!previewMode && !run.started && <section className="daily-quests" aria-label="Choose one of today's three adventures">
           <div className="daily-quests__heading">
             <div><span className="eyebrow">THREE QUESTS · ONE DAY</span>
               <h2>Choose today's adventure</h2></div>
@@ -701,12 +701,18 @@ export default function App() {
                     lastHonour: achievements.at(-1)?.title,
                     moments: run.history.map(entry => ({ room: entry.roomTitle, success: entry.outcome.success, action: entry.action }))
                   })}</p>
-                  <p className="hero-chronicle__return"><Sparkles size={18}/> Come back tomorrow. I've already warned the next dungeon about you. <span>New adventure at midnight UTC.</span></p>
+                  <p className="hero-chronicle__return"><Sparkles size={18}/> More adventures await today. <span>Three fresh choices from our story rotation arrive at midnight UTC.</span></p>
                 </div>
               </section>
             </section>
             <div className="ending__actions">
-              <button className="button button--secondary" onClick={reset}>Replay playtest</button>
+              <button className="button button--secondary" onClick={reset}>Replay this adventure</button>
+              {!previewMode && getDailyChoices(new Date(daily.day + "T12:00:00Z")).map((choice, index) =>
+                index !== dailySlot ? <a className="button button--secondary" key={choice.dungeon.slug}
+                  href={index ? "?quest=" + index : window.location.pathname}>
+                  <Swords size={15}/> Play {choice.dungeon.title}
+                </a> : null
+              )}
               {!previewMode && canPreviewTomorrow && <a className="button button--secondary" href="?preview=tomorrow">⏭ Test tomorrow’s dungeon</a>}
                {!previewMode && canPreviewStory && <a className="button button--secondary" href="?preview=hollowmere">✦ Test Hollowmere v0.2</a>}
                {!previewMode && canPreviewFresh && <a className="button button--secondary" href="?preview=fresh-1">🎮 Test fresh NES dungeons</a>}
