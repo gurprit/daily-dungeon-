@@ -162,7 +162,7 @@ export async function generateDailyStories(env: StoryEnv, day: string): Promise<
     if (!stories) throw new Error("The daily story model returned an incomplete or unsafe story set");
     await env.DAILY_BUDGET_DB.prepare(
       "UPDATE daily_story_sets SET status = 'ready', stories_json = ?, updated_at = CURRENT_TIMESTAMP WHERE day = ? AND status = 'pending'"
-    ).bind(JSON.stringify(stories),day).first();
+    ).bind(JSON.stringify({stories}),day).first();
   } catch (error) {
     console.error("Daily story generation unavailable",error instanceof Error ? error.message : "unknown");
     try {
