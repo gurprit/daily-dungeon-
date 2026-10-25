@@ -3,7 +3,7 @@ import {
   ArrowRight, BookOpen, Check, Crown, Dice5, Download, Flame,
   Heart, ScrollText, Share2, Shield, Skull, Sparkles, Swords
 } from "lucide-react";
-import { getDailyGame, getDailyChoices, getDailyGameForSlot, getPreviewDailyGame, getFreshPreviewGame } from "./game";
+import { getDailyGame, getDailyChoices, getDailyGameForSlot, getPreviewDailyGame, getFreshPreviewGame, type Dungeon } from "./game";
 import { FRESH_PREVIEW_MODES, freshPreviewIndex } from "./fresh-dungeons";
 import { storyRoom, storyClues, storyEnding } from "./story";
 import { startingItems, inventoryAfterTurn } from "./inventory";
@@ -27,9 +27,12 @@ const gameForPage = () => freshIndex !== null ? getFreshPreviewGame(freshIndex)
   : previewHollowmere ? getDailyGame(new Date("2026-10-26T12:00:00Z"))
   : previewTomorrow ? getPreviewDailyGame() : getDailyGameForSlot(dailySlot);
 // New namespace & edition. Never delete, rewrite or combine previous playtest saves.
-const runStorageKey = (day: string) => "daily-dungeon:" +
+type DailySource = "classic" | "generated";
+const runStorageKey = (day: string, source: DailySource = "classic", slot = dailySlot) => "daily-dungeon:" +
   (previewFresh ? "nes-clean-v1:" + FRESH_PREVIEW_MODES[freshIndex!] + ":" :
-   previewHollowmere ? "test-hollowmere:" : previewTomorrow ? "test-tomorrow:" : dailySlot ? "daily-choice-" + dailySlot + ":" : "") + day;
+   previewHollowmere ? "test-hollowmere:" : previewTomorrow ? "test-tomorrow:" :
+    source === "generated" ? "ai-stories-v1:quest-" + slot + ":" :
+    slot ? "daily-choice-" + slot + ":" : "") + day;
 
 type Turn = {
   roomTitle: string;
@@ -48,22 +51,22 @@ type Run = {
   edition?: number;
 };
 
-function freshRun(day: string): Run {
+function freshRun(day: string, game = gameForPage()): Run {
   return {
     day, started: false, roomIndex: 0,
-    hearts: 3, inventory: startingItems(gameForPage().dungeon),
-    history: [], finished: false, edition: gameForPage().dungeon.edition ?? 1
+    hearts: 3, inventory: startingItems(game.dungeon),
+    history: [], finished: false, edition: game.dungeon.edition ?? 1
   };
 }
 
-function loadRun(day: string): Run {
+function loadRun(day: string, game = gameForPage(), source: DailySource = "classic"): Run {
   try {
-    const saved = localStorage.getItem(runStorageKey(day));
-    if (!saved) return freshRun(day);
+    const saved = localStorage.getItem(runStorageKey(day, source));
+    if (!saved) return freshRun(day,game);
     const parsed = JSON.parse(saved) as Run;
     if (
       parsed.day === day &&
-      (parsed.edition ?? 1) === (gameForPage().dungeon.edition ?? 1) &&
+      (parsed.edition ?? 1) === (game.dungeon.edition ?? 1) &&
       typeof parsed.started === "boolean" &&
       typeof parsed.hearts === "number" &&
       typeof parsed.roomIndex === "number" &&
@@ -81,27 +84,69 @@ function loadRun(day: string): Run {
       return parsed;
     }
   } catch { /* Local storage may be disabled */ }
-  return freshRun(day);
+  return freshRun(day,game);
 }
 
 function useDailyRun() {
   const [daily, setDaily] = useState(gameForPage);
-  const [run, setRun] = useState<Run>(() => loadRun(gameForPage().day));
+  const [source, setSource] = useState<DailySource>("classic");
+  const [choices, setChoices] = useState<readonly Dungeon[]>(() => getDailyChoices().map(c=>c.dungeon));
+  const [preparing, setPreparing] = useState(false);
+  const [run, setRun] = useState<Run>(()=>loadRun(gameForPage().day));
+  const runRef = useRef(run);
+  runRef.current = run;
+
   useEffect(() => {
-    try { localStorage.setItem(runStorageKey(run.day), JSON.stringify(run)); }
+    try { localStorage.setItem(runStorageKey(run.day,source),JSON.stringify(run)); }
     catch { /* Local storage unavailable */ }
-  }, [run]);
+  },[run,source]);
+
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      const next = gameForPage();
-      if (next.day !== daily.day) {
+    if (previewMode) return;
+    let active=true, retries=0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const sync=async()=>{
+      try {
+        const response=await fetch("/api/daily-stories",{cache:"no-store"});
+        const data=await response.json() as {
+          day?:string; status?:string; source?:DailySource; choices?:Dungeon[];
+        };
+        if(!active || data.day!==getDailyGame().day)return;
+        if(data.source==="generated" && data.status==="ready" &&
+           Array.isArray(data.choices) && data.choices.length===3) {
+          setPreparing(false);
+          // An active run is pinned; the player cannot change dungeon mid-quest.
+          if(runRef.current.started) return;
+          const next={day:data.day!,number:getDailyGame().number,dungeon:data.choices[dailySlot]};
+          setChoices(data.choices);
+          setDaily(next);
+          setSource("generated");
+          setRun(loadRun(next.day,next,"generated"));
+        } else if(data.status==="pending" && retries++<40){
+          setPreparing(true);
+          timer=setTimeout(()=>{if(active)void sync();},2500);
+        } else setPreparing(false);
+      }catch{if(active)setPreparing(false);}
+    };
+    void sync();
+    return ()=>{active=false;if(timer)clearTimeout(timer);};
+  },[daily.day]);
+
+  useEffect(()=>{
+    const interval=window.setInterval(()=>{
+      const next=gameForPage();
+      if(next.day!==daily.day){
+        setSource("classic");
+        setChoices(getDailyChoices().map(c=>c.dungeon));
+        setPreparing(false);
         setDaily(next);
-        setRun(loadRun(next.day));
+        setRun(loadRun(next.day,next,"classic"));
       }
-    }, 60_000);
-    return () => window.clearInterval(interval);
-  }, [daily.day]);
-  return { daily, run, setRun };
+    },60_000);
+    return ()=>window.clearInterval(interval);
+  },[daily.day]);
+
+  return {daily,run,setRun,source,choices,preparing};
 }
 
 function DungeonDoor({ slug, title, day, preview, enabled }: {
@@ -225,7 +270,7 @@ function JourneyRoll({ outcome }: { outcome: ActionOutcome }) {
 }
 
 export default function App() {
-  const { daily, run, setRun } = useDailyRun();
+  const { daily, run, setRun, source, choices, preparing } = useDailyRun();
   const [action, setAction] = useState("");
   const actionField = useRef<HTMLTextAreaElement>(null);
   const [loading, setLoading] = useState(false);
@@ -292,7 +337,7 @@ export default function App() {
             })),
             previewTomorrow,
             previewHollowmere,
-            ...(!previewMode ? { dailySlot } : {}),
+            ...(!previewMode ? { dailySlot, dailySource: source } : {}),
             ...(freshIndex !== null ? { previewFresh: freshIndex + 1 } : {})
           })
         });
@@ -335,7 +380,7 @@ export default function App() {
 
   function reset() {
     if (!window.confirm("Restart this adventure? Your progress in this quest will be lost.")) return;
-    setRun(freshRun(daily.day));
+    setRun(freshRun(daily.day,daily));
     setAction("");
     setError("");
     setCopied(false);
@@ -428,11 +473,12 @@ export default function App() {
           <div className="daily-quests__heading">
             <div><span className="eyebrow">THREE SHORT QUESTS · ONE DAY</span>
               <h2>Choose today's adventure</h2></div>
-            <p>Each quest is a five-minute, three-room adventure. Play one or all three. The choices rotate at midnight UTC.</p>
+            <p>Three new shared quests are prepared daily. Each takes about five minutes, with three rooms. Play one or all three.</p>
           </div>
           <nav className="daily-quests__grid" aria-label="Daily adventures">
-            {getDailyChoices(new Date(daily.day + "T12:00:00Z")).map((entry, index) => {
-              const storage = "daily-dungeon:" + (index ? "daily-choice-" + index + ":" : "") + daily.day;
+            {choices.map((dungeon, index) => {
+              const entry={dungeon};
+              const storage=runStorageKey(daily.day,source,index);
               let label = "READY";
               try {
                 const saved = localStorage.getItem(storage);
@@ -451,6 +497,7 @@ export default function App() {
               </a>;
             })}
           </nav>
+          {preparing && <p className="daily-quests__preparing" role="status">✨ The Dungeon Master is creating today's new adventures. Classic quests are playable while the ink dries.</p>}
         </section>}
         {!run.started && (
           <section className="intro">
@@ -682,16 +729,16 @@ export default function App() {
                     lastHonour: achievements.at(-1)?.title,
                     moments: run.history.map(entry => ({ room: entry.roomTitle, success: entry.outcome.success, action: entry.action }))
                   })}</p>
-                  <p className="hero-chronicle__return"><Sparkles size={18}/> Your story is written, but there may be more quests to explore today. <span>Three adventures rotate at midnight UTC.</span></p>
+                  <p className="hero-chronicle__return"><Sparkles size={18}/> Your story is written, but there may be more quests to explore today. <span>Three new adventures arrive each day, with classics as backup.</span></p>
                 </div>
               </section>
             </section>
             <div className="ending__actions">
               <button className="button button--secondary" onClick={reset}>Replay this adventure</button>
-              {!previewMode && getDailyChoices(new Date(daily.day + "T12:00:00Z")).map((choice, index) =>
-                index !== dailySlot ? <a className="button button--secondary" key={choice.dungeon.slug}
+              {!previewMode && choices.map((dungeon, index) =>
+                index !== dailySlot ? <a className="button button--secondary" key={dungeon.slug}
                   href={index ? "?quest=" + index : window.location.pathname}>
-                  <Swords size={15}/> Play {choice.dungeon.title}
+                  <Swords size={15}/> Play {dungeon.title}
                 </a> : null
               )}
             </div>
