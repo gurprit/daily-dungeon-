@@ -16,6 +16,9 @@ export type VisualInput = {
   kind: VisualKind;
   dungeonSlug: string;
   roomIndex: number;
+  storyTitle?: string;
+  roomTitle?: string;
+  sceneText?: string;
   action?: string;
   narration?: string;
   success?: boolean;

@@ -245,8 +245,9 @@ export default function ProceduralIllustration(input: Props) {
   const classes = ["procedural-art", "procedural-art--" + kind, className].filter(Boolean).join(" ");
   return <div ref={parallaxRef} className={classes} role="img" aria-label={label ?? "Procedural fantasy illustration"}>
     {kind === "clue" ? <ClueSketch variant={clueId ?? "inscription"}/> :
-      <PixelScene dungeonSlug={dungeonSlug} roomIndex={roomIndex} className="procedural-art__background"
-          parallaxDepth={!fresh ? 0.4 : undefined}/>}
+      <PixelScene dungeonSlug={dungeonSlug} roomIndex={roomIndex}
+          storyTitle={input.storyTitle} roomTitle={input.roomTitle} sceneText={input.sceneText}
+          className="procedural-art__background" parallaxDepth={!fresh ? 0.4 : undefined}/>}
     <svg className="procedural-art__foreground" data-parallax-depth={!fresh && kind !== "clue" ? 0.95 : undefined}
       viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
       aria-hidden="true" xmlns="http://www.w3.org/2000/svg">

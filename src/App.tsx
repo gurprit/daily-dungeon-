@@ -149,15 +149,17 @@ function useDailyRun() {
   return {daily,run,setRun,source,choices,preparing};
 }
 
-function DungeonDoor({ slug, title, day, preview, enabled, dailySource }: {
-  slug: string; title: string; day: string; preview: ArtPreview; enabled: boolean; dailySource: DailySource
+function DungeonDoor({ dungeon, day, preview, enabled, dailySource }: {
+  dungeon: Dungeon; day: string; preview: ArtPreview; enabled: boolean; dailySource: DailySource
 }) {
   return (
     <div className="dungeon-art dungeon-art--pixel">
       <div className="pixel-scene__topbar"><span>✦ QUEST PREVIEW</span><span>3-ROOM ADVENTURE</span></div>
       <div className="pixel-scene__viewport">
-        <IllustratedScene dailySource={dailySource} dailySlot={dailySlot} dungeonSlug={slug} roomIndex={0} kind="room" day={day}
-          preview={preview} enabled={enabled} alt={"Illustration of " + title}
+        <IllustratedScene dailySource={dailySource} dailySlot={dailySlot} dungeonSlug={dungeon.slug}
+          storyTitle={dungeon.title} roomTitle={dungeon.rooms[0].title} sceneText={dungeon.rooms[0].scene}
+          roomIndex={0} kind="room" day={day}
+          preview={preview} enabled={enabled} alt={"Illustration of " + dungeon.title}
           className="procedural-art--welcome"/>
         <div className="pixel-scene__scanlines" aria-hidden="true"/>
       </div>
@@ -196,14 +198,16 @@ function AchievementUnlock({ achievement }: { achievement: Achievement }) {
   );
 }
 
-function RoomArtwork({ turn, dungeonSlug, roomIndex, day, preview, enabled, dailySource, compact = false }: {
-  turn: Turn; dungeonSlug: string; roomIndex: number; day: string;
+function RoomArtwork({ turn, dungeon, roomIndex, day, preview, enabled, dailySource, compact = false }: {
+  turn: Turn; dungeon: Dungeon; roomIndex: number; day: string;
   preview: ArtPreview; enabled: boolean; dailySource: DailySource; compact?: boolean;
 }) {
   return (
     <figure className={"room-artwork " + (compact ? "room-artwork--compact" : "")}>
       <div className="room-artwork__frame">
-        <IllustratedScene dailySource={dailySource} dailySlot={dailySlot} kind="action" dungeonSlug={dungeonSlug} roomIndex={roomIndex}
+        <IllustratedScene dailySource={dailySource} dailySlot={dailySlot} kind="action" dungeonSlug={dungeon.slug}
+          storyTitle={dungeon.title} roomTitle={dungeon.rooms[roomIndex].title}
+          sceneText={dungeon.rooms[roomIndex].scene} roomIndex={roomIndex}
           day={day} preview={preview} enabled={enabled} ticket={turn.outcome.artTicket}
           action={turn.action} narration={turn.outcome.narration}
           success={turn.outcome.success}
@@ -503,7 +507,7 @@ export default function App() {
           <section className="intro">
             <div className="intro__visual">
               <div className="intro__badge"><Flame size={14}/> THE GATES ARE OPEN</div>
-              <DungeonDoor slug={daily.dungeon.slug} title={daily.dungeon.title} day={daily.day} preview={artPreview} enabled={artEnabled} dailySource={source}/>
+              <DungeonDoor dungeon={daily.dungeon} day={daily.day} preview={artPreview} enabled={artEnabled} dailySource={source}/>
             </div>
             <div className="intro__copy">
               <p className="eyebrow">ADVENTURE {String(dailySlot + 1).padStart(2, "0")} · THREE-ROOM QUEST</p>
@@ -558,7 +562,7 @@ export default function App() {
                   <small>{last.outcome.mode === "ai" ? "Narrated by the AI Dungeon Master" : "Scripted narrator (AI not enabled)"}</small>
                 </div>
               )}
-              {last && <RoomArtwork turn={last} dungeonSlug={daily.dungeon.slug} roomIndex={run.history.length-1} day={daily.day} preview={artPreview} enabled={artEnabled} dailySource={source}/>}
+              {last && <RoomArtwork turn={last} dungeon={daily.dungeon} roomIndex={run.history.length-1} day={daily.day} preview={artPreview} enabled={artEnabled} dailySource={source}/>}
               {last?.outcome.achievement && <AchievementUnlock achievement={last.outcome.achievement}/>}
 
 
@@ -566,7 +570,8 @@ export default function App() {
                 <h2><BookOpen size={18}/> What you’ve discovered</h2>
                 {clues.map((clue, i) => <div className="story-clues__entry" key={clue.id}>
                   <IllustratedScene dailySource={source} dailySlot={dailySlot} dungeonSlug={daily.dungeon.slug} roomIndex={i}
-                    kind="clue" clueId={clue.id} variant={clue.id} day={daily.day}
+                    storyTitle={daily.dungeon.title} roomTitle={daily.dungeon.rooms[i].title}
+                    sceneText={daily.dungeon.rooms[i].scene} kind="clue" clueId={clue.id} variant={clue.id} day={daily.day}
                     preview={artPreview} enabled={artEnabled} alt={"Discovery: " + clue.title}
                     className="procedural-art--clue"/>
                   <div className="story-clues__copy"><strong>{clue.title}</strong><p>{clue.text}</p></div>
@@ -579,7 +584,7 @@ export default function App() {
                 </div>
                 <div className="encounter__art encounter__art--illustrated">
                   <IllustratedScene dailySource={source} dailySlot={dailySlot} dungeonSlug={daily.dungeon.slug} roomIndex={run.roomIndex}
-                    kind="room" day={daily.day} preview={artPreview} enabled={artEnabled}
+                    storyTitle={daily.dungeon.title} roomTitle={room.title} sceneText={room.scene} kind="room" day={daily.day} preview={artPreview} enabled={artEnabled}
                     alt={"Room illustration: " + room.title}
                     className="procedural-art--room"/>
                   <span className="encounter__scene-label">{room.subtitle}</span>
@@ -656,7 +661,8 @@ export default function App() {
                 "Your courage was unquestionable. Your decision-making, less so. The Dungeon Master will remember this."}
             </p>
             <IllustratedScene dailySource={source} dailySlot={dailySlot} dungeonSlug={daily.dungeon.slug} roomIndex={2}
-              kind="ending" day={daily.day} preview={artPreview} enabled={artEnabled}
+              storyTitle={daily.dungeon.title} roomTitle={daily.dungeon.rooms[2].title}
+              sceneText={daily.dungeon.rooms[2].scene} kind="ending" day={daily.day} preview={artPreview} enabled={artEnabled}
               variant={finalFate?.id ?? (won ? "victory" : "defeat")}
               endingId={finalFate?.id ?? (won ? "victory" : "defeat")}
               alt={"Illustrated ending: " + title} className="procedural-art--ending"/>
@@ -710,7 +716,7 @@ export default function App() {
                       </div>
                       <JourneyRoll outcome={entry.outcome}/>
                       {(entry.outcome.usedItems?.length ?? 0) > 0 && <p className="ending__entry-spent">Used up: {entry.outcome.usedItems?.join(", ")}</p>}
-                      <RoomArtwork turn={entry} dungeonSlug={daily.dungeon.slug} roomIndex={i} day={daily.day} preview={artPreview} enabled={artEnabled} dailySource={source} compact/>
+                      <RoomArtwork turn={entry} dungeon={daily.dungeon} roomIndex={i} day={daily.day} preview={artPreview} enabled={artEnabled} dailySource={source} compact/>
                       <div className="ending__entry-response">
                         <span className="ending__entry-label">THE DUNGEON MASTER</span>
                         <p>{entry.outcome.narration}</p>

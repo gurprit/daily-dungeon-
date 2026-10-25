@@ -21,7 +21,7 @@ type Props = VisualInput & {
 };
 
 const readyImages = new Map<string, string>();
-const ART_STYLE = "nes8-v4";
+const ART_STYLE = "nes8-v5";
 /**
  * An illustrated scene: model artwork in the background, animated SVG + JS
  * particles in the foreground. The old procedural image appears immediately
@@ -37,7 +37,7 @@ export default function IllustratedScene(props: Props) {
     ticket, dailySlot = 0, dailySource = "classic", className = ""
   } = props;
   const key = kind === "action" ? (ticket ? ART_STYLE + ":action:" + ticket : "") :
-    [ART_STYLE, day, preview, dailySource, dailySlot, kind, roomIndex, variant ?? ""].join("|");
+    [ART_STYLE, day, preview, dailySource, dailySlot, dungeonSlug, kind, roomIndex, variant ?? ""].join("|");
   const [result, setResult] = useState<ArtJob>(() => ({
     status: "pending", url: key ? readyImages.get(key) : undefined
   }));
@@ -62,7 +62,7 @@ export default function IllustratedScene(props: Props) {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(shared
-            ? { day, roomIndex, kind, variant, preview, dailySlot, dailySource }
+            ? { day, roomIndex, kind, variant, preview, dailySlot, dailySource, dungeonSlug }
             : { token: ticket })
         });
         if (!response.ok) throw new Error("Artwork unavailable");
@@ -124,10 +124,10 @@ export default function IllustratedScene(props: Props) {
       (result.status === "pending" && !broken ? "" : "hybrid-art__painting--fallback")}
       role="status" aria-live="polite">
       {broken || result.status === "failed"
-        ? "Artist unavailable · pixel sketch shown"
+        ? "Image service unavailable · story sketch shown"
         : result.status === "timed-out"
-          ? "Taking too long · keeping the sketch"
-          : "Painting this moment…"}
+          ? "Artwork delayed · story sketch shown"
+          : "Painting this adventure…"}
     </span>}
   </div>;
 }
