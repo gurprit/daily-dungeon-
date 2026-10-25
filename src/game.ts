@@ -245,6 +245,41 @@ export function getDailyGame(now: Date = new Date()) {
   return { day, number: dayIndex + 1, dungeon };
 }
 
+/** Today's shared three-quest menu. Every quest is its own three-room story.
+ * The authored pool is finite: titles do reappear, but the selection changes
+ * with the UTC day. The featured quest remains slot 0 for old saved runs. */
+export type DailyChoice = ReturnType<typeof getDailyGame>;
+const dailyPool: readonly Dungeon[] = [
+  ...DUNGEONS, ...NEW_DAILY_DUNGEONS, HOLLOWMERE_DUNGEON, ...FRESH_DUNGEONS
+];
+
+export function getDailyChoices(now: Date = new Date()): readonly [DailyChoice, DailyChoice, DailyChoice] {
+  const featured = getDailyGame(now);
+  const index = featured.number - 1;
+  const result: Dungeon[] = [featured.dungeon];
+  // A non-unit stride through nine stories produces a changing daily slate.
+  // Exclude the featured story and favour something other than yesterday's
+  // featured quest when we have spare options.
+  const yesterday = getDailyGame(new Date(now.getTime() - DAY_MS)).dungeon.slug;
+  const start = (index * 5 + 1) % dailyPool.length;
+  for (let pass = 0; pass < 2 && result.length < 3; pass++) {
+    for (let step = 0; step < dailyPool.length && result.length < 3; step++) {
+      const candidate = dailyPool[(start + step) % dailyPool.length];
+      if (result.some(dungeon => dungeon.slug === candidate.slug)) continue;
+      if (pass === 0 && candidate.slug === yesterday) continue;
+      result.push(candidate);
+    }
+  }
+  return result.map(dungeon => ({
+    day: featured.day, number: featured.number, dungeon
+  })) as [DailyChoice, DailyChoice, DailyChoice];
+}
+
+/** The slot is validated at the API boundary before any game rules are run. */
+export function getDailyGameForSlot(slot: 0 | 1 | 2, now: Date = new Date()): DailyChoice {
+  return getDailyChoices(now)[slot];
+}
+
 /** Dedicated fresh playtest dates. Old live/daily entries remain untouched. */
 export function getFreshPreviewGame(index: 0 | 1 | 2) {
   return getDailyGame(new Date(FRESH_DUNGEON_DATES[index] + "T12:00:00Z"));
