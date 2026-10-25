@@ -2,6 +2,7 @@ import { getDailyGame, getDailyGameForSlot, getPreviewDailyGame, getFreshPreview
 import { freshPreviewIndex, type FreshPreviewMode } from "../src/fresh-dungeons.ts";
 import { ILLUSTRATION_STYLE, artEnabled, inferIllustration, type ArtEnv } from "./art.ts";
 import { generatedFxLayout } from "../src/image-fx-layout.ts";
+import { cachedDailyStories } from "./daily-stories.ts";
 
 /** Fixed pictures shared by every player. User actions remain separately illustrated. */
 export type SharedArtKind = "room" | "clue" | "ending";
@@ -9,6 +10,7 @@ export type SharedArtRequest = {
   day: string;
   roomIndex: number;
   dailySlot?: 0 | 1 | 2;
+  dailySource?: "generated" | "classic";
   kind: SharedArtKind;
   variant?: string;
   preview?: "today" | "tomorrow" | "hollowmere" | FreshPreviewMode;
@@ -50,6 +52,9 @@ export function validateSharedArt(value: unknown, env: SharedEnv, now: Date = ne
   if (body.kind !== "room" && body.kind !== "clue" && body.kind !== "ending") return null;
   const freshIndex = freshPreviewIndex(body.preview);
   const dailySlot = body.dailySlot === undefined ? 0 : body.dailySlot;
+  // Synchronous validation is for the authored rotation; the generated
+  // story is loaded and validated asynchronously in the request handler.
+  if (body.dailySource !== undefined && body.dailySource !== "classic") return null;
   if (dailySlot !== 0 && dailySlot !== 1 && dailySlot !== 2) return null;
   if (body.preview !== "today" && dailySlot !== 0) return null;
   const daily = freshIndex !== null
@@ -95,7 +100,9 @@ export function createSharedArtPrompt(dungeon: Dungeon, data: SharedArtRequest):
 
 /* First 128 bits of SHA256, with UUIDv4 version bits, form a stable job ID. */
 export async function sharedArtId(data: SharedArtRequest): Promise<string> {
-  const key = "v4-nes8/" + data.day + "/" + data.kind + "/" + data.roomIndex + "/" + (data.variant ?? "") + (data.dailySlot ? "/daily-slot-" + data.dailySlot : "");
+  const key = "v4-nes8/" + data.day + "/" + data.kind + "/" + data.roomIndex + "/" + (data.variant ?? "") +
+    (data.dailySlot ? "/daily-slot-" + data.dailySlot : "") +
+    (data.dailySource === "generated" ? "/generated" : "");
   const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key)));
   const bytes = hash.slice(0, 16);
   bytes[6] = (bytes[6] & 15) | 64;
@@ -117,7 +124,19 @@ export async function handleSharedArtRoute(
     if (raw.length > 900) return json({ error: "Request too large." }, 413);
     body = JSON.parse(raw);
   } catch { return json({ error: "Invalid request." }, 400); }
-  const valid = validateSharedArt(body, env);
+  let valid = validateSharedArt(body, env);
+  const dailyRequest = body && typeof body === "object" ? body as Partial<SharedArtRequest> : null;
+  if (!valid && dailyRequest?.dailySource === "generated" && dailyRequest.preview === "today" &&
+      Number.isInteger(dailyRequest.dailySlot) && [0,1,2].includes(dailyRequest.dailySlot!) &&
+      dailyRequest.day === getDailyGame().day &&
+      Number.isInteger(dailyRequest.roomIndex) && dailyRequest.roomIndex! >= 0 && dailyRequest.roomIndex! <= 2 &&
+      (dailyRequest.kind === "room" || dailyRequest.kind === "ending") &&
+      (dailyRequest.kind !== "room" || !dailyRequest.variant) &&
+      (dailyRequest.kind !== "ending" || (dailyRequest.roomIndex === 2 &&
+        (dailyRequest.variant === "victory" || dailyRequest.variant === "defeat")))) {
+    const stories = await cachedDailyStories(env, dailyRequest.day);
+    if (stories) valid = {request: dailyRequest as SharedArtRequest,dungeon:stories[dailyRequest.dailySlot!]};
+  }
   if (!valid) return json({ error: "Unknown illustration." }, 400);
 
   if (env.ACTION_LIMITER) {

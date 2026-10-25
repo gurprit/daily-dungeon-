@@ -8,8 +8,10 @@ import { priorStoryContext } from "./continuity.ts";
 import { storyRoom, storyGuidance, storyEnding } from "../src/story.ts";
 import { handleArtRoute, artServiceStatus, makeArtTicket, type ArtEnv } from "./art.ts";
 import { handleSharedArtRoute } from "./shared-art.ts";
+import { handleDailyStoriesRoute, claimDailyStories, cachedDailyStories, type StoryEnv } from "./daily-stories.ts";
 
-type Env = ArtEnv & {
+type Env = ArtEnv & StoryEnv & {
+  DAILY_STORIES_ENABLED?: string;
   AI_ENABLED?: string;
   AI_DAILY_LIMIT?: string;
   PREVIEW_TOMORROW_ENABLED?: string;
@@ -36,6 +38,7 @@ type ActionRequest = {
   previewHollowmere?: unknown;
   previewFresh?: unknown;
   dailySlot?: unknown;
+  dailySource?: unknown;
   priorTurns?: unknown;
 };
 
@@ -70,6 +73,8 @@ async function reserveDailyBudget(env: Env, day: string): Promise<boolean> {
 export default {
   async fetch(request: Request, env: Env, context?: { waitUntil: (task: Promise<unknown>) => void }): Promise<Response> {
     const url = new URL(request.url);
+    const dailyStoriesResponse = await handleDailyStoriesRoute(request, env, context);
+    if (dailyStoriesResponse) return dailyStoriesResponse;
     const sharedArtResponse = await handleSharedArtRoute(request, env, context);
     if (sharedArtResponse) return sharedArtResponse;
     const artResponse = await handleArtRoute(request, env, context);
@@ -133,9 +138,18 @@ export default {
       if (isStoryPreview && env.PREVIEW_STORY_ENABLED !== "true") return json({ error: "Story playtest is disabled." }, 403);
       if (freshIndex !== null && env.PREVIEW_FRESH_ENABLED !== "true")
         return json({ error: "Fresh dungeon playtests are disabled." }, 403);
-      const daily = freshIndex !== null ? getFreshPreviewGame(freshIndex)
+      if (body.dailySource !== undefined && body.dailySource !== "generated" && body.dailySource !== "classic")
+        return json({error:"Invalid adventure source."},400);
+      if ((isPreview || isStoryPreview || freshIndex !== null) && body.dailySource === "generated")
+        return json({error:"Generated daily quests are not available in preview mode."},400);
+      let daily = freshIndex !== null ? getFreshPreviewGame(freshIndex)
         : isStoryPreview ? getDailyGame(new Date("2026-10-26T12:00:00Z"))
         : isPreview ? getPreviewDailyGame() : getDailyGameForSlot(dailySlot);
+      if (!isPreview && !isStoryPreview && freshIndex === null && body.dailySource === "generated") {
+        const stories = await cachedDailyStories(env,getDailyGame().day);
+        if (!stories) return json({error:"Today's new stories are not available. Try the classic quests."},409);
+        daily = {...daily,dungeon:stories[dailySlot]};
+      }
       if (body.day !== daily.day) return json({ error: "A new dungeon has begun. Refresh to continue." }, 409);
       if (!Number.isInteger(body.roomIndex) || Number(body.roomIndex) < 0 || Number(body.roomIndex) > 2) {
         return json({ error: "Invalid room." }, 400);
@@ -194,5 +208,10 @@ export default {
 
     if (url.pathname.startsWith("/api/")) return json({ error: "Not found." }, 404);
     return env.ASSETS.fetch(request);
+  },
+  async scheduled(_event: unknown, env: Env, context: {waitUntil(task:Promise<unknown>):void}) {
+    // Cloudflare Cron pre-warms the same unique, D1-locked set the GET route
+    // uses. GET remains safe if cron delivery is delayed or skipped.
+    await claimDailyStories(env,new Date(),context);
   }
 };

@@ -6,6 +6,9 @@ export type Room = {
   subtitle: string;
   scene: string;
   arrival?: string;
+  /** Fresh daily stories provide two authored world-state branches for prior outcomes. */
+  arrivalSuccess?: string;
+  arrivalFailure?: string;
   /** Deterministic echo of an earlier player choice, visible in the next room. */
   echo?: string;
   character: string;

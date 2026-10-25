@@ -1,5 +1,7 @@
 import { getDailyGame, getDailyChoices } from "../src/game.ts";
 import { generatedFxLayout } from "../src/image-fx-layout.ts";
+import { cachedDailyStories } from "./daily-stories.ts";
+import type { Dungeon } from "../src/game.ts";
 
 export type ArtTicket = {
   id: string;
@@ -98,7 +100,8 @@ export async function verifyArtTicket(env: ArtEnv, token: string): Promise<ArtTi
       typeof result.narration !== "string" || result.narration.length > 550 ||
       (result.dungeonSlug !== undefined && (typeof result.dungeonSlug !== "string" ||
         result.dungeonSlug.length > 80 || !getDailyChoices(new Date(result.day + "T12:00:00Z"))
-          .some(game => game.dungeon.slug === result.dungeonSlug))) ||
+          .some(game => game.dungeon.slug === result.dungeonSlug) &&
+        !new RegExp("^daily-ai-" + result.day + "-[012]$").test(result.dungeonSlug))) ||
       typeof result.success !== "boolean" || typeof result.issuedAt !== "number" ||
       result.issuedAt > Date.now() + 60_000 || Date.now() - result.issuedAt > 48 * 60 * 60 * 1000) return null;
     return result as ArtTicket;
@@ -120,9 +123,9 @@ export const ILLUSTRATION_STYLE = [
   "No interface chrome, letters, labels, dialogue boxes, logos, UI borders or speech bubbles."
 ].join(" ");
 
-export function createPixelArtPrompt(ticket: ArtTicket): string {
+export function createPixelArtPrompt(ticket: ArtTicket, generatedDungeon?: Dungeon): string {
   const gameDay = new Date(ticket.day + "T12:00:00Z");
-  const dungeon = getDailyChoices(gameDay).find(game => game.dungeon.slug === ticket.dungeonSlug)?.dungeon
+  const dungeon = generatedDungeon ?? getDailyChoices(gameDay).find(game => game.dungeon.slug === ticket.dungeonSlug)?.dungeon
     ?? getDailyGame(gameDay).dungeon;
   const room = dungeon.rooms[ticket.roomIndex];
   return [
@@ -167,7 +170,13 @@ async function updateStatus(db: ArtDatabase, id: string, status: string, objectK
 export async function generateArt(env: ArtEnv, ticket: ArtTicket): Promise<void> {
   const db = env.DAILY_BUDGET_DB!;
   try {
-    const bytes = await inferIllustration(env, createPixelArtPrompt(ticket));
+    const generated = ticket.dungeonSlug?.startsWith("daily-ai-")
+      ? (await cachedDailyStories(env,ticket.day))?.find(story=>story.slug===ticket.dungeonSlug)
+      : undefined;
+    // Never silently paint the unrelated classic quest when a generated
+    // story's cached canon is unavailable.
+    if (ticket.dungeonSlug?.startsWith("daily-ai-") && !generated) throw new Error("Generated story missing");
+    const bytes = await inferIllustration(env, createPixelArtPrompt(ticket,generated));
     const key = "scenes/" + ticket.day + "/" + ticket.id + ".png";
     await env.ART_BUCKET!.put(key, bytes, { httpMetadata: { contentType: "image/png" } });
     await updateStatus(db, ticket.id, "ready", key);
