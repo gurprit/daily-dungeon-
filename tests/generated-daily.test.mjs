@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { getDailyChoices } from "../src/game.ts";
 import { storyRoom } from "../src/story.ts";
 import {
-  parseDailyStories, parseDailyStory, SINGLE_STORY_JSON_SCHEMA, dailyStoryPrompt, claimDailyStories, cachedDailyStories,
+  parseDailyStories, parseDailyStory, storyValidationField, SINGLE_STORY_JSON_SCHEMA, dailyStoryPrompt, claimDailyStories, cachedDailyStories,
   handleDailyStoriesRoute
 } from "../worker/daily-stories.ts";
 import worker from "../worker/index.ts";
@@ -186,7 +186,7 @@ test("failed daily generation stores only a safe error stage, without leaking ra
   assert.equal(failed.failureSlot,0);
   assert.equal(JSON.stringify(failed).includes(badText),false);
   const saved=JSON.parse(fixture.rows.get(day).stories_json);
-  assert.deepEqual(saved,{failureStage:"invalid-output",failureSlot:0});
+  assert.deepEqual(saved,{failureStage:"invalid-output",failureSlot:0,failureField:"json"});
 
   const different=fixtureDb();
   const unavailable={DAILY_STORIES_ENABLED:"true",DAILY_BUDGET_DB:different.db,
@@ -356,6 +356,38 @@ test("three bounded inference calls publish one daily batch, with no more infere
   assert.equal(mock.calls,3);
 });
 
+test("a transient malformed second story recovers with exactly one targeted retry",async()=>{
+  const mock=fixtureDb();
+  const callBySlot=[0,0,0];
+  const env={
+    DAILY_STORIES_ENABLED:"true",DAILY_BUDGET_DB:mock.db,
+    AI:{async run(_model,request){
+      const slot=JSON.parse(request.messages[1].content).adventureNumber-1;
+      callBySlot[slot]++;
+      return {response:{story:slot===1&&callBySlot[slot]===1?
+        {title:"An Incomplete Adventure"}:fiction().stories[slot]}};
+    }}
+  };
+  const pending=await claimDailyStories(env,now);
+  assert.equal(pending.status,"pending");
+  const ready=await claimDailyStories(env,now);
+  assert.equal(ready.source,"generated");
+  assert.equal(ready.status,"ready");
+  assert.deepEqual(callBySlot,[1,2,1],"only the malformed second story should be retried");
+  assert.equal(mock.rows.get(day).status,"ready");
+  assert.equal((await cachedDailyStories(env,day))?.length,3);
+});
+
+test("field-only diagnostics identify broken content without exposing model narration",()=>{
+  const invalid={story:fiction().stories[0]};
+  invalid.story.rooms[2].scene="<script>bad scene</script>";
+  assert.equal(storyValidationField(invalid),"room3.scene");
+  const tiny={story:{title:"test"}};
+  assert.equal(storyValidationField(tiny),"story.subtitle");
+  assert.equal(storyValidationField("not json"),"json");
+  assert.equal(storyValidationField({story:fiction().stories[0]}),"story.structure");
+});
+
 test("an invalid middle adventure rejects the entire daily set without publishing mismatched rooms",async()=>{
   const db=fixtureDb();
   let calls=0;
@@ -366,10 +398,11 @@ test("an invalid middle adventure rejects the entire daily set without publishin
   }};
   const env={AI:ai,DAILY_BUDGET_DB:db.db,DAILY_STORIES_ENABLED:"true"};
   await claimDailyStories(env,now);
-  assert.equal(calls,3);
+  assert.equal(calls,4,"one malformed story receives one targeted retry, never a new batch");
   assert.equal(db.rows.get(day).status,"failed");
   const failed=await claimDailyStories(env,now);
   assert.equal(failed.failureStage,"invalid-output");
   assert.equal(failed.failureSlot,1);
+  assert.equal(failed.failureField,"story.subtitle");
   assert.equal(await cachedDailyStories(env,day),null);
 });
