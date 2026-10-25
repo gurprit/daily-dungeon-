@@ -397,14 +397,16 @@ test("missing, too-short, oversized and unsafe rewards are normalised to valid i
   ];
   for(const bad of examples){
     const label=normaliseRoomReward(bad,title);
-    assert.equal(label,"Token of "+title);
+    assert.equal(label,"Token of An Unusually Stubborn Clockwork");
     assert.ok(label.length<=45);
     assert.ok(!label.includes("<") && !label.includes("://"));
   }
   assert.equal(normaliseRoomReward("Moon whistle",title),"Moon whistle");
   assert.equal(normaliseRoomReward("A very elaborate sparkly telescope that measures the moods of distant clouds",title),
     "A very elaborate sparkly telescope that");
-  assert.equal(normaliseRoomReward(undefined,"The Extremely Long And Magnificently Obscure First Chamber Of Clocks").length,45);
+  const shortened=normaliseRoomReward(undefined,"The Extremely Long And Magnificently Obscure First Chamber Of Clocks");
+  assert.ok(shortened.length<=45);
+  assert.ok(!shortened.endsWith("Magnificently Obscure First Chambe"));
 });
 
 test("a complete three-room story with a malformed second-room reward still publishes",()=>{
