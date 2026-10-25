@@ -557,6 +557,7 @@ export default function PixelScene({ dungeonSlug, roomIndex = 0, className, para
     "bell-of-hollowmere": <HollowmereTower p={p}/>
   };
   return <svg className={className} data-parallax-depth={parallaxDepth}
+    data-parallax-scale={parallaxDepth ? 1.16 : undefined}
     viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet"
     xmlns="http://www.w3.org/2000/svg" role="img" aria-label={"16-bit fantasy pixel art from today's dungeon"}
     shapeRendering="crispEdges">

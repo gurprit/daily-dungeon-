@@ -2,11 +2,10 @@ import { useEffect, useRef } from "react";
 import { sceneLayerShift, sceneScrollProgress } from "./parallax-math";
 
 /**
- * Real scroll-linked multi-plane motion. Supports SVG <g> scene layers and
- * HTML/canvas/SVG overlay planes with the correct transform API.
- *
- * The old implementation capped the entire effect at 12 units; generated
- * images had depth 0.12, often giving <1 CSS px of movement on mobile.
+ * Scrolling vertically pans artwork HORIZONTALLY in layered perspective.
+ * Supports SVG <g> scene layers and HTML/canvas/SVG overlay planes.
+ * Keep scene Y fixed: only X changes. A half-strength translation preserves
+ * the gentler v0.3 motion and avoids sliding sprites outside their frames.
  */
 export function useScrollParallax<T extends SVGSVGElement | HTMLElement = SVGSVGElement>(enabled = true) {
   const ref = useRef<T>(null);
@@ -56,22 +55,21 @@ export function useScrollParallax<T extends SVGSVGElement | HTMLElement = SVGSVG
       // Keep using layout-viewport coordinates, the same space as rect.top.
       const progress = sceneScrollProgress(rect.top, rect.height, window.innerHeight);
       for (const layer of layers) {
-        const raw = sceneLayerShift(progress, layer.depth);
+        // Use a gentler horizontal pan instead of the old vertical shift.
+        const raw = sceneLayerShift(progress, layer.depth) * 0.5;
         if (layer.group) {
-          // A group works in SVG's 320x220 viewBox units.
-          // SVG groups move in viewBox coordinates. Keep outermost props on
-          // stage while preserving substantially different depth speeds.
-          const shift = Math.max(-56, Math.min(56, raw));
-          const move = shift === 0 ? "" : "translate(0 " + shift + ")";
+          // SVG groups use the 320x220 viewBox. A 22-unit horizontal limit
+          // protects the edges while foregrounds move more than the sky.
+          const shift = Math.max(-22, Math.min(22, raw));
+          const move = shift === 0 ? "" : "translate(" + shift + " 0)";
           const value = [layer.baseAttribute, move].filter(Boolean).join(" ");
           if (value) layer.node.setAttribute("transform", value);
           else layer.node.removeAttribute("transform");
         } else {
-          // Root SVG and Canvas planes are transformed using CSS on mobile.
-          // Their 8% overscan + 10% camera zoom provide safe vertical bleed.
-          // A gentler 10% pan limit avoids excessive visual movement.
-          const shift = Math.max(-rect.height * .10, Math.min(rect.height * .10, raw));
-          const move = shift ? "translate3d(0," + shift.toFixed(2) + "px,0)" : "";
+          // Root SVG/canvas planes use CSS transforms. Cap movement by WIDTH,
+          // not height: 7% is covered by NES overscan and legacy-scene zoom.
+          const shift = Math.max(-rect.width * .07, Math.min(rect.width * .07, raw));
+          const move = shift ? "translate3d(" + shift.toFixed(2) + "px,0,0)" : "";
           const zoom = layer.zoom > 1 ? "scale(" + layer.zoom + ")" : "";
           layer.node.style.transform = [layer.baseStyle, move, zoom].filter(Boolean).join(" ");
         }

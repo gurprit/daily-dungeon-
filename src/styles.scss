@@ -1353,8 +1353,8 @@ p { line-height: 1.7; }
 }
 
 
-/* NES camera images have 8% overscan and a gentler 10% scroll zoom,
-   preserving subtle depth without revealing blank edges.
+/* NES camera images retain 8% overscan and a gentle 10% scale,
+   covering horizontal side-to-side pans without revealing blank edges.
    The Canvas is still scaled as deliberately crisp NES pixels. */
 .hybrid-art .hybrid-art__nes {
   inset: -8%;
@@ -1395,3 +1395,6 @@ p { line-height: 1.7; }
   .hybrid-art__svgfx, .hybrid-art__nes, .procedural-art__background,
   .procedural-art__foreground { will-change: auto; }
 }
+
+/* Give older procedural SVG backdrops enough side bleed for sideways motion. */
+.procedural-art__background[data-parallax-depth] { transform-origin: center center; }

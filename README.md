@@ -149,3 +149,7 @@ This increment is an unmerged feature branch until reviewed. Automated tests cov
 ### More visible scroll parallax
 
 The v0.3 scroll effect now reaches its full depth change over roughly half a viewport, rather than requiring the scene to travel across the whole screen. Near and far SVG layers separate substantially during a normal mobile swipe. Flattened generated NES images receive a stronger, overscanned 14% camera zoom and vertical pan, with the action effects following at a nearby depth to preserve alignment. Reduced-motion settings continue to disable scroll-driven effects. The browser result should be checked on the actual device after deploy.
+
+
+### Side-to-side scroll parallax (v0.3 refinement)
+Vertical page scrolling now pans illustration layers **horizontally only**. Scene Y remains fixed. NES-generated images, particles, SVG effect overlays, all three multi-layer fresh SVG environments, and older procedural illustrations share the change. Far backgrounds move less than nearby props. Generated canvas images retain their 8% bleed and 10% scale; older static SVG backgrounds gain 16% zoom to hide their side edges. Horizontal pan is limited to 7% of image width for root planes and 22 viewBox units for SVG groups, at half-strength. Independent flames and idle animations are unchanged. The reduced-motion preference still disables scroll parallax.
