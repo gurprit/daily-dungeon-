@@ -179,7 +179,7 @@ npm run build
 npm run deploy
 ```
 
-The new daily_story_sets table holds one globally shared set of three complete stories per UTC day, obtained through one Qwen Workers AI request. Atomic D1 insert-or-ignore prevents duplicate model calls from concurrent visitors and multiple Cloudflare locations. Cloudflare Cron (00:03 UTC) attempts creation each day; GET /api/daily-stories can start it if Cron is late or skipped. The browser initially offers classic stories while generation is pending, then switches to the AI stories only if the player has NOT started a quest. Existing adventures remain pinned and their saves are preserved.
+The new daily_story_sets table holds one globally shared set of three complete stories per UTC day, obtained through one JSON-mode Llama 3.3 Workers AI request. Atomic D1 insert-or-ignore prevents duplicate model calls from concurrent visitors and multiple Cloudflare locations. Cloudflare Cron (00:03 UTC) attempts creation each day; GET /api/daily-stories can start it if Cron is late or skipped. The browser initially offers classic stories while generation is pending, then switches to the AI stories only if the player has NOT started a quest. Existing adventures remain pinned and their saves are preserved.
 
 After deployment, open https://dailydungeon.titkok.co/api/daily-stories. A ready response with source generated means the stories were created and shared. A pending response means the first generation is underway. A fallback response means AI generation was disabled or failed, or the migration is missing, and visitors receive classics instead. No manual daily cron/script is needed. Image art and individual AI judgments continue to use separate guarded budgets.
 
@@ -212,3 +212,8 @@ npx wrangler d1 execute daily-dungeon-playtest --remote \\
 ```
 
 Note that Cloudflare Cron at 00:03 UTC may already have passed when the new version is first deployed; the public API can trigger the missing day's generation on the first request. The worker code does **not** automatically retry failed dates.
+
+
+### Failed generation stage, model support
+
+Daily-story generation now uses Cloudflare-supported JSON Mode with `@cf/meta/llama-3.3-70b-instruct-fp8-fast` instead of reasoning-model prose. If a day fails, the existing `stories_json` column holds only a safe `failureStage` code (one of `model-call`, `invalid-output`, `database-write`), and `/api/daily-stories` exposes that code alongside `reason: "generation-failed"`. Old failed records will have no stage until an explicitly approved retry is performed. This does not change hearts, artwork or player decisions, and requires no new migration beyond `0003_daily_stories.sql`.
