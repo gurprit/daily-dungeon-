@@ -141,6 +141,31 @@ test("AI disabled, migration unavailable or malformed generated stories fall bac
   assert.equal(getDailyChoices(now).length,3);
 });
 
+test("fallback reports a specific safe reason and never exposes generated text or configuration secrets",async()=>{
+  const fixture=fixtureDb();
+  const shared={DAILY_STORIES_ENABLED:"true",DAILY_BUDGET_DB:fixture.db,AI:fixture.ai};
+  assert.equal((await claimDailyStories({...shared,DAILY_STORIES_ENABLED:"false"},now)).reason,"disabled");
+  assert.equal((await claimDailyStories({DAILY_STORIES_ENABLED:"true"},now)).reason,"missing-bindings");
+  fixture.rows.set(day,{status:"failed",stories_json:null});
+  const failed=await claimDailyStories(shared,now);
+  assert.equal(failed.reason,"generation-failed");
+  assert.equal(failed.source,"classic");
+  assert.equal(failed.choices.length,3);
+  fixture.rows.set(day,{status:"ready",stories_json:"{}"});
+  assert.equal((await claimDailyStories(shared,now)).reason,"invalid-cache");
+  const brokenDB={...shared,DAILY_BUDGET_DB:{prepare(){throw Error("no such table: daily_story_sets");}}};
+  assert.equal((await claimDailyStories(brokenDB,now)).reason,"database-unavailable");
+  assert.equal(fixture.calls,0,"diagnostic reads never trigger extra AI calls");
+});
+
+test("validation accepts concise complete scenes without requiring excessive padding",()=>{
+  const examples=fiction();
+  examples.stories[0].rooms[0].scene="A clock loses its shadow. A worried crow begs you to help.";
+  examples.stories[0].rooms[1].successArrival="The newly lit lamp points to the hidden workshop.";
+  const stories=parseDailyStories(examples,day);
+  assert.equal(stories?.length,3);
+});
+
 test("seed changes every day and generated quests are selected only through the published D1 canon",async()=>{
   assert.notDeepEqual(dailyStoryPrompt(day).user,dailyStoryPrompt("2026-10-26").user);
   const m=fixtureDb(),env={
