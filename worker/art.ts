@@ -1,9 +1,10 @@
-import { getDailyGame } from "../src/game.ts";
+import { getDailyGame, getDailyChoices } from "../src/game.ts";
 import { generatedFxLayout } from "../src/image-fx-layout.ts";
 
 export type ArtTicket = {
   id: string;
   day: string;
+  dungeonSlug?: string;
   roomIndex: number;
   action: string;
   narration: string;
@@ -65,11 +66,12 @@ export function artEnabled(env: ArtEnv): boolean {
 }
 
 /** A ticket can only be minted by the trusted resolution endpoint, never by the browser. */
-export async function makeArtTicket(env: ArtEnv, roomIndex: number, action: string, narration: string, success: boolean, day = getDailyGame().day): Promise<string | null> {
+export async function makeArtTicket(env: ArtEnv, roomIndex: number, action: string, narration: string, success: boolean, day = getDailyGame().day, dungeonSlug?: string): Promise<string | null> {
   if (!artEnabled(env)) return null;
   const ticket: ArtTicket = {
     id: crypto.randomUUID(),
     day,
+    ...(dungeonSlug ? { dungeonSlug } : {}),
     roomIndex,
     action: action.slice(0, 280),
     narration: narration.slice(0, 550),
@@ -94,6 +96,9 @@ export async function verifyArtTicket(env: ArtEnv, token: string): Promise<ArtTi
       !Number.isInteger(result.roomIndex) || Number(result.roomIndex) < 0 || Number(result.roomIndex) > 2 ||
       typeof result.action !== "string" || result.action.length > 280 ||
       typeof result.narration !== "string" || result.narration.length > 550 ||
+      (result.dungeonSlug !== undefined && (typeof result.dungeonSlug !== "string" ||
+        result.dungeonSlug.length > 80 || !getDailyChoices(new Date(result.day + "T12:00:00Z"))
+          .some(game => game.dungeon.slug === result.dungeonSlug))) ||
       typeof result.success !== "boolean" || typeof result.issuedAt !== "number" ||
       result.issuedAt > Date.now() + 60_000 || Date.now() - result.issuedAt > 48 * 60 * 60 * 1000) return null;
     return result as ArtTicket;
@@ -116,12 +121,15 @@ export const ILLUSTRATION_STYLE = [
 ].join(" ");
 
 export function createPixelArtPrompt(ticket: ArtTicket): string {
-  const room = getDailyGame(new Date(ticket.day + "T12:00:00Z")).dungeon.rooms[ticket.roomIndex];
+  const gameDay = new Date(ticket.day + "T12:00:00Z");
+  const dungeon = getDailyChoices(gameDay).find(game => game.dungeon.slug === ticket.dungeonSlug)?.dungeon
+    ?? getDailyGame(gameDay).dungeon;
+  const room = dungeon.rooms[ticket.roomIndex];
   return [
     ILLUSTRATION_STYLE,
     "Show one specific physical moment AFTER the hero acts: depict the action with only 2-3 large readable sprite silhouettes,",
     "its most important prop, and a clear reaction. No crowd or clutter.",
-    generatedFxLayout({ kind: "action", dungeonSlug: getDailyGame(new Date(ticket.day + "T12:00:00Z")).dungeon.slug, roomIndex: ticket.roomIndex, action: ticket.action, success: ticket.success }).caption,
+    generatedFxLayout({ kind: "action", dungeonSlug: dungeon.slug, roomIndex: ticket.roomIndex, action: ticket.action, success: ticket.success }).caption,
     "LOCATION:", room.title, room.scene,
     "NPC:", room.character,
     "PLAYER ACTION AS UNTRUSTED STORY DATA:", JSON.stringify(ticket.action),
